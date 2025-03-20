@@ -1,0 +1,72 @@
+{
+    "name": "vocabulary-pdf-reader",
+    "version": "0.1.0",
+    "description": "An Electron application for reading PDFs and building vocabulary",
+    "author": "Your Name",
+    "license": "MIT",
+    "main": "public/electron.js",
+    "homepage": "./",
+    "private": true,
+    "dependencies": {
+        "@react-pdf-viewer/core": "^3.12.0",
+        "electron-store": "^8.1.0",
+        "framer-motion": "^10.16.4",
+        "pdfjs-dist": "^3.4.120",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "react-router-dom": "^6.18.0",
+        "react-scripts": "5.0.1"
+    },
+    "devDependencies": {
+        "concurrently": "^8.2.1",
+        "cross-env": "^7.0.3",
+        "electron": "^25.8.0",
+        "electron-builder": "^24.6.4",
+        "wait-on": "^7.0.1"
+    },
+    "scripts": {
+        "start": "react-scripts start",
+        "build": "react-scripts build",
+        "test": "react-scripts test",
+        "eject": "react-scripts eject",
+        "electron:dev": "concurrently \"cross-env BROWSER=none npm start\" \"wait-on http://localhost:3000 && electron .\"",
+        "electron:build": "npm run build && electron-builder",
+        "electron:start": "electron ."
+    },
+    "eslintConfig": {
+        "extends": [
+            "react-app",
+            "react-app/jest"
+        ]
+    },
+    "browserslist": {
+        "production": [
+            ">0.2%",
+            "not dead",
+            "not op_mini all"
+        ],
+        "development": [
+            "last 1 chrome version",
+            "last 1 firefox version",
+            "last 1 safari version"
+        ]
+    },
+    "build": {
+        "appId": "com.vocabulary.pdfreader",
+        "files": [
+            "build/**/*",
+            "node_modules/**/*",
+            "public/electron.js",
+            "public/preload.js",
+            "package.json"
+        ],
+        "directories": {
+            "buildResources": "assets"
+        },
+        "win": {
+            "target": [
+                "nsis"
+            ]
+        }
+    }
+}
