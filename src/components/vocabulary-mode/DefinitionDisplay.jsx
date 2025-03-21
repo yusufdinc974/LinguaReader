@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useDictionary from '../../hooks/useDictionary';
 import useTranslation from '../../hooks/useTranslation';
 
 /**
  * DefinitionDisplay - Component to display word definitions and translations
- * Enhanced with cross-language support
+ * Enhanced with Merriam-Webster dictionary integration
  * 
  * @param {Object} props - Component props
  * @param {string} props.word - The word to display definition for
@@ -20,18 +20,17 @@ const DefinitionDisplay = ({
   onSaveWord
 }) => {
   const [familiarityRating, setFamiliarityRating] = useState(0);
-  const [showTranslation, setShowTranslation] = useState(false);
   const [activeTab, setActiveTab] = useState('definition');
+  const previousWordRef = useRef('');
   
-  // Use the enhanced dictionary hook with auto-detection
+  // Use the dictionary hook with auto-detection
   const {
     loading: definitionLoading,
     error: definitionError,
     definition,
     wordLanguage,
-    isTranslated,
-    originalWord,
     lookupWordAuto,
+    resetState: resetDictionaryState
   } = useDictionary();
   
   // Use the translation hook
@@ -39,8 +38,10 @@ const DefinitionDisplay = ({
     loading: translationLoading,
     error: translationError,
     translatedText,
+    translationApi,
     translate,
     translateWithDetection,
+    resetTranslation,
     sourceLang,
     targetLang,
     setSourceLang,
@@ -48,28 +49,65 @@ const DefinitionDisplay = ({
     swapLanguages
   } = useTranslation();
   
-  // Lookup the word when it changes
+  // When visibility changes or word changes, update
   useEffect(() => {
-    if (word && isVisible) {
-      // Use auto-detection to lookup word in any language
-      lookupWordAuto(word);
-      
-      // Reset state
-      setFamiliarityRating(0);
-      setShowTranslation(false);
-      setActiveTab('definition');
+    if (isVisible) {
+      // Only perform lookup if the word changed
+      if (word !== previousWordRef.current) {
+        // Reset states
+        setFamiliarityRating(0);
+        resetDictionaryState();
+        resetTranslation();
+        
+        // Start with definition tab
+        setActiveTab('definition');
+        
+        // Look up the new word
+        if (word) {
+          lookupWordAuto(word);
+          
+          // Update the ref to track the current word
+          previousWordRef.current = word;
+        }
+      }
+    } else {
+      // When panel is hidden, reset the word reference
+      previousWordRef.current = '';
     }
-  }, [word, isVisible, lookupWordAuto]);
+  }, [word, isVisible, lookupWordAuto, resetDictionaryState, resetTranslation]);
   
-  // Handle showing translation
-  const handleShowTranslation = () => {
-    setShowTranslation(true);
-    translateWithDetection(word);
+  // When language is detected, initialize translation
+  useEffect(() => {
+    if (wordLanguage && word) {
+      // Set appropriate source language based on detected word language
+      const source = wordLanguage;
+      const target = source === 'en' ? 'es' : 'en';
+      
+      // Set translation languages
+      setSourceLang(source);
+      setTargetLang(target);
+      
+      // If we're on the translation tab, perform translation
+      if (activeTab === 'translation') {
+        translate(word, source, target);
+      }
+    }
+  }, [wordLanguage, word, activeTab, setSourceLang, setTargetLang, translate]);
+  
+  // Handle tab change
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    
+    // If switching to translation and we have language info, translate
+    if (tab === 'translation' && !translatedText && wordLanguage) {
+      translate(word, wordLanguage, wordLanguage === 'en' ? 'es' : 'en');
+    }
   };
   
   // Handle manual translation after language change
   const handleManualTranslate = () => {
     if (word) {
+      resetTranslation();
       translate(word, sourceLang, targetLang);
     }
   };
@@ -88,6 +126,16 @@ const DefinitionDisplay = ({
     }
   };
   
+  // Handle playing audio pronunciation
+  const handlePlayAudio = (audioUrl) => {
+    if (audioUrl) {
+      const audio = new Audio(audioUrl);
+      audio.play().catch(err => {
+        console.error('Error playing audio:', err);
+      });
+    }
+  };
+  
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0, x: 100 },
@@ -101,6 +149,9 @@ const DefinitionDisplay = ({
     visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
     exit: { opacity: 0, y: -20, transition: { duration: 0.2 } }
   };
+  
+  // Check if the word is Spanish
+  const isSpanishWord = wordLanguage === 'es';
   
   // If not visible, don't render anything
   if (!isVisible) return null;
@@ -149,7 +200,9 @@ const DefinitionDisplay = ({
             {wordLanguage && (
               <div style={{ fontSize: '0.8rem', marginTop: '2px' }}>
                 {wordLanguage === 'en' ? 'English' : wordLanguage === 'es' ? 'Spanish' : wordLanguage}
-                {isTranslated && originalWord && ` (from "${originalWord}")`}
+                {definition?.englishTranslation && isSpanishWord && (
+                  <span> → {definition.englishTranslation}</span>
+                )}
               </div>
             )}
           </div>
@@ -183,7 +236,7 @@ const DefinitionDisplay = ({
           }}
         >
           <button
-            onClick={() => setActiveTab('definition')}
+            onClick={() => handleTabChange('definition')}
             style={{
               flex: 1,
               padding: '10px',
@@ -199,10 +252,7 @@ const DefinitionDisplay = ({
           </button>
           
           <button
-            onClick={() => {
-              setActiveTab('translation');
-              if (!translatedText) handleShowTranslation();
-            }}
+            onClick={() => handleTabChange('translation')}
             style={{
               flex: 1,
               padding: '10px',
@@ -235,8 +285,8 @@ const DefinitionDisplay = ({
                 exit="exit"
                 variants={contentVariants}
               >
-                {/* Cross-language information */}
-                {isTranslated && originalWord && (
+                {/* Spanish word notice */}
+                {isSpanishWord && (
                   <div style={{ 
                     marginBottom: '15px', 
                     padding: '10px', 
@@ -245,17 +295,19 @@ const DefinitionDisplay = ({
                     borderRadius: 'var(--radius-md)',
                     fontSize: '0.9rem'
                   }}>
-                    Showing English definition for "{word}"
+                    <strong>Spanish Word</strong>
                     <br />
                     <span style={{ fontSize: '0.8rem', opacity: 0.9 }}>
-                      Original Spanish word: "{originalWord}"
+                      {definition?.englishTranslation ? 
+                        `English translation: "${definition.englishTranslation}"` : 
+                        'See the Translation tab for more details.'}
                     </span>
                   </div>
                 )}
                 
                 {definitionLoading ? (
                   <div style={{ textAlign: 'center', padding: '20px' }}>
-                    <div style={{ marginBottom: '10px' }}>Loading definition...</div>
+                    <div style={{ marginBottom: '10px' }}>Looking up definition...</div>
                     <div
                       style={{
                         width: '30px',
@@ -270,30 +322,107 @@ const DefinitionDisplay = ({
                   </div>
                 ) : definitionError ? (
                   <div style={{ padding: '20px', color: 'var(--error)' }}>
-                    <p>Error loading definition:</p>
+                    <p>Error looking up definition:</p>
                     <p>{definitionError.message}</p>
+                    
+                    {/* Show suggestions if available */}
+                    {definitionError.suggestions && definitionError.suggestions.length > 0 && (
+                      <div style={{ marginTop: '15px' }}>
+                        <p>Did you mean:</p>
+                        <ul style={{ paddingLeft: '20px' }}>
+                          {definitionError.suggestions.map((suggestion, index) => (
+                            <li key={index}>
+                              <a 
+                                href="#" 
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  lookupWordAuto(suggestion);
+                                }}
+                                style={{
+                                  color: 'var(--primary-color)',
+                                  textDecoration: 'none'
+                                }}
+                              >
+                                {suggestion}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {isSpanishWord && (
+                      <div style={{
+                        marginTop: '15px',
+                        padding: '10px',
+                        backgroundColor: 'var(--background)',
+                        borderRadius: 'var(--radius-md)',
+                        fontSize: '0.9rem'
+                      }}>
+                        <p>Try the Translation tab for Spanish words.</p>
+                        <button
+                          onClick={() => handleTabChange('translation')}
+                          style={{
+                            marginTop: '10px',
+                            padding: '8px 12px',
+                            backgroundColor: 'var(--secondary-color)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 'var(--radius-md)',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem'
+                          }}
+                        >
+                          Switch to Translation
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : definition ? (
                   <div>
-                    {/* Phonetics */}
+                    {/* API attribution */}
+                    {definition.api && (
+                      <div style={{ 
+                        marginBottom: '15px', 
+                        fontSize: '0.8rem', 
+                        color: 'var(--text-secondary)',
+                        textAlign: 'right'
+                      }}>
+                        Source: {definition.api}
+                      </div>
+                    )}
+                    
+                    {/* Phonetics and audio */}
                     {definition.phonetic && (
-                      <div style={{ marginBottom: '15px', color: 'var(--text-secondary)' }}>
-                        {definition.phonetic}
+                      <div style={{ 
+                        marginBottom: '15px', 
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 12px',
+                        backgroundColor: 'var(--background)',
+                        borderRadius: 'var(--radius-md)',
+                      }}>
+                        <span style={{ fontStyle: 'italic' }}>
+                          {definition.phonetic}
+                        </span>
                         
                         {/* Audio pronunciation if available */}
                         {definition.audioFile && (
                           <button
-                            onClick={() => {
-                              const audio = new Audio(definition.audioFile);
-                              audio.play();
-                            }}
+                            onClick={() => handlePlayAudio(definition.audioFile)}
                             style={{
-                              background: 'transparent',
+                              background: 'var(--primary-color)',
+                              color: 'white',
                               border: 'none',
-                              color: 'var(--primary-color)',
+                              borderRadius: '50%',
+                              width: '32px',
+                              height: '32px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
                               cursor: 'pointer',
-                              marginLeft: '10px',
-                              fontSize: '1.2rem'
+                              fontSize: '1rem'
                             }}
                           >
                             🔊
@@ -311,7 +440,9 @@ const DefinitionDisplay = ({
                             margin: '0 0 10px 0',
                             color: 'var(--primary-color)',
                             fontSize: '1rem',
-                            fontStyle: 'italic'
+                            fontStyle: 'italic',
+                            borderBottom: '1px solid var(--border-light)',
+                            paddingBottom: '5px'
                           }}
                         >
                           {meaning.partOfSpeech}
@@ -319,7 +450,7 @@ const DefinitionDisplay = ({
                         
                         {/* Definitions */}
                         <ol style={{ margin: 0, paddingLeft: '20px' }}>
-                          {meaning.definitions.slice(0, 3).map((def, defIndex) => (
+                          {meaning.definitions.map((def, defIndex) => (
                             <li key={defIndex} style={{ marginBottom: '12px' }}>
                               <div>{def.definition}</div>
                               
@@ -330,7 +461,9 @@ const DefinitionDisplay = ({
                                     marginTop: '5px',
                                     color: 'var(--text-secondary)',
                                     fontStyle: 'italic',
-                                    fontSize: '0.9rem'
+                                    fontSize: '0.9rem',
+                                    paddingLeft: '8px',
+                                    borderLeft: '2px solid var(--secondary-light)'
                                   }}
                                 >
                                   "{def.example}"
@@ -342,8 +475,14 @@ const DefinitionDisplay = ({
                         
                         {/* Synonyms */}
                         {meaning.synonyms && meaning.synonyms.length > 0 && (
-                          <div style={{ marginTop: '10px', fontSize: '0.9rem' }}>
-                            <span style={{ color: 'var(--text-secondary)' }}>Synonyms: </span>
+                          <div style={{ 
+                            marginTop: '10px', 
+                            fontSize: '0.9rem',
+                            backgroundColor: 'var(--background-light)',
+                            padding: '8px 12px',
+                            borderRadius: 'var(--radius-sm)'
+                          }}>
+                            <span style={{ color: 'var(--text-secondary)', fontWeight: '500' }}>Synonyms: </span>
                             <span>{meaning.synonyms.slice(0, 5).join(", ")}</span>
                           </div>
                         )}
@@ -353,6 +492,33 @@ const DefinitionDisplay = ({
                 ) : (
                   <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                     No definition available
+                    {isSpanishWord && (
+                      <div style={{
+                        marginTop: '15px',
+                        padding: '10px',
+                        backgroundColor: 'var(--background)',
+                        borderRadius: 'var(--radius-md)',
+                        fontSize: '0.9rem'
+                      }}>
+                        <strong>Spanish word detected</strong>
+                        <p>Please use the Translation tab to see the meaning in English.</p>
+                        <button
+                          onClick={() => handleTabChange('translation')}
+                          style={{
+                            marginTop: '10px',
+                            padding: '8px 12px',
+                            backgroundColor: 'var(--secondary-color)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 'var(--radius-md)',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem'
+                          }}
+                        >
+                          Switch to Translation
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </motion.div>
@@ -430,28 +596,26 @@ const DefinitionDisplay = ({
                   </select>
                 </div>
                 
-                {/* Translate button - only appears after manual language change */}
-                {showTranslation && (
-                  <button
-                    onClick={handleManualTranslate}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      marginBottom: '15px',
-                      padding: '8px',
-                      border: 'none',
-                      backgroundColor: 'var(--secondary-light)',
-                      color: 'white',
-                      borderRadius: 'var(--radius-md)',
-                      cursor: 'pointer',
-                      fontWeight: '500',
-                      fontSize: '0.9rem',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    Translate with Selected Languages
-                  </button>
-                )}
+                {/* Translate button */}
+                <button
+                  onClick={handleManualTranslate}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    marginBottom: '15px',
+                    padding: '8px',
+                    border: 'none',
+                    backgroundColor: 'var(--secondary-light)',
+                    color: 'white',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    fontSize: '0.9rem',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  Translate
+                </button>
                 
                 {/* Original word */}
                 <div style={{ marginBottom: '15px' }}>
@@ -497,37 +661,39 @@ const DefinitionDisplay = ({
                       <p>{translationError.message}</p>
                     </div>
                   ) : translatedText ? (
-                    <div
-                      style={{
-                        padding: '10px',
-                        backgroundColor: 'var(--background)',
-                        borderRadius: 'var(--radius-md)',
-                        fontSize: '1rem'
-                      }}
-                    >
-                      {translatedText}
+                    <div>
+                      <div
+                        style={{
+                          padding: '10px',
+                          backgroundColor: 'var(--background)',
+                          borderRadius: 'var(--radius-md)',
+                          fontSize: '1rem'
+                        }}
+                      >
+                        {translatedText}
+                      </div>
+                      
+                      {/* Translation API attribution */}
+                      {translationApi && (
+                        <div style={{ 
+                          marginTop: '8px',
+                          fontSize: '0.8rem', 
+                          color: 'var(--text-secondary)',
+                          textAlign: 'right'
+                        }}>
+                          via {translationApi}
+                        </div>
+                      )}
                     </div>
-                  ) : !showTranslation ? (
-                    <button
-                      onClick={handleShowTranslation}
-                      style={{
-                        display: 'block',
-                        width: '100%',
-                        padding: '10px',
-                        border: 'none',
-                        backgroundColor: 'var(--secondary-color)',
-                        color: 'white',
-                        borderRadius: 'var(--radius-md)',
-                        cursor: 'pointer',
-                        fontWeight: '500',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      Show Translation
-                    </button>
                   ) : (
-                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                      No translation available
+                    <div style={{ 
+                      padding: '20px', 
+                      textAlign: 'center', 
+                      backgroundColor: 'var(--background)',
+                      borderRadius: 'var(--radius-md)',
+                      color: 'var(--text-secondary)'
+                    }}>
+                      Click "Translate" to see translation
                     </div>
                   )}
                 </div>

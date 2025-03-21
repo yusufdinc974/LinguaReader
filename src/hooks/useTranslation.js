@@ -23,6 +23,7 @@ const useTranslation = (options = {}) => {
   const [targetLang, setTargetLang] = useState('es');
   const [detectedLang, setDetectedLang] = useState(null);
   const [languages, setLanguages] = useState([]);
+  const [translationApi, setTranslationApi] = useState(null);
   
   /**
    * Clean up old entries from the cache
@@ -44,6 +45,7 @@ const useTranslation = (options = {}) => {
   const resetTranslation = useCallback(() => {
     setTranslatedText('');
     setError(null);
+    setTranslationApi(null);
   }, []);
   
   /**
@@ -87,6 +89,7 @@ const useTranslation = (options = {}) => {
       if (useCache && translationCache.has(cacheKey)) {
         const cachedEntry = translationCache.get(cacheKey);
         setTranslatedText(cachedEntry.data.translated);
+        setTranslationApi(cachedEntry.data.api);
         setLoading(false);
         return;
       }
@@ -99,6 +102,7 @@ const useTranslation = (options = {}) => {
         setTranslatedText('');
       } else {
         setTranslatedText(result.translated);
+        setTranslationApi(result.api);
         
         // Cache the result
         if (useCache) {
@@ -211,6 +215,7 @@ const useTranslation = (options = {}) => {
     setOriginalText('');
     setTranslatedText('');
     setError(null);
+    setTranslationApi(null);
   }, []);
   
   // Initialize supported languages
@@ -231,6 +236,7 @@ const useTranslation = (options = {}) => {
     sourceLang,
     targetLang,
     detectedLang,
+    translationApi,
     languages,
     translate,
     detectAndSetLanguage,

@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getWordDefinition, getCrossLanguageDefinition, getRandomWord } from '../services/dictionaryService';
-import { cleanWord, isValidWord } from '../utils/textProcessing';
+import { getEnglishDefinition, getSpanishDefinition, getMultiLanguageDefinition, getRandomWord } from '../services/dictionaryService';
 import { detectLanguage } from '../services/translationService';
 
 // Local in-memory cache
 const definitionCache = new Map();
 
 /**
- * Custom hook for dictionary lookups with caching
+ * Custom hook for dictionary lookups with Merriam-Webster integration
  * 
  * @param {Object} options - Configuration options
  * @param {boolean} options.useCache - Whether to use caching (default: true)
@@ -22,8 +21,6 @@ const useDictionary = (options = {}) => {
   const [error, setError] = useState(null);
   const [definition, setDefinition] = useState(null);
   const [wordLanguage, setWordLanguage] = useState(null);
-  const [isTranslated, setIsTranslated] = useState(false);
-  const [originalWord, setOriginalWord] = useState('');
   const [searchHistory, setSearchHistory] = useState([]);
   const [recentDefinitions, setRecentDefinitions] = useState([]);
 
@@ -42,52 +39,54 @@ const useDictionary = (options = {}) => {
   }, [useCache, cacheTTL]);
 
   /**
-   * Look up a word in the dictionary
-   * @param {string} word - Word to look up
-   * @param {string} language - Language code (default: 'en')
+   * Reset the dictionary state for a new word lookup
    */
-  const lookupWord = useCallback(async (word, language = 'en') => {
+  const resetState = useCallback(() => {
+    setDefinition(null);
+    setError(null);
+    setWordLanguage(null);
+  }, []);
+
+  /**
+   * Look up a word in the English dictionary
+   * @param {string} word - Word to look up
+   */
+  const lookupEnglishWord = useCallback(async (word) => {
     // Clean up the word
-    const cleanedWord = cleanWord(word);
-    
-    // Validate the word
-    if (!isValidWord(cleanedWord)) {
-      setError({ message: 'Invalid word' });
+    const trimmedWord = word.trim().toLowerCase();
+    if (!trimmedWord) {
+      setError({ message: 'No word provided' });
       return;
     }
     
-    setCurrentWord(cleanedWord);
+    // Reset state for new lookup
+    resetState();
+    setCurrentWord(trimmedWord);
     setLoading(true);
-    setError(null);
+    setWordLanguage('en');
     
     try {
       // Check cache first
-      const cacheKey = `${language}:${cleanedWord}`;
+      const cacheKey = `en:${trimmedWord}`;
       
       if (useCache && definitionCache.has(cacheKey)) {
         const cachedEntry = definitionCache.get(cacheKey);
         setDefinition(cachedEntry.data);
-        setWordLanguage(cachedEntry.data.detectedLanguage || language);
-        setIsTranslated(!!cachedEntry.data.isTranslated);
-        setOriginalWord(cachedEntry.data.originalWord || cleanedWord);
         setLoading(false);
         
         // Update search history
-        updateSearchHistory(cleanedWord, cachedEntry.data);
+        updateSearchHistory(trimmedWord, cachedEntry.data);
         return;
       }
       
       // Not in cache, fetch from API
-      const result = await getWordDefinition(cleanedWord, language);
+      const result = await getEnglishDefinition(trimmedWord);
       
       if (result.error) {
         setError(result);
         setDefinition(null);
       } else {
         setDefinition(result);
-        setWordLanguage(language);
-        setIsTranslated(false);
-        setOriginalWord(cleanedWord);
         
         // Cache the result
         if (useCache) {
@@ -101,7 +100,7 @@ const useDictionary = (options = {}) => {
         }
         
         // Update search history
-        updateSearchHistory(cleanedWord, result);
+        updateSearchHistory(trimmedWord, result);
       }
     } catch (err) {
       setError({ message: err.message });
@@ -109,56 +108,48 @@ const useDictionary = (options = {}) => {
     } finally {
       setLoading(false);
     }
-  }, [useCache, cleanupCache]);
+  }, [useCache, cleanupCache, resetState]);
 
   /**
-   * Look up a word with automatic language detection and cross-language support
+   * Look up a word in the Spanish dictionary
    * @param {string} word - Word to look up
    */
-  const lookupWordAuto = useCallback(async (word) => {
+  const lookupSpanishWord = useCallback(async (word) => {
     // Clean up the word
-    const cleanedWord = cleanWord(word);
-    
-    // Validate the word
-    if (!isValidWord(cleanedWord)) {
-      setError({ message: 'Invalid word' });
+    const trimmedWord = word.trim().toLowerCase();
+    if (!trimmedWord) {
+      setError({ message: 'No word provided' });
       return;
     }
     
-    setCurrentWord(cleanedWord);
+    // Reset state for new lookup
+    resetState();
+    setCurrentWord(trimmedWord);
     setLoading(true);
-    setError(null);
-    setIsTranslated(false);
-    setOriginalWord('');
+    setWordLanguage('es');
     
     try {
-      // Check cache first with auto prefix
-      const cacheKey = `auto:${cleanedWord}`;
+      // Check cache first
+      const cacheKey = `es:${trimmedWord}`;
       
       if (useCache && definitionCache.has(cacheKey)) {
         const cachedEntry = definitionCache.get(cacheKey);
         setDefinition(cachedEntry.data);
-        setWordLanguage(cachedEntry.data.detectedLanguage || 'en');
-        setIsTranslated(!!cachedEntry.data.isTranslated);
-        setOriginalWord(cachedEntry.data.originalWord || cleanedWord);
         setLoading(false);
         
         // Update search history
-        updateSearchHistory(cleanedWord, cachedEntry.data);
+        updateSearchHistory(trimmedWord, cachedEntry.data);
         return;
       }
       
-      // Not in cache, use cross-language definition service
-      const result = await getCrossLanguageDefinition(cleanedWord);
+      // Not in cache, fetch from API
+      const result = await getSpanishDefinition(trimmedWord);
       
       if (result.error) {
         setError(result);
         setDefinition(null);
       } else {
         setDefinition(result);
-        setWordLanguage(result.detectedLanguage || 'en');
-        setIsTranslated(!!result.isTranslated);
-        setOriginalWord(result.originalWord || cleanedWord);
         
         // Cache the result
         if (useCache) {
@@ -172,7 +163,7 @@ const useDictionary = (options = {}) => {
         }
         
         // Update search history
-        updateSearchHistory(cleanedWord, result);
+        updateSearchHistory(trimmedWord, result);
       }
     } catch (err) {
       setError({ message: err.message });
@@ -180,7 +171,79 @@ const useDictionary = (options = {}) => {
     } finally {
       setLoading(false);
     }
-  }, [useCache, cleanupCache]);
+  }, [useCache, cleanupCache, resetState]);
+
+  /**
+   * Look up a word with automatic language detection
+   * @param {string} word - Word to look up
+   */
+  const lookupWordAuto = useCallback(async (word) => {
+    // Clean up the word
+    const trimmedWord = word.trim().toLowerCase();
+    if (!trimmedWord) {
+      setError({ message: 'No word provided' });
+      return;
+    }
+    
+    // Reset state for new lookup
+    resetState();
+    setCurrentWord(trimmedWord);
+    setLoading(true);
+    
+    try {
+      // Check cache first with auto prefix
+      const cacheKey = `auto:${trimmedWord}`;
+      
+      if (useCache && definitionCache.has(cacheKey)) {
+        const cachedEntry = definitionCache.get(cacheKey);
+        setDefinition(cachedEntry.data);
+        setLoading(false);
+        
+        // Update search history
+        updateSearchHistory(trimmedWord, cachedEntry.data);
+        // Set the word language from cached result
+        if (cachedEntry.data.detectedLanguage) {
+          setWordLanguage(cachedEntry.data.detectedLanguage);
+        }
+        return;
+      }
+      
+      // Not in cache, use multi-language lookup with Google language detection
+      // Pass null as detectedLanguage to let getMultiLanguageDefinition handle detection
+      const result = await getMultiLanguageDefinition(trimmedWord, null);
+      
+      if (result.error) {
+        setError(result);
+        setDefinition(null);
+      } else {
+        setDefinition(result);
+        
+        // Update word language from result
+        if (result.detectedLanguage) {
+          setWordLanguage(result.detectedLanguage);
+        }
+        
+        // Cache the result
+        if (useCache) {
+          definitionCache.set(cacheKey, {
+            data: result,
+            timestamp: Date.now()
+          });
+          
+          // Clean up old cache entries
+          cleanupCache();
+        }
+        
+        // Update search history
+        updateSearchHistory(trimmedWord, result);
+      }
+    } catch (err) {
+      setError({ message: err.message });
+      setDefinition(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [useCache, cleanupCache, resetState]);
 
   /**
    * Update the search history with the new word
@@ -212,24 +275,20 @@ const useDictionary = (options = {}) => {
     setLoading(true);
     try {
       const word = await getRandomWord(level);
-      lookupWord(word);
+      lookupWordAuto(word);
     } catch (err) {
       setError({ message: err.message });
       setLoading(false);
     }
-  }, [lookupWord]);
+  }, [lookupWordAuto]);
   
   /**
    * Clear the current definition
    */
   const clearDefinition = useCallback(() => {
+    resetState();
     setCurrentWord('');
-    setDefinition(null);
-    setError(null);
-    setWordLanguage(null);
-    setIsTranslated(false);
-    setOriginalWord('');
-  }, []);
+  }, [resetState]);
 
   // Clean up cache on component mount
   useEffect(() => {
@@ -242,14 +301,14 @@ const useDictionary = (options = {}) => {
     error,
     definition,
     wordLanguage,
-    isTranslated,
-    originalWord,
     searchHistory,
     recentDefinitions,
-    lookupWord,
+    lookupEnglishWord,
+    lookupSpanishWord,
     lookupWordAuto,
     lookupRandomWord,
-    clearDefinition
+    clearDefinition,
+    resetState
   };
 };
 
