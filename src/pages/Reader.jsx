@@ -4,6 +4,7 @@ import PDFContext from '../contexts/PDFContext';
 import PDFUpload from '../components/pdf/PDFUpload';
 import PDFViewer from '../components/pdf/PDFViewer';
 import PDFControls from '../components/pdf/PDFControls';
+import ModeSwitchButton from '../components/pdf/ModeSwitchButton';
 import Button from '../components/common/Button';
 import { getPDFList } from '../services/storageService';
 
@@ -37,6 +38,13 @@ const Reader = ({ onNavigate }) => {
       setShowLibrary(false); // Close the library after selecting a PDF
     } catch (error) {
       console.error('Error loading PDF from library:', error);
+    }
+  };
+
+  // Handle switching to vocabulary mode
+  const handleSwitchToVocabularyMode = () => {
+    if (onNavigate) {
+      onNavigate('vocabulary-mode');
     }
   };
 
@@ -361,6 +369,14 @@ const Reader = ({ onNavigate }) => {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Mode Switch Button - Only show when a PDF is loaded */}
+      {pdfDocument && (
+        <ModeSwitchButton
+          onSwitchMode={handleSwitchToVocabularyMode}
+          currentMode="pdf"
+        />
+      )}
     </motion.div>
   );
 };

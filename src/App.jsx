@@ -5,6 +5,7 @@ import MainView from './components/layout/MainView';
 import Home from './pages/Home';
 import Reader from './pages/Reader';
 import VocabularyManager from './pages/VocabularyManager';
+import VocabularyMode from './pages/VocabularyMode';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
@@ -19,7 +20,8 @@ function App() {
   const tabs = [
     { id: 'home', label: 'Home', icon: '🏠' },
     { id: 'reader', label: 'PDF Reader', icon: '📄' },
-    { id: 'vocabulary', label: 'Vocabulary', icon: '📚' },
+    { id: 'vocabulary-mode', label: 'Vocabulary Mode', icon: '📚' },
+    { id: 'vocabulary', label: 'Word List', icon: '📋' },
   ];
 
   // Render the appropriate page based on current route
@@ -29,8 +31,10 @@ function App() {
         return <Home onNavigate={setCurrentPage} />;
       case 'reader':
         return <Reader onNavigate={setCurrentPage} />;
+      case 'vocabulary-mode':
+        return <VocabularyMode onNavigate={setCurrentPage} />;
       case 'vocabulary':
-        return <VocabularyManager />;
+        return <VocabularyManager onNavigate={setCurrentPage} />;
       default:
         return <Home onNavigate={setCurrentPage} />;
     }

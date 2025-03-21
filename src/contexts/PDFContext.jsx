@@ -25,6 +25,8 @@ const SCALE_STEP = 0.3;
 export const PDFProvider = ({ children }) => {
   // State for the current PDF document
   const [pdfDocument, setPdfDocument] = useState(null);
+  // State for the PDF file path - critical for text extraction
+  const [pdfPath, setPdfPath] = useState(null);
   // State for the current PDF metadata
   const [pdfMetadata, setPdfMetadata] = useState(null);
   // State for the current page number
@@ -55,9 +57,14 @@ export const PDFProvider = ({ children }) => {
     setError(null);
     
     try {
+      console.log('Loading PDF from path:', filePath);
+      
       // Reset current page and scale to default values
       setCurrentPage(1);
       setScale(DEFAULT_SCALE);
+      
+      // Store the PDF path - this is crucial for text extraction
+      setPdfPath(filePath);
       
       // Load the PDF document
       const document = await loadPDFDocument(filePath);
@@ -211,6 +218,7 @@ export const PDFProvider = ({ children }) => {
    */
   const closePDF = useCallback(() => {
     setPdfDocument(null);
+    setPdfPath(null); // Also clear the path when closing
     setPdfMetadata(null);
     setCurrentPage(1);
     setTotalPages(0);
@@ -231,6 +239,7 @@ export const PDFProvider = ({ children }) => {
   const contextValue = {
     // State
     pdfDocument,
+    pdfPath, // Explicitly include the path in the context
     pdfMetadata,
     currentPage,
     totalPages,
@@ -268,6 +277,19 @@ export const PDFProvider = ({ children }) => {
       setPdfListUpdated(Date.now());
     }
   }, [pdfMetadata]);
+
+  // Sync pdfPath with metadata.path for backward compatibility
+  useEffect(() => {
+    if (pdfMetadata?.path && !pdfPath) {
+      console.log('Syncing PDF path from metadata:', pdfMetadata.path);
+      setPdfPath(pdfMetadata.path);
+    }
+  }, [pdfMetadata, pdfPath]);
+
+  // Debug logging for PDF path changes
+  useEffect(() => {
+    console.log('PDF Path in context updated:', pdfPath);
+  }, [pdfPath]);
 
   return (
     <PDFContext.Provider value={contextValue}>

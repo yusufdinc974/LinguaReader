@@ -1,28 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Button from '../components/common/Button';
 
 /**
  * VocabularyManager Page Component
  * Interface for managing saved vocabulary words
- * 
- * Note: This is a placeholder component for Phase 3. It will be fully implemented in Phase 5.
  */
-const VocabularyManager = () => {
+const VocabularyManager = ({ onNavigate }) => {
   const [activeFilters, setActiveFilters] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [focusedInput, setFocusedInput] = useState(false);
+  const [vocabularyList, setVocabularyList] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Mock vocabulary data for layout purposes
-  // Will be replaced with actual vocabulary context in Phase 5
-  const mockVocabulary = [
-    { id: 1, word: 'perspicacious', definition: 'having keen mental perception and understanding', familiarity: 2, language: 'en' },
-    { id: 2, word: 'ephemeral', definition: 'lasting for a very short time', familiarity: 3, language: 'en' },
-    { id: 3, word: 'ubiquitous', definition: 'present, appearing, or found everywhere', familiarity: 4, language: 'en' },
-    { id: 4, word: 'pernicious', definition: 'having a harmful effect, especially in a gradual or subtle way', familiarity: 1, language: 'en' },
-    { id: 5, word: 'audaz', definition: 'brave, bold, daring', familiarity: 2, language: 'es' },
-    { id: 6, word: 'sosiego', definition: 'calmness, peacefulness, tranquility', familiarity: 1, language: 'es' },
-  ];
+  // Load vocabulary from localStorage
+  useEffect(() => {
+    setIsLoading(true);
+    try {
+      const savedVocabulary = localStorage.getItem('vocabularyList');
+      if (savedVocabulary) {
+        setVocabularyList(JSON.parse(savedVocabulary));
+      }
+    } catch (error) {
+      console.error('Error loading vocabulary:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+  
+  // Save vocabulary to localStorage when it changes
+  const saveVocabulary = (updatedVocabulary) => {
+    try {
+      localStorage.setItem('vocabularyList', JSON.stringify(updatedVocabulary));
+      setVocabularyList(updatedVocabulary);
+    } catch (error) {
+      console.error('Error saving vocabulary:', error);
+    }
+  };
+
+  // Delete a word
+  const handleDeleteWord = (word) => {
+    const updatedVocabulary = { ...vocabularyList };
+    delete updatedVocabulary[word.toLowerCase()];
+    saveVocabulary(updatedVocabulary);
+  };
+
+  // Update word familiarity
+  const handleUpdateFamiliarity = (word, newLevel) => {
+    if (vocabularyList[word]) {
+      const updatedVocabulary = {
+        ...vocabularyList,
+        [word]: {
+          ...vocabularyList[word],
+          familiarityRating: newLevel
+        }
+      };
+      saveVocabulary(updatedVocabulary);
+    }
+  };
 
   // Filter options with icons and colors
   const filters = [
@@ -51,8 +86,18 @@ const VocabularyManager = () => {
     }
   };
 
+  // Convert vocabulary object to array for display
+  const vocabularyArray = Object.entries(vocabularyList).map(([word, data]) => ({
+    id: word,
+    word,
+    definition: data.definition?.meanings?.[0]?.definitions?.[0]?.definition || 'No definition available',
+    familiarity: data.familiarityRating || 0,
+    language: data.sourceLang || 'en',
+    date: data.date || new Date().toISOString()
+  }));
+
   // Apply filters and search to vocabulary
-  const filteredVocabulary = mockVocabulary.filter(word => {
+  const filteredVocabulary = vocabularyArray.filter(word => {
     // If no filters are active, show all words
     if (activeFilters.length === 0) {
       // Only apply search if present
@@ -140,6 +185,25 @@ const VocabularyManager = () => {
     visible: { y: 0, opacity: 1 }
   };
 
+  if (isLoading) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%'
+      }}>
+        <div className="animate-spin" style={{
+          width: '40px',
+          height: '40px',
+          border: '3px solid rgba(74, 105, 189, 0.2)',
+          borderTopColor: 'var(--primary-color)',
+          borderRadius: '50%'
+        }} />
+      </div>
+    );
+  }
+
   return (
     <motion.div
       initial="hidden"
@@ -177,6 +241,21 @@ const VocabularyManager = () => {
         }}>
           Manage your saved vocabulary words. Rate your familiarity with each word to customize highlighting in your documents.
         </p>
+
+        {/* Action buttons */}
+        <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
+          <Button
+            onClick={() => onNavigate('vocabulary-mode')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-xs)',
+            }}
+          >
+            <span>📚</span>
+            <span>Return to Vocabulary Mode</span>
+          </Button>
+        </div>
       </motion.div>
 
       {/* Search and Filter Controls */}
@@ -469,8 +548,10 @@ const VocabularyManager = () => {
                   gap: '2px',
                 }}>
                   {[1, 2, 3, 4, 5].map(level => (
-                    <div
+                    <motion.div
                       key={level}
+                      whileHover={{ scale: 1.2 }}
+                      onClick={() => handleUpdateFamiliarity(word.word, level)}
                       style={{
                         width: '20px',
                         height: '8px',
@@ -479,6 +560,7 @@ const VocabularyManager = () => {
                           : 'var(--border)',
                         borderRadius: '4px',
                         transition: 'all 0.2s ease',
+                        cursor: 'pointer',
                       }}
                     />
                   ))}
@@ -493,6 +575,30 @@ const VocabularyManager = () => {
                 }}>
                   {getFamiliarityLabel(word.familiarity)}
                 </span>
+
+                {/* Delete button */}
+                <button
+                  onClick={() => handleDeleteWord(word.word)}
+                  style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    width: '24px',
+                    height: '24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                    zIndex: 5,
+                    fontSize: '14px',
+                  }}
+                >
+                  ✕
+                </button>
               </div>
             </motion.div>
           ))}
@@ -518,11 +624,18 @@ const VocabularyManager = () => {
             color: 'var(--text-secondary)',
             maxWidth: '400px',
             margin: '0 auto',
+            marginBottom: 'var(--space-md)'
           }}>
             {searchTerm 
               ? `No words match your search "${searchTerm}"`
               : 'Start by opening a PDF and clicking on words to add them to your vocabulary list'}
           </p>
+
+          <Button
+            onClick={() => onNavigate('vocabulary-mode')}
+          >
+            Go to Vocabulary Mode
+          </Button>
         </motion.div>
       )}
     </motion.div>
