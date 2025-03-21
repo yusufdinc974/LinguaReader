@@ -112,16 +112,15 @@ const AppHeader = ({ showSidebar, toggleSidebar, handleNewPdfClick }) => {
         )}
         
         <Tooltip content={showSidebar ? "Hide Library" : "Show Library"}>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleSidebar}
-            style={{
-              backgroundColor: showSidebar ? 'rgba(74, 105, 189, 0.1)' : 'transparent',
-            }}
-          >
-            {showSidebar ? 'Hide Library' : 'Show Library'}
-          </Button>
+        <button 
+          className="app-button library-toggle"
+          onClick={toggleSidebar}
+        >
+          <span className="btn-with-icon">
+            <span className="icon">📚</span>
+            <span>{showSidebar ? 'Hide Library' : 'Show Library'}</span>
+          </span>
+        </button>
         </Tooltip>
 
         <Tooltip content="Settings">

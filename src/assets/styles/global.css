@@ -459,3 +459,602 @@ a:hover {
     font-size: var(--font-size-xl);
   }
 }
+
+/* Add these new utility classes to your global.css file */
+
+/* Responsive container classes */
+.container-fluid {
+  width: 100%;
+  padding: 0 var(--space-md);
+}
+
+.container-responsive {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-md);
+}
+
+/* Improved responsive handling */
+@media (min-width: 1200px) {
+  .hide-on-desktop {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1199px) {
+  .hide-on-tablet {
+    display: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .container-responsive {
+    padding: 0 var(--space-sm);
+  }
+}
+
+/* Enhanced button classes */
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: var(--shadow-sm), 0 2px 0 rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md), 0 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+  box-shadow: var(--shadow-sm), 0 1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.btn-secondary {
+  background-color: var(--secondary-color);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: var(--shadow-sm), 0 2px 0 rgba(0, 0, 0, 0.1);
+}
+
+.btn-secondary:hover {
+  background-color: var(--secondary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md), 0 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.btn-outline {
+  background-color: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-outline:hover {
+  background-color: rgba(74, 105, 189, 0.1);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Button sizes */
+.btn-sm {
+  padding: 0.4rem 0.8rem;
+  font-size: var(--font-size-sm);
+  height: 32px;
+}
+
+.btn-md {
+  padding: 0.6rem 1.2rem;
+  font-size: var(--font-size-md);
+  height: 40px;
+}
+
+.btn-lg {
+  padding: 0.8rem 1.8rem;
+  font-size: var(--font-size-lg);
+  height: 48px;
+}
+
+/* Position utilities */
+.sticky-bottom {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+}
+
+.sticky-top {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+}
+
+.fixed-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+}
+
+/* Improved card styles */
+.card-hover {
+  transition: all 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Control bar styles */
+.control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  background-color: white;
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05);
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  border-radius: 12px 12px 0 0;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  background-color: rgba(74, 105, 189, 0.05);
+  padding: 4px;
+  border-radius: var(--radius-lg);
+  margin: 0 10px;
+}
+
+/* Special text styles */
+.gradient-text-primary {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Home page specific styles */
+.home-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+.home-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-lg);
+}
+
+.hero-section {
+  text-align: center;
+  margin-bottom: var(--space-xl);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.primary-cta {
+  display: inline-block;
+  margin-bottom: var(--space-lg);
+  position: relative;
+}
+
+.upload-pdf-btn {
+  padding: 1rem 2rem;
+  font-size: var(--font-size-lg);
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-lg);
+  font-weight: var(--font-weight-medium);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--gradient-primary);
+}
+
+.features-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xxl);
+  position: relative;
+  z-index: 1;
+}
+
+.feature-card {
+  background-color: white;
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-md);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-lg);
+  background-color: rgba(255, 255, 255, 0.95);
+}
+
+.feature-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-circle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin-bottom: var(--space-md);
+  position: relative;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.steps-container {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-xl);
+  flex-wrap: wrap;
+}
+
+.step-item {
+  flex: 1 1 250px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+}
+
+.pdf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-md);
+}
+
+/* PDF Card Styles - Add to global.css */
+
+.pdf-card {
+  background-color: rgba(74, 105, 189, 0.05);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.pdf-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+  background-color: rgba(74, 105, 189, 0.08);
+}
+
+.pdf-card .pdf-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+  position: relative;
+  z-index: 1;
+}
+
+.pdf-card .pdf-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background-color: rgba(74, 105, 189, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.pdf-card .pdf-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  position: relative;
+  z-index: 1;
+}
+
+.pdf-card .page-count {
+  background-color: rgba(74, 105, 189, 0.1);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--primary-color);
+  font-weight: var(--font-weight-medium);
+}
+
+.pdf-card .file-name {
+  margin: 0;
+  font-size: var(--font-size-md);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.pdf-card .file-date {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+.pdf-card .corner-decoration {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, transparent 50%, rgba(74, 105, 189, 0.1) 50%);
+  z-index: 0;
+}
+
+.pdf-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+  position: relative;
+  z-index: 1;
+}
+
+.pdf-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background-color: rgba(74, 105, 189, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.pdf-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  position: relative;
+  z-index: 1;
+}
+
+.page-count {
+  background-color: rgba(74, 105, 189, 0.1);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--primary-color);
+}
+
+.open-pdf-btn {
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-md);
+}
+
+/* Make sure overflow works correctly in all browsers */
+html, body, #root, .app-container {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Add padding to content to prevent it from being hidden behind fixed controls */
+.main-content {
+  padding-bottom: 70px; /* Adjust based on the height of your controls */
+}
+
+.scroll-container {
+  height: 100%;
+  overflow: auto;
+}
+
+/* Improved focus states for accessibility */
+:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+button:focus-visible, 
+input:focus-visible, 
+select:focus-visible, 
+textarea:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Prevent outline on mouse click but keep for keyboard navigation */
+button:focus:not(:focus-visible), 
+input:focus:not(:focus-visible), 
+select:focus:not(:focus-visible), 
+textarea:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Enhanced Button Styles - Add to global.css */
+
+/* Base app button styles */
+.app-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-md);
+  border: none;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+  text-decoration: none;
+}
+
+.app-button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.app-button:active {
+  transform: translateY(1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Library toggle button */
+.library-toggle {
+  background-color: var(--surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  padding: 0.6rem 1rem;
+  font-weight: var(--font-weight-medium);
+}
+
+.library-toggle:hover {
+  background-color: rgba(74, 105, 189, 0.08);
+  color: var(--primary-color);
+}
+
+.library-toggle.active {
+  background-color: rgba(74, 105, 189, 0.12);
+  color: var(--primary-color);
+  border-color: rgba(74, 105, 189, 0.3);
+}
+
+.library-toggle .icon {
+  font-size: 1.1rem;
+  margin-right: var(--space-xs);
+}
+
+/* Open button style */
+.open-button {
+  background: var(--primary-color);
+  color: white;
+  font-weight: var(--font-weight-medium);
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  box-shadow: var(--shadow-sm), 0 1px 0 rgba(0, 0, 0, 0.1);
+  letter-spacing: 0.01em;
+}
+
+.open-button:hover {
+  background: var(--primary-dark);
+  box-shadow: var(--shadow-md), 0 2px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Shine animation effect for buttons */
+.app-button::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.app-button:hover::after {
+  animation: shine 1.5s ease-in-out;
+}
+
+@keyframes shine {
+  0% {
+    left: -100%;
+    opacity: 0.7;
+  }
+  100% {
+    left: 200%;
+    opacity: 0;
+  }
+}
+
+/* Button with icon */
+.btn-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.btn-with-icon .icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Upload button specific styles */
+.upload-btn {
+  background: var(--gradient-primary);
+  color: white;
+  font-weight: var(--font-weight-medium);
+  box-shadow: var(--shadow-md), 0 2px 0 rgba(0, 0, 0, 0.1);
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.upload-btn:hover {
+  box-shadow: var(--shadow-lg), 0 3px 0 rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+/* New PDF button */
+.new-pdf-btn {
+  background-color: var(--secondary-color);
+  color: white;
+  padding: 0.5rem 1rem;
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm), 0 2px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.new-pdf-btn:hover {
+  background-color: var(--secondary-dark);
+  box-shadow: var(--shadow-md), 0 3px 0 rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}

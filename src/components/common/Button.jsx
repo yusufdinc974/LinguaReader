@@ -13,6 +13,7 @@ import { motion } from 'framer-motion';
  * @param {boolean} [props.loading=false] - Whether the button is in loading state
  * @param {Function} props.onClick - Click handler
  * @param {React.ReactNode} props.children - Button content
+ * @param {string} [props.className] - Additional CSS classes
  */
 const Button = ({
   variant = 'primary',
@@ -22,6 +23,7 @@ const Button = ({
   loading = false,
   onClick,
   children,
+  className = '',
   ...rest
 }) => {
   // Define button styles based on variant
@@ -31,27 +33,32 @@ const Button = ({
       alignItems: 'center',
       justifyContent: 'center',
       cursor: disabled ? 'not-allowed' : 'pointer',
-      border: 'none',
       borderRadius: 'var(--radius-md)',
-      fontWeight: 'var(--font-weight-medium)',
-      transition: 'all var(--animation-fast)',
+      fontWeight: 'var(--font-weight-semibold)',
+      transition: 'all 0.2s ease',
       width: fullWidth ? '100%' : 'auto',
       opacity: disabled ? 0.6 : 1,
+      letterSpacing: '0.01em',
+      position: 'relative',
+      overflow: 'hidden',
     };
 
     // Size variations
     const sizeStyles = {
       sm: {
-        padding: '0.375rem 0.75rem',
+        padding: '0.4rem 0.8rem',
         fontSize: 'var(--font-size-sm)',
+        height: '32px',
       },
       md: {
-        padding: '0.5rem 1rem',
+        padding: '0.6rem 1.2rem',
         fontSize: 'var(--font-size-md)',
+        height: '40px',
       },
       lg: {
-        padding: '0.75rem 1.5rem',
+        padding: '0.8rem 1.8rem',
         fontSize: 'var(--font-size-lg)',
+        height: '48px',
       },
     };
 
@@ -60,20 +67,27 @@ const Button = ({
       primary: {
         backgroundColor: 'var(--primary-color)',
         color: 'white',
+        border: '1px solid rgba(255, 255, 255, 0.15)',
+        boxShadow: 'var(--shadow-sm), 0 2px 0 rgba(0, 0, 0, 0.1)',
       },
       secondary: {
         backgroundColor: 'var(--secondary-color)',
         color: 'white',
+        border: '1px solid rgba(255, 255, 255, 0.15)',
+        boxShadow: 'var(--shadow-sm), 0 2px 0 rgba(0, 0, 0, 0.1)',
       },
       outline: {
-        backgroundColor: 'transparent',
+        backgroundColor: 'rgba(255, 255, 255, 0.7)',
         border: '1px solid var(--primary-color)',
         color: 'var(--primary-color)',
+        boxShadow: 'var(--shadow-sm)',
       },
       text: {
         backgroundColor: 'transparent',
         color: 'var(--primary-color)',
         padding: sizeStyles[size].padding.split(' ')[0] + ' 0',
+        border: 'none',
+        boxShadow: 'none',
       },
     };
 
@@ -88,15 +102,21 @@ const Button = ({
   const buttonVariants = {
     hover: {
       scale: disabled ? 1 : 1.03,
+      boxShadow: variant !== 'text' ? 'var(--shadow-md), 0 3px 0 rgba(0, 0, 0, 0.1)' : 'none',
       backgroundColor:
         variant === 'primary'
           ? 'var(--primary-dark)'
           : variant === 'secondary'
           ? 'var(--secondary-dark)'
+          : variant === 'outline'
+          ? 'rgba(74, 105, 189, 0.1)'
           : undefined,
+      y: variant !== 'text' ? -1 : 0,
     },
     tap: {
       scale: disabled ? 1 : 0.97,
+      boxShadow: variant !== 'text' ? 'var(--shadow-sm), 0 1px 0 rgba(0, 0, 0, 0.1)' : 'none',
+      y: variant !== 'text' ? 1 : 0,
     },
   };
 
@@ -108,8 +128,10 @@ const Button = ({
       whileTap={disabled ? {} : 'tap'}
       variants={buttonVariants}
       disabled={disabled || loading}
+      className={className}
       {...rest}
     >
+      {/* Button content with loading indicator if needed */}
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <motion.div
@@ -127,7 +149,39 @@ const Button = ({
           Loading...
         </div>
       ) : (
-        children
+        <>
+          {/* Background shine effect for primary and secondary buttons */}
+          {(variant === 'primary' || variant === 'secondary') && !disabled && (
+            <motion.div
+              initial={{ x: '-100%', opacity: 0.7 }}
+              animate={{ 
+                x: ['100%', '200%'],
+                opacity: [0, 0.3, 0]
+              }}
+              transition={{ 
+                repeat: Infinity,
+                repeatType: 'loop',
+                duration: 2,
+                ease: 'easeInOut',
+                repeatDelay: 5
+              }}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
+                zIndex: 0,
+              }}
+            />
+          )}
+          
+          {/* Button content */}
+          <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            {children}
+          </span>
+        </>
       )}
     </motion.button>
   );

@@ -89,9 +89,11 @@ const PDFControls = () => {
     hover: { 
       scale: 1.05,
       backgroundColor: 'rgba(74, 105, 189, 0.9)',
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
     },
     tap: { 
-      scale: 0.95
+      scale: 0.95,
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     },
     disabled: {
       opacity: 0.5,
@@ -102,10 +104,10 @@ const PDFControls = () => {
 
   // Common button styles
   const buttonStyle = {
-    backgroundColor: '#4a69bd',
+    backgroundColor: 'var(--primary-color)',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: 'var(--radius-md)',
     padding: '8px 12px',
     margin: '0 4px',
     cursor: 'pointer',
@@ -114,14 +116,17 @@ const PDFControls = () => {
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: '36px',
-    height: '36px'
+    height: '36px',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    transition: 'all 0.2s ease',
   };
 
   // Secondary button style
   const secondaryButtonStyle = {
     ...buttonStyle,
-    backgroundColor: 'rgba(74, 105, 189, 0.2)',
-    color: '#4a69bd',
+    backgroundColor: 'rgba(74, 105, 189, 0.1)',
+    color: 'var(--primary-color)',
+    border: '1px solid rgba(74, 105, 189, 0.3)',
   };
 
   // Button loading animation
@@ -140,21 +145,33 @@ const PDFControls = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '10px',
+        padding: '12px 16px', 
         backgroundColor: 'white',
-        borderRadius: '8px',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-        margin: '10px'
+        borderTop: '1px solid var(--border)',
+        boxShadow: '0 -4px 10px rgba(0, 0, 0, 0.05)',
+        position: 'fixed', 
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 50,
+        borderRadius: '12px 12px 0 0',
       }}
     >
       {/* Navigation Controls */}
-      <div className="navigation-controls" style={{ display: 'flex', marginRight: '15px' }}>
+      <div className="navigation-controls" style={{ 
+        display: 'flex', 
+        alignItems: 'center',
+        marginRight: '20px',
+        backgroundColor: 'rgba(74, 105, 189, 0.05)',
+        padding: '4px',
+        borderRadius: 'var(--radius-lg)',
+      }}>
         <motion.button
           aria-label="First Page"
           variants={buttonVariants}
           whileHover={canNavigate.previous ? "hover" : "disabled"}
           whileTap={canNavigate.previous ? "tap" : "disabled"}
-          animate={canNavigate.previous ? "hover" : "disabled"}
+          animate={canNavigate.previous ? {} : "disabled"}
           onClick={goToFirstPage}
           disabled={!canNavigate.previous}
           style={buttonStyle}
@@ -167,7 +184,7 @@ const PDFControls = () => {
           variants={buttonVariants}
           whileHover={canNavigate.previous ? "hover" : "disabled"}
           whileTap={canNavigate.previous ? "tap" : "disabled"}
-          animate={canNavigate.previous ? "hover" : "disabled"}
+          animate={canNavigate.previous ? {} : "disabled"}
           onClick={prevPage}
           disabled={!canNavigate.previous}
           style={buttonStyle}
@@ -180,7 +197,11 @@ const PDFControls = () => {
             display: 'flex',
             alignItems: 'center',
             position: 'relative',
-            padding: '0 8px'
+            padding: '0 8px',
+            backgroundColor: 'white',
+            borderRadius: 'var(--radius-md)',
+            boxShadow: isInputFocused ? '0 0 0 2px rgba(74, 105, 189, 0.3)' : 'none',
+            transition: 'all 0.2s ease',
           }}>
             <input
               type="text"
@@ -194,15 +215,22 @@ const PDFControls = () => {
               style={{
                 width: '40px',
                 textAlign: 'center',
-                border: isInputFocused ? '1px solid #4a69bd' : '1px solid #ddd',
+                border: 'none',
                 borderRadius: '4px',
-                padding: '4px',
+                padding: '6px 4px',
                 fontSize: '14px',
-                outline: 'none'
+                outline: 'none',
+                backgroundColor: 'transparent',
+                fontWeight: 'var(--font-weight-medium)',
               }}
               aria-label="Page number"
             />
-            <span style={{ margin: '0 8px', color: '#666' }}>
+            <span style={{ 
+              margin: '0 8px', 
+              color: 'var(--text-secondary)',
+              fontSize: '14px',
+              fontWeight: 'var(--font-weight-medium)',
+            }}>
               of {totalPages}
             </span>
           </div>
@@ -213,7 +241,7 @@ const PDFControls = () => {
           variants={buttonVariants}
           whileHover={canNavigate.next ? "hover" : "disabled"}
           whileTap={canNavigate.next ? "tap" : "disabled"}
-          animate={canNavigate.next ? "hover" : "disabled"}
+          animate={canNavigate.next ? {} : "disabled"}
           onClick={nextPage}
           disabled={!canNavigate.next}
           style={buttonStyle}
@@ -226,7 +254,7 @@ const PDFControls = () => {
           variants={buttonVariants}
           whileHover={canNavigate.next ? "hover" : "disabled"}
           whileTap={canNavigate.next ? "tap" : "disabled"}
-          animate={canNavigate.next ? "hover" : "disabled"}
+          animate={canNavigate.next ? {} : "disabled"}
           onClick={goToLastPage}
           disabled={!canNavigate.next}
           style={buttonStyle}
@@ -236,7 +264,13 @@ const PDFControls = () => {
       </div>
       
       {/* Zoom Controls */}
-      <div className="zoom-controls" style={{ display: 'flex' }}>
+      <div className="zoom-controls" style={{ 
+        display: 'flex',
+        alignItems: 'center',
+        backgroundColor: 'rgba(74, 105, 189, 0.05)',
+        padding: '4px',
+        borderRadius: 'var(--radius-lg)',
+      }}>
         <motion.button
           aria-label="Zoom Out"
           variants={buttonVariants}
@@ -261,7 +295,9 @@ const PDFControls = () => {
           style={{
             ...secondaryButtonStyle,
             fontSize: '12px',
-            minWidth: '60px'
+            minWidth: '60px',
+            backgroundColor: 'white',
+            fontWeight: 'var(--font-weight-medium)',
           }}
         >
           {formatScale(scale)}
