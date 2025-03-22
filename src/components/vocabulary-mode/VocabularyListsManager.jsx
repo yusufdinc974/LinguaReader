@@ -31,6 +31,39 @@ const VocabularyListsManager = () => {
   const [listToDelete, setListToDelete] = useState(null);
   const [wordSearch, setWordSearch] = useState('');
   
+  // State for word removal confirmation
+  const [wordToRemove, setWordToRemove] = useState(null);
+  const [isConfirmingWordRemoval, setIsConfirmingWordRemoval] = useState(false);
+  
+  // Start word removal confirmation
+  const startWordRemoval = (wordId) => {
+    setWordToRemove(wordId);
+    setIsConfirmingWordRemoval(true);
+  };
+  
+  // Cancel word removal
+  const cancelWordRemoval = () => {
+    setWordToRemove(null);
+    setIsConfirmingWordRemoval(false);
+  };
+  
+  // Confirm and handle removing a word from the current list
+  const handleRemoveWord = () => {
+    if (!selectedListId || !wordToRemove) return;
+    
+    // Perform the removal
+    const success = removeWordFromList(wordToRemove, selectedListId);
+    
+    if (success) {
+      // Update the words in the current list
+      setWordsInCurrentList(prev => prev.filter(word => word.id !== wordToRemove));
+    }
+    
+    // Reset confirmation state
+    setWordToRemove(null);
+    setIsConfirmingWordRemoval(false);
+  };
+  
   // Words in the selected list
   const [wordsInCurrentList, setWordsInCurrentList] = useState([]);
   
@@ -110,12 +143,6 @@ const VocabularyListsManager = () => {
     setListToDelete(null);
   };
   
-  // Remove a word from the current list
-  const handleRemoveWord = (wordId) => {
-    if (!selectedListId) return;
-    removeWordFromList(wordId, selectedListId);
-  };
-  
   // Set a list as default
   const handleSetDefaultList = (listId) => {
     setDefaultList(listId);
@@ -155,7 +182,8 @@ const VocabularyListsManager = () => {
           display: 'grid',
           gridTemplateColumns: '280px 1fr',
           gap: '20px',
-          height: 'calc(100vh - 150px)'
+          height: 'calc(100vh - 240px)',
+          overflow: 'hidden'
         }}
       >
         {/* Lists sidebar */}
@@ -550,7 +578,7 @@ const VocabularyListsManager = () => {
                           
                           {/* Remove from list button */}
                           <button
-                            onClick={() => handleRemoveWord(word.id)}
+                            onClick={() => startWordRemoval(word.id)}
                             style={{
                               display: 'block',
                               width: '100%',
@@ -705,7 +733,7 @@ const VocabularyListsManager = () => {
         </div>
       </div>
       
-      {/* Delete confirmation modal */}
+      {/* Delete list confirmation modal */}
       <AnimatePresence>
         {isConfirmingDelete && (
           <motion.div
@@ -771,6 +799,79 @@ const VocabularyListsManager = () => {
                   }}
                 >
                   Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* Remove word confirmation modal */}
+      <AnimatePresence>
+        {isConfirmingWordRemoval && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 1000
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              style={{
+                width: '350px',
+                padding: '20px',
+                backgroundColor: 'white',
+                borderRadius: 'var(--radius-lg)',
+                boxShadow: 'var(--shadow-lg)'
+              }}
+            >
+              <h3 style={{ margin: '0 0 15px 0', fontSize: '1.2rem' }}>Confirm Removal</h3>
+              <p style={{ margin: '0 0 20px 0', fontSize: '0.95rem' }}>
+                Are you sure you want to remove this word from the current list?
+              </p>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={cancelWordRemoval}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    backgroundColor: 'var(--background)',
+                    color: 'var(--text-primary)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.95rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRemoveWord}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    backgroundColor: 'var(--error)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.95rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Remove
                 </button>
               </div>
             </motion.div>

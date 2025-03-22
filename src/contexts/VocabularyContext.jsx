@@ -190,16 +190,17 @@ export const VocabularyProvider = ({ children }) => {
     }
   }, [vocabularyWords, currentPdfId, calculateStats]);
 
-  // Remove a word from vocabulary
-  const removeWord = useCallback((wordId) => {
+// Remove a word from vocabulary
+const removeWord = useCallback((wordId) => {
     try {
-      // Remove from storage
+      // Create a filtered array first to get the actual remaining words
+      const remainingWords = vocabularyWords.filter(word => word.id !== wordId);
+      
+      // Remove from storage - Make sure this is called first
       storageService.removeVocabularyWord(wordId, currentPdfId);
       
       // Remove from state
-      setVocabularyWords(prevWords => 
-        prevWords.filter(word => word.id !== wordId)
-      );
+      setVocabularyWords(remainingWords);
       
       // Remove from PDF-specific vocabulary if applicable
       if (currentPdfId) {
@@ -208,15 +209,18 @@ export const VocabularyProvider = ({ children }) => {
         );
       }
       
-      // Recalculate stats
-      calculateStats(vocabularyWords.filter(word => word.id !== wordId));
+      // Recalculate stats with the actual remaining words
+      calculateStats(remainingWords);
+      
+      // Force a refresh of vocabulary lists
+      loadVocabularyLists();
       
       return true;
     } catch (error) {
       console.error('Error removing word:', error);
       return false;
     }
-  }, [currentPdfId, vocabularyWords, calculateStats]);
+  }, [currentPdfId, vocabularyWords, calculateStats, loadVocabularyLists]);
 
   // Get words filtered by language
   const getWordsByLanguage = useCallback((sourceLang, targetLang) => {

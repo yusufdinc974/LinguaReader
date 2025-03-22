@@ -643,16 +643,36 @@ export const addWordToList = (wordId, listId) => {
  * @returns {boolean} - True if successful
  */
 export const removeWordFromList = (wordId, listId) => {
-  const listsData = getItem(STORAGE_KEYS.VOCABULARY_LISTS);
-  if (!listsData || !listsData.lists) return false;
-  
-  const list = listsData.lists.find(l => l.id === listId);
-  if (!list) return false;
-  
-  list.words = list.words.filter(id => id !== wordId);
-  setItem(STORAGE_KEYS.VOCABULARY_LISTS, listsData);
-  
-  return true;
+  try {
+    // Get current lists data
+    const listsData = getItem(STORAGE_KEYS.VOCABULARY_LISTS);
+    if (!listsData || !listsData.lists) return false;
+    
+    // Find the list to update
+    const listIndex = listsData.lists.findIndex(l => l.id === listId);
+    if (listIndex === -1) return false;
+    
+    // Create a deep copy of the lists array to ensure we're working with a new object
+    const updatedLists = JSON.parse(JSON.stringify(listsData.lists));
+    
+    // Ensure words array exists and is valid
+    if (!Array.isArray(updatedLists[listIndex].words)) {
+      updatedLists[listIndex].words = [];
+    }
+    
+    // Filter out the word ID
+    updatedLists[listIndex].words = updatedLists[listIndex].words.filter(id => id !== wordId);
+    
+    // Save the updated lists data
+    listsData.lists = updatedLists;
+    setItem(STORAGE_KEYS.VOCABULARY_LISTS, listsData);
+    
+    console.log(`Removed word ${wordId} from list ${listId}`);
+    return true;
+  } catch (error) {
+    console.error('Error removing word from list:', error);
+    return false;
+  }
 };
 
 /**
