@@ -2,6 +2,34 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { cleanWord, isValidWord } from '../../utils/textProcessing';
 
+// Color palette options
+const colorPalettes = {
+  standard: [
+    'transparent',                      // Level 0 - No highlight
+    'rgba(255, 107, 107, 0.6)',         // Level 1 - Red
+    'rgba(254, 202, 87, 0.6)',          // Level 2 - Yellow
+    'rgba(72, 219, 251, 0.6)',          // Level 3 - Blue
+    'rgba(29, 209, 161, 0.6)',          // Level 4 - Teal
+    'rgba(136, 84, 208, 0.3)'           // Level 5 - Purple
+  ],
+  pastel: [
+    'transparent',                      // Level 0 - No highlight
+    'rgba(255, 179, 186, 0.7)',         // Level 1 - Pastel Pink
+    'rgba(255, 223, 186, 0.7)',         // Level 2 - Pastel Orange
+    'rgba(186, 255, 201, 0.7)',         // Level 3 - Pastel Green
+    'rgba(186, 225, 255, 0.7)',         // Level 4 - Pastel Blue
+    'rgba(223, 186, 255, 0.7)'          // Level 5 - Pastel Purple
+  ],
+  vibrant: [
+    'transparent',                      // Level 0 - No highlight
+    'rgba(255, 0, 0, 0.5)',             // Level 1 - Bright Red
+    'rgba(255, 165, 0, 0.5)',           // Level 2 - Bright Orange
+    'rgba(255, 255, 0, 0.5)',           // Level 3 - Bright Yellow
+    'rgba(0, 255, 0, 0.5)',             // Level 4 - Bright Green
+    'rgba(0, 0, 255, 0.5)'              // Level 5 - Bright Blue
+  ]
+};
+
 /**
  * WordComponent - An interactive word display for vocabulary learning
  * Enhanced with language-specific handling
@@ -12,7 +40,7 @@ import { cleanWord, isValidWord } from '../../utils/textProcessing';
  * @param {string} props.sourceLang - Source language of the word
  * @param {string} props.targetLang - Target language for translation
  * @param {Function} props.onWordClick - Function to call when word is clicked
- * @param {Function} props.onUpdateFamiliarity - Function to call when familiarity is updated
+ * @param {string} props.colorPalette - Color palette to use ('standard', 'pastel', or 'vibrant')
  * @param {Object} props.style - Additional styles to apply
  */
 const WordComponent = ({
@@ -21,7 +49,7 @@ const WordComponent = ({
   sourceLang = 'en',
   targetLang = 'es',
   onWordClick,
-  onUpdateFamiliarity,
+  colorPalette = 'standard',
   style = {}
 }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -54,21 +82,11 @@ const WordComponent = ({
   const getBackgroundColor = () => {
     if (!isValid) return 'transparent';
     
-    // Direct hardcoded colors without relying on CSS variables
-    switch (actualFamiliarityLevel) {
-      case 1:
-        return 'rgba(255, 107, 107, 0.6)'; // Red
-      case 2:
-        return 'rgba(254, 202, 87, 0.6)';  // Yellow
-      case 3:
-        return 'rgba(72, 219, 251, 0.6)';  // Blue
-      case 4:
-        return 'rgba(29, 209, 161, 0.6)';  // Teal
-      case 5:
-        return 'rgba(136, 84, 208, 0.3)';  // Purple
-      default:
-        return isHovered ? 'rgba(0, 0, 0, 0.05)' : 'transparent';
-    }
+    // Get the selected color palette
+    const palette = colorPalettes[colorPalette] || colorPalettes.standard;
+    
+    // Use the color for the specific familiarity level
+    return palette[actualFamiliarityLevel] || 'transparent';
   };
   
   // Define the tooltip content based on familiarity level

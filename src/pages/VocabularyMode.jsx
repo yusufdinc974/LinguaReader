@@ -4,6 +4,7 @@ import PDFContext from '../contexts/PDFContext';
 import PageView from '../components/vocabulary-mode/PageView';
 import DefinitionDisplay from '../components/vocabulary-mode/DefinitionDisplay';
 import NavigationControls from '../components/vocabulary-mode/NavigationControls';
+import SettingsPopup from '../components/vocabulary-mode/SettingsPopup';
 import * as storageService from '../services/storageService';
 
 /**
@@ -31,16 +32,95 @@ const VocabularyMode = ({ onNavigate }) => {
   const [pdfPages, setPdfPages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [highlightSettings, setHighlightSettings] = useState({
+    enabled: true,  // Enabled by default
+    listOnly: false,
+    selectedListId: null,
+    colorPalette: 'standard' // 'standard', 'pastel', or 'vibrant'
+  });
+
+  // When saved vocabulary words change, update the vocabularyList to include list info
+  useEffect(() => {
+    if (Object.keys(vocabularyList).length > 0) {
+      // Check and update list membership of words
+      const vocabularyLists = storageService.getAllVocabularyLists();
+      
+      if (vocabularyLists && vocabularyLists.length > 0) {
+        let listsChanged = false;
+        const updatedList = { ...vocabularyList };
+        
+        // For each word, check which lists it belongs to
+        vocabularyLists.forEach(list => {
+          if (list.words && Array.isArray(list.words)) {
+            list.words.forEach(wordId => {
+              // Find the word in our vocabularyList
+              Object.keys(updatedList).forEach(key => {
+                const word = updatedList[key];
+                if (word.id === wordId) {
+                  // Initialize lists array if needed
+                  if (!word.lists) {
+                    word.lists = [];
+                    listsChanged = true;
+                  }
+                  
+                  // Add list ID if not already in the lists array
+                  if (!word.lists.includes(list.id)) {
+                    word.lists.push(list.id);
+                    listsChanged = true;
+                  }
+                }
+              });
+            });
+          }
+        });
+        
+        // If any words were updated, update the state
+        if (listsChanged) {
+          console.log('Updating vocabulary list with list membership info');
+          setVocabularyList(updatedList);
+        }
+      }
+    }
+  }, [vocabularyList]);
+  
+  // Handle highlighting changes
+  const handleHighlightingChange = useCallback((newHighlightSettings) => {
+    console.log('Highlighting settings changed:', newHighlightSettings);
+    
+    // Update local state
+    setHighlightSettings(newHighlightSettings);
+    
+    // Save to local storage for persistence
+    try {
+      localStorage.setItem('highlightSettings', JSON.stringify(newHighlightSettings));
+    } catch (error) {
+      console.error('Error saving highlighting settings:', error);
+    }
+  }, []);
   
   // Reference to track if component is mounted
   const isMounted = useRef(true);
   
-  // On component mount/unmount
+  // Load highlighting settings when component mounts
   useEffect(() => {
     console.log('VocabularyMode mounted');
     
     // Initialize storage on mount
     storageService.initializeStorage();
+    
+    // Try to get saved highlight settings
+    try {
+      const savedSettings = localStorage.getItem('highlightSettings');
+      
+      if (savedSettings) {
+        const parsedSettings = JSON.parse(savedSettings);
+        console.log('Loaded highlighting settings:', parsedSettings);
+        setHighlightSettings(parsedSettings);
+      }
+    } catch (error) {
+      console.error('Error loading highlighting settings:', error);
+    }
     
     return () => {
       isMounted.current = false;
@@ -366,6 +446,25 @@ const VocabularyMode = ({ onNavigate }) => {
             gap: '10px'
           }}
         >
+          {/* Settings button */}
+          <button
+            style={{
+              backgroundColor: 'transparent',
+              border: 'none',
+              color: '#4a69bd',
+              fontSize: '1.2rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '5px'
+            }}
+            onClick={() => setShowSettings(true)}
+            title="Settings"
+          >
+            ⚙️
+          </button>
+          
           {/* Statistics button */}
           <button
             style={{
@@ -443,6 +542,7 @@ const VocabularyMode = ({ onNavigate }) => {
               paragraphs={currentPageParagraphs}
               vocabularyState={vocabularyList}
               onWordClick={handleWordClick}
+              highlightSettings={highlightSettings}
             />
           </motion.div>
         </AnimatePresence>
@@ -462,6 +562,14 @@ const VocabularyMode = ({ onNavigate }) => {
         isVisible={showDefinition}
         onClose={() => setShowDefinition(false)}
         onSaveWord={handleSaveWord}
+      />
+      
+      {/* Settings Popup */}
+      <SettingsPopup
+        isVisible={showSettings}
+        onClose={() => setShowSettings(false)}
+        onHighlightingChange={handleHighlightingChange}
+        initialHighlightSettings={highlightSettings}
       />
     </div>
   );

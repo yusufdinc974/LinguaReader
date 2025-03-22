@@ -10,22 +10,25 @@ import { extractWords, isValidWord, cleanWord } from '../../utils/textProcessing
  * @param {string} props.text - The page text content
  * @param {Array} props.paragraphs - Paragraphs data from PDF extraction
  * @param {Object} props.vocabularyState - Object containing vocabulary state/data
+ * @param {Object} props.highlightSettings - Settings for word highlighting
  * @param {Function} props.onWordClick - Function to call when a word is clicked
  */
 const PageView = ({
   text = '',
   paragraphs = [],
   vocabularyState = {},
+  highlightSettings = { enabled: true, listOnly: false },
   onWordClick
 }) => {
   const [hoveredWord, setHoveredWord] = useState(null);
   
-  // Log vocabulary state on mount and when it changes
+  // Log vocabulary state and highlighting settings when they change
   useEffect(() => {
     const wordCount = vocabularyState ? 
       (Array.isArray(vocabularyState) ? vocabularyState.length : Object.keys(vocabularyState).length) : 0;
     
     console.log(`PageView received vocabulary state with ${wordCount} items`);
+    console.log('Highlighting settings:', highlightSettings);
     
     // Log a sample of vocabulary items
     if (wordCount > 0) {
@@ -40,61 +43,86 @@ const PageView = ({
         console.log('Sample vocabulary items (object):', sample);
       }
     }
-  }, [vocabularyState]);
+  }, [vocabularyState, highlightSettings]);
   
-  // Get familiarity level for a word
+  // Get familiarity level for a word, respecting highlighting settings
   const getWordFamiliarity = useCallback((word) => {
+    // If highlighting is disabled, return 0 (no highlighting)
+    if (!highlightSettings || !highlightSettings.enabled) {
+      return 0;
+    }
+    
     if (!word || !isValidWord(word)) return 0;
     
     // Clean the word to match the format in vocabulary
     const cleanedWord = cleanWord(word);
     if (!cleanedWord) return 0;
     
+    let vocabularyItem = null;
+    
     // Try direct lookup by word as key
     if (typeof vocabularyState === 'object' && !Array.isArray(vocabularyState)) {
       const item = vocabularyState[cleanedWord] || vocabularyState[cleanedWord.toLowerCase()];
       if (item) {
-        const rating = parseInt(item.familiarityRating || 0, 10);
-        if (rating > 0) {
-          console.log(`Found word "${cleanedWord}" with familiarity ${rating}`);
-        }
-        return rating;
-      }
-      
-      // Try search through all values
-      for (const key in vocabularyState) {
-        const value = vocabularyState[key];
-        if (value && value.word) {
-          const valueWord = cleanWord(value.word);
-          if (valueWord === cleanedWord || valueWord === cleanedWord.toLowerCase()) {
-            const rating = parseInt(value.familiarityRating || 0, 10);
-            if (rating > 0) {
-              console.log(`Found word "${cleanedWord}" in values with familiarity ${rating}`);
+        vocabularyItem = item;
+      } else {
+        // Try search through all values
+        for (const key in vocabularyState) {
+          const value = vocabularyState[key];
+          if (value && value.word) {
+            const valueWord = cleanWord(value.word);
+            if (valueWord === cleanedWord || valueWord === cleanedWord.toLowerCase()) {
+              vocabularyItem = value;
+              break;
             }
-            return rating;
           }
         }
       }
     }
     
     // Handle array format
-    if (Array.isArray(vocabularyState)) {
+    if (!vocabularyItem && Array.isArray(vocabularyState)) {
       for (const item of vocabularyState) {
         if (item && item.word) {
           const itemWord = cleanWord(item.word);
           if (itemWord === cleanedWord || itemWord === cleanedWord.toLowerCase()) {
-            const rating = parseInt(item.familiarityRating || 0, 10);
-            if (rating > 0) {
-              console.log(`Found word "${cleanedWord}" in array with familiarity ${rating}`);
-            }
-            return rating;
+            vocabularyItem = item;
+            break;
           }
         }
       }
     }
     
+    // If we found a vocabulary item
+    if (vocabularyItem) {
+      // If listOnly is enabled, check if the word is in the selected list
+      if (highlightSettings.listOnly && highlightSettings.selectedListId) {
+        // Debug information
+        console.log(`Checking if word "${cleanedWord}" is in list ${highlightSettings.selectedListId}`);
+        console.log(`Word lists:`, vocabularyItem.lists);
+        
+        // Check if the word is in the currently selected list
+        const isInSelectedList = vocabularyItem.lists && 
+                                Array.isArray(vocabularyItem.lists) && 
+                                vocabularyItem.lists.includes(highlightSettings.selectedListId);
+        
+        if (!isInSelectedList) {
+          console.log(`Word "${cleanedWord}" is NOT in the selected list`);
+          return 0; // Don't highlight if not in selected list
+        } else {
+          console.log(`Word "${cleanedWord}" IS in the selected list`);
+        }
+      }
+      
+      const rating = parseInt(vocabularyItem.familiarityRating || 0, 10);
+      if (rating > 0) {
+        console.log(`Found word "${cleanedWord}" with familiarity ${rating}`);
+      }
+      return rating;
+    }
+    
     return 0;
-  }, [vocabularyState]);
+  }, [vocabularyState, highlightSettings]);
   
   // Handle word click
   const handleWordClick = useCallback((word) => {
@@ -146,6 +174,7 @@ const PageView = ({
                     onWordClick={handleWordClick}
                     onMouseEnter={() => setHoveredWord(cleanedWord)}
                     onMouseLeave={() => setHoveredWord(null)}
+                    colorPalette={highlightSettings?.colorPalette || 'standard'}
                   />
                   {!isLastWord && ' '}
                 </React.Fragment>
@@ -191,6 +220,7 @@ const PageView = ({
               onWordClick={handleWordClick}
               onMouseEnter={() => setHoveredWord(cleanedWord)}
               onMouseLeave={() => setHoveredWord(null)}
+              colorPalette={highlightSettings?.colorPalette || 'standard'}
             />
             {' '}
           </React.Fragment>
