@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { cleanWord, isValidWord } from '../../utils/textProcessing';
 
@@ -25,6 +25,19 @@ const WordComponent = ({
   style = {}
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [actualFamiliarityLevel, setActualFamiliarityLevel] = useState(0);
+  
+  // Validate and sanitize familiarityLevel when it changes
+  useEffect(() => {
+    // Convert to number and ensure it's within valid range (0-5)
+    const level = Number(familiarityLevel);
+    const validLevel = !isNaN(level) && level >= 0 && level <= 5 ? 
+      Math.floor(level) : 0;
+    
+    if (validLevel !== actualFamiliarityLevel) {
+      setActualFamiliarityLevel(validLevel);
+    }
+  }, [familiarityLevel]);
   
   // Clean and validate the word
   const cleanedWord = cleanWord(word);
@@ -33,26 +46,26 @@ const WordComponent = ({
   // Handle word click
   const handleClick = useCallback(() => {
     if (isValid && onWordClick) {
-      // Pass language information to click handler
-      onWordClick(cleanedWord, sourceLang, targetLang);
+      onWordClick(cleanedWord);
     }
-  }, [cleanedWord, isValid, onWordClick, sourceLang, targetLang]);
+  }, [cleanedWord, isValid, onWordClick]);
   
   // Get background color based on familiarity level
   const getBackgroundColor = () => {
     if (!isValid) return 'transparent';
     
-    switch (familiarityLevel) {
+    // Direct hardcoded colors without relying on CSS variables
+    switch (actualFamiliarityLevel) {
       case 1:
-        return 'var(--highlight-level-1)';
+        return 'rgba(255, 107, 107, 0.6)'; // Red
       case 2:
-        return 'var(--highlight-level-2)';
+        return 'rgba(254, 202, 87, 0.6)';  // Yellow
       case 3:
-        return 'var(--highlight-level-3)';
+        return 'rgba(72, 219, 251, 0.6)';  // Blue
       case 4:
-        return 'var(--highlight-level-4)';
+        return 'rgba(29, 209, 161, 0.6)';  // Teal
       case 5:
-        return 'var(--highlight-level-5)';
+        return 'rgba(136, 84, 208, 0.3)';  // Purple
       default:
         return isHovered ? 'rgba(0, 0, 0, 0.05)' : 'transparent';
     }
@@ -65,7 +78,7 @@ const WordComponent = ({
     let tooltipText = '';
     
     // Add familiarity level description
-    switch (familiarityLevel) {
+    switch (actualFamiliarityLevel) {
       case 1:
         tooltipText = 'Just learned';
         break;
@@ -85,41 +98,29 @@ const WordComponent = ({
         tooltipText = 'Click for translation';
     }
     
-    // Add language info if available
-    if (sourceLang && targetLang && sourceLang !== targetLang) {
-      const languageNames = {
-        'en': 'English',
-        'es': 'Spanish',
-        'fr': 'French',
-        'de': 'German',
-        'it': 'Italian',
-        'pt': 'Portuguese',
-        'ru': 'Russian',
-        'zh': 'Chinese',
-        'ja': 'Japanese',
-        'ko': 'Korean'
-      };
-      
-      const sourceLanguageName = languageNames[sourceLang] || sourceLang;
-      const targetLanguageName = languageNames[targetLang] || targetLang;
-      
-      tooltipText += ` (${sourceLanguageName}→${targetLanguageName})`;
-    }
-    
     return tooltipText;
   };
   
   // Only make valid words interactive
   const isInteractive = isValid;
   
+  // Get background color based on familiarity level
+  const backgroundColor = getBackgroundColor();
+  
+  // Add a border color for better visibility
+  const getBorderColor = () => {
+    if (actualFamiliarityLevel === 0) return 'transparent';
+    return backgroundColor;
+  };
+  
   return (
     <motion.span
       className="vocabulary-word"
-      data-source-lang={sourceLang}
-      data-target-lang={targetLang}
-      initial={{ backgroundColor: getBackgroundColor() }}
+      data-word={cleanedWord}
+      data-familiarity={actualFamiliarityLevel}
+      initial={{ backgroundColor }}
       animate={{ 
-        backgroundColor: getBackgroundColor(),
+        backgroundColor,
         scale: isHovered ? 1.05 : 1,
         y: isHovered ? -1 : 0
       }}
@@ -133,6 +134,8 @@ const WordComponent = ({
         cursor: isInteractive ? 'pointer' : 'default',
         display: 'inline-block',
         position: 'relative',
+        backgroundColor, // Explicitly set background color in style
+        border: actualFamiliarityLevel > 0 ? `1px solid ${getBorderColor()}` : 'none',
         ...style
       }}
     >
@@ -182,41 +185,22 @@ const WordComponent = ({
       )}
       
       {/* Familiarity indicator */}
-      {familiarityLevel > 0 && (
+      {actualFamiliarityLevel > 0 && (
         <motion.div
           className="familiarity-indicator"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           style={{
             position: 'absolute',
-            top: '-4px',
-            right: '-4px',
-            width: '8px',
-            height: '8px',
+            top: '-5px',
+            right: '-5px',
+            width: '10px',
+            height: '10px',
             borderRadius: '50%',
-            backgroundColor: `var(--highlight-level-${familiarityLevel})`,
-            boxShadow: '0 0 2px rgba(0, 0, 0, 0.3)',
-            pointerEvents: 'none'
-          }}
-        />
-      )}
-      
-      {/* Language indicator for non-default language pairs */}
-      {sourceLang && targetLang && sourceLang !== 'en' && (
-        <motion.div
-          className="language-indicator"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          style={{
-            position: 'absolute',
-            top: '-4px',
-            left: '-4px',
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            backgroundColor: 'var(--primary-color)',
-            boxShadow: '0 0 2px rgba(0, 0, 0, 0.3)',
-            pointerEvents: 'none'
+            backgroundColor: backgroundColor,
+            boxShadow: '0 0 2px rgba(0, 0, 0, 0.5)',
+            pointerEvents: 'none',
+            border: '1px solid white'
           }}
         />
       )}

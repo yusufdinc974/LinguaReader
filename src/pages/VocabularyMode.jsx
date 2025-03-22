@@ -4,6 +4,7 @@ import PDFContext from '../contexts/PDFContext';
 import PageView from '../components/vocabulary-mode/PageView';
 import DefinitionDisplay from '../components/vocabulary-mode/DefinitionDisplay';
 import NavigationControls from '../components/vocabulary-mode/NavigationControls';
+import * as storageService from '../services/storageService';
 
 /**
  * VocabularyMode - Page component for vocabulary-focused PDF reading
@@ -18,7 +19,7 @@ const VocabularyMode = ({ onNavigate }) => {
     pdfDocument, 
     pdfPath, 
     pdfMetadata,
-    textContent: contextTextContent  // Use existing text content from context!
+    textContent: contextTextContent
   } = useContext(PDFContext);
   
   const [currentPage, setCurrentPage] = useState(1);
@@ -37,6 +38,9 @@ const VocabularyMode = ({ onNavigate }) => {
   // On component mount/unmount
   useEffect(() => {
     console.log('VocabularyMode mounted');
+    
+    // Initialize storage on mount
+    storageService.initializeStorage();
     
     return () => {
       isMounted.current = false;
@@ -78,53 +82,92 @@ const VocabularyMode = ({ onNavigate }) => {
     }
   }, [pdfDocument, pdfPath, contextTextContent]);
   
-  // Load vocabulary list from localStorage
+  // Load vocabulary list from storage service
   useEffect(() => {
     try {
-      const savedVocabulary = localStorage.getItem('vocabularyList');
-      if (savedVocabulary) {
-        setVocabularyList(JSON.parse(savedVocabulary));
-      }
+      // Get all vocabulary words directly from the storage service
+      const allVocabulary = storageService.getAllVocabulary();
+      console.log('Loaded vocabulary from storageService:', allVocabulary);
+      
+      // Convert the array of vocabulary objects to a lookup map
+      const vocabMap = {};
+      
+      allVocabulary.forEach(word => {
+        if (word && word.word) {
+          const key = word.word.toLowerCase();
+          vocabMap[key] = word;
+        }
+      });
+      
+      setVocabularyList(vocabMap);
+      console.log('Processed vocabulary map:', vocabMap);
+      
+      // Make the vocabulary data globally accessible for debugging
+      window.vocabularyData = {
+        original: allVocabulary,
+        processed: vocabMap
+      };
+      
     } catch (err) {
-      console.error('Error loading vocabulary list:', err);
+      console.error('Error loading vocabulary from storage service:', err);
+      setVocabularyList({});
     }
   }, []);
   
-  // Save vocabulary list to localStorage when it changes
-  useEffect(() => {
-    try {
-      localStorage.setItem('vocabularyList', JSON.stringify(vocabularyList));
-    } catch (err) {
-      console.error('Error saving vocabulary list:', err);
-    }
-  }, [vocabularyList]);
-  
   // Handle word click
   const handleWordClick = useCallback((word) => {
+    if (!word) return;
+    
+    console.log('Word clicked:', word);
     setSelectedWord(word);
     setShowDefinition(true);
   }, []);
   
   // Handle saving word to vocabulary list
   const handleSaveWord = useCallback((wordData) => {
-    setVocabularyList(prev => ({
-      ...prev,
-      [wordData.word.toLowerCase()]: wordData
-    }));
+    // Make sure we have a word
+    if (!wordData || !wordData.word) {
+      console.error('Invalid word data received:', wordData);
+      return;
+    }
+    
+    console.log('Saving word to vocabulary:', wordData);
+    
+    try {
+      // Save using the storage service
+      const savedWord = storageService.addVocabularyWord(wordData);
+      
+      // Update local state
+      if (savedWord) {
+        setVocabularyList(prev => {
+          const key = savedWord.word.toLowerCase();
+          return {
+            ...prev,
+            [key]: savedWord
+          };
+        });
+        
+        console.log('Word saved successfully:', savedWord);
+      }
+    } catch (error) {
+      console.error('Error saving word:', error);
+    }
+    
     setShowDefinition(false);
   }, []);
   
   // Handle page change
   const handlePageChange = useCallback((pageNum) => {
-    setCurrentPage(pageNum);
-  }, []);
+    const validPage = Math.max(1, Math.min(pageNum, plainText.length));
+    setCurrentPage(validPage);
+  }, [plainText.length]);
   
   // Get current page content
   const currentPageContent = plainText && plainText.length > 0 
     ? plainText[currentPage - 1] || ''
     : '';
   
-  // Get paragraphs for current page - this is simplified since we're using text directly
+  // Get paragraphs for current page
   const getParagraphsForPage = useCallback((pageNumber) => {
     const index = pageNumber - 1;
     if (index >= 0 && index < pdfPages.length) {
@@ -152,14 +195,14 @@ const VocabularyMode = ({ onNavigate }) => {
           alignItems: 'center',
           justifyContent: 'center',
           height: '100%',
-          color: 'var(--text-secondary)'
+          color: '#4a5568'
         }}
       >
         <div style={{ 
           width: '50px', 
           height: '50px', 
-          border: '3px solid var(--primary-light)',
-          borderTopColor: 'var(--primary-color)',
+          border: '3px solid #6a89dd',
+          borderTopColor: '#4a69bd',
           borderRadius: '50%',
           animation: 'spin 1s linear infinite',
           marginBottom: '20px'
@@ -168,7 +211,7 @@ const VocabularyMode = ({ onNavigate }) => {
         <div style={{ 
           marginTop: '20px',
           fontSize: '0.8rem',
-          color: 'var(--text-muted)',
+          color: '#718096',
           maxWidth: '500px',
           textAlign: 'center'
         }}>
@@ -188,7 +231,7 @@ const VocabularyMode = ({ onNavigate }) => {
           alignItems: 'center',
           justifyContent: 'center',
           height: '100%',
-          color: 'var(--error)',
+          color: '#e74c3c',
           textAlign: 'center',
           padding: '20px'
         }}
@@ -204,7 +247,7 @@ const VocabularyMode = ({ onNavigate }) => {
           maxWidth: '600px',
           textAlign: 'left',
           fontSize: '0.8rem',
-          color: 'var(--error)'
+          color: '#e74c3c'
         }}>
           <strong>Error Details:</strong>
           <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
@@ -215,10 +258,10 @@ const VocabularyMode = ({ onNavigate }) => {
         <button
           onClick={handleSwitchToPdfView}
           style={{
-            backgroundColor: 'var(--primary-color)',
+            backgroundColor: '#4a69bd',
             color: 'white',
             border: 'none',
-            borderRadius: 'var(--radius-md)',
+            borderRadius: '8px',
             padding: '10px 20px',
             marginTop: '20px',
             cursor: 'pointer',
@@ -241,7 +284,7 @@ const VocabularyMode = ({ onNavigate }) => {
           alignItems: 'center',
           justifyContent: 'center',
           height: '100%',
-          color: 'var(--text-secondary)',
+          color: '#4a5568',
           textAlign: 'center',
           padding: '20px'
         }}
@@ -266,16 +309,17 @@ const VocabularyMode = ({ onNavigate }) => {
             <li>Extracted Text Pages: {plainText.length}</li>
             <li>PDF Pages Processed: {pdfPages.length}</li>
             <li>Context Text Content: {contextTextContent ? contextTextContent.length : 0} pages</li>
+            <li>Vocabulary Items: {Object.keys(vocabularyList).length}</li>
           </ul>
         </div>
         
         <button
           onClick={() => onNavigate('reader')}
           style={{
-            backgroundColor: 'var(--primary-color)',
+            backgroundColor: '#4a69bd',
             color: 'white',
             border: 'none',
-            borderRadius: 'var(--radius-md)',
+            borderRadius: '8px',
             padding: '10px 20px',
             marginTop: '20px',
             cursor: 'pointer',
@@ -305,8 +349,8 @@ const VocabularyMode = ({ onNavigate }) => {
         transition={{ duration: 0.3 }}
         style={{
           padding: '15px 20px',
-          backgroundColor: 'var(--surface)',
-          borderBottom: '1px solid var(--border)',
+          backgroundColor: 'white',
+          borderBottom: '1px solid #e0e6ed',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
@@ -327,7 +371,7 @@ const VocabularyMode = ({ onNavigate }) => {
             style={{
               backgroundColor: 'transparent',
               border: 'none',
-              color: 'var(--primary-color)',
+              color: '#4a69bd',
               fontSize: '1rem',
               cursor: 'pointer',
               display: 'flex',
@@ -342,10 +386,10 @@ const VocabularyMode = ({ onNavigate }) => {
           {/* Vocabulary list button */}
           <button
             style={{
-              backgroundColor: 'var(--secondary-color)',
+              backgroundColor: '#1dd1a1',
               color: 'white',
               border: 'none',
-              borderRadius: 'var(--radius-md)',
+              borderRadius: '8px',
               padding: '8px 12px',
               cursor: 'pointer',
               fontSize: '0.9rem',
@@ -377,6 +421,23 @@ const VocabularyMode = ({ onNavigate }) => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
+            {/* Debug indicator for vocabulary count */}
+            <div 
+              style={{
+                position: 'fixed',
+                bottom: '80px',
+                right: '20px',
+                backgroundColor: 'rgba(0,0,0,0.7)',
+                color: 'white',
+                padding: '8px 12px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                zIndex: 999
+              }}
+            >
+              Vocabulary: {Object.keys(vocabularyList).length} words
+            </div>
+            
             <PageView
               text={currentPageContent}
               paragraphs={currentPageParagraphs}
