@@ -4,10 +4,13 @@ import { cleanWord, isValidWord } from '../../utils/textProcessing';
 
 /**
  * WordComponent - An interactive word display for vocabulary learning
+ * Enhanced with language-specific handling
  * 
  * @param {Object} props - Component props
  * @param {string} props.word - The word text to display
  * @param {number} props.familiarityLevel - Familiarity level (0-5) where 0 is unknown
+ * @param {string} props.sourceLang - Source language of the word
+ * @param {string} props.targetLang - Target language for translation
  * @param {Function} props.onWordClick - Function to call when word is clicked
  * @param {Function} props.onUpdateFamiliarity - Function to call when familiarity is updated
  * @param {Object} props.style - Additional styles to apply
@@ -15,6 +18,8 @@ import { cleanWord, isValidWord } from '../../utils/textProcessing';
 const WordComponent = ({
   word,
   familiarityLevel = 0,
+  sourceLang = 'en',
+  targetLang = 'es',
   onWordClick,
   onUpdateFamiliarity,
   style = {}
@@ -28,9 +33,10 @@ const WordComponent = ({
   // Handle word click
   const handleClick = useCallback(() => {
     if (isValid && onWordClick) {
-      onWordClick(cleanedWord);
+      // Pass language information to click handler
+      onWordClick(cleanedWord, sourceLang, targetLang);
     }
-  }, [cleanedWord, isValid, onWordClick]);
+  }, [cleanedWord, isValid, onWordClick, sourceLang, targetLang]);
   
   // Get background color based on familiarity level
   const getBackgroundColor = () => {
@@ -56,20 +62,51 @@ const WordComponent = ({
   const getTooltipText = () => {
     if (!isValid) return '';
     
+    let tooltipText = '';
+    
+    // Add familiarity level description
     switch (familiarityLevel) {
       case 1:
-        return 'Just learned';
+        tooltipText = 'Just learned';
+        break;
       case 2:
-        return 'Still learning';
+        tooltipText = 'Still learning';
+        break;
       case 3:
-        return 'Familiar';
+        tooltipText = 'Familiar';
+        break;
       case 4:
-        return 'Well known';
+        tooltipText = 'Well known';
+        break;
       case 5:
-        return 'Mastered';
+        tooltipText = 'Mastered';
+        break;
       default:
-        return 'Click for definition';
+        tooltipText = 'Click for translation';
     }
+    
+    // Add language info if available
+    if (sourceLang && targetLang && sourceLang !== targetLang) {
+      const languageNames = {
+        'en': 'English',
+        'es': 'Spanish',
+        'fr': 'French',
+        'de': 'German',
+        'it': 'Italian',
+        'pt': 'Portuguese',
+        'ru': 'Russian',
+        'zh': 'Chinese',
+        'ja': 'Japanese',
+        'ko': 'Korean'
+      };
+      
+      const sourceLanguageName = languageNames[sourceLang] || sourceLang;
+      const targetLanguageName = languageNames[targetLang] || targetLang;
+      
+      tooltipText += ` (${sourceLanguageName}→${targetLanguageName})`;
+    }
+    
+    return tooltipText;
   };
   
   // Only make valid words interactive
@@ -78,6 +115,8 @@ const WordComponent = ({
   return (
     <motion.span
       className="vocabulary-word"
+      data-source-lang={sourceLang}
+      data-target-lang={targetLang}
       initial={{ backgroundColor: getBackgroundColor() }}
       animate={{ 
         backgroundColor: getBackgroundColor(),
@@ -156,6 +195,26 @@ const WordComponent = ({
             height: '8px',
             borderRadius: '50%',
             backgroundColor: `var(--highlight-level-${familiarityLevel})`,
+            boxShadow: '0 0 2px rgba(0, 0, 0, 0.3)',
+            pointerEvents: 'none'
+          }}
+        />
+      )}
+      
+      {/* Language indicator for non-default language pairs */}
+      {sourceLang && targetLang && sourceLang !== 'en' && (
+        <motion.div
+          className="language-indicator"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          style={{
+            position: 'absolute',
+            top: '-4px',
+            left: '-4px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            backgroundColor: 'var(--primary-color)',
             boxShadow: '0 0 2px rgba(0, 0, 0, 0.3)',
             pointerEvents: 'none'
           }}

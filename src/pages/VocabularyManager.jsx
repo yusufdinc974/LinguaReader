@@ -1,26 +1,98 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Button from '../components/common/Button';
+import {
+  getAllVocabulary,
+  getVocabularyBySourceLanguage,
+  getVocabularyByFamiliarity,
+  getSupportedLanguages
+} from '../services/storageService';
 
 /**
  * VocabularyManager Page Component
- * Interface for managing saved vocabulary words
+ * Enhanced interface for managing saved vocabulary words with translations
  */
 const VocabularyManager = ({ onNavigate }) => {
   const [activeFilters, setActiveFilters] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [focusedInput, setFocusedInput] = useState(false);
-  const [vocabularyList, setVocabularyList] = useState({});
+  const [vocabularyList, setVocabularyList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [supportedLanguages, setSupportedLanguages] = useState([]);
   
-  // Load vocabulary from localStorage
+  // Generate language filters based on supported languages
+  const generateLanguageFilters = () => {
+    // Start with default filters
+    const baseFilters = [
+      { id: 'all', label: 'All Words', icon: '🔤', color: 'var(--primary-color)' },
+      { id: 'familiar', label: 'Familiar', icon: '✓', color: 'var(--secondary-color)' },
+      { id: 'learning', label: 'Learning', icon: '📝', color: 'var(--accent-yellow)' },
+    ];
+    
+    // Add language-specific filters
+    const languageFilters = supportedLanguages.slice(0, 6).map(lang => {
+      let icon = '🌐';
+      let color = 'var(--accent-purple)';
+      
+      // Set icons for common languages
+      switch(lang.code) {
+        case 'en': 
+          icon = '🇬🇧'; 
+          color = 'var(--accent-purple)';
+          break;
+        case 'es': 
+          icon = '🇪🇸'; 
+          color = 'var(--accent-coral)';
+          break;
+        case 'fr': 
+          icon = '🇫🇷'; 
+          color = 'var(--accent-blue)';
+          break;
+        case 'de': 
+          icon = '🇩🇪'; 
+          color = 'var(--accent-red)';
+          break;
+        case 'it': 
+          icon = '🇮🇹'; 
+          color = 'var(--accent-green)';
+          break;
+        case 'ja': 
+          icon = '🇯🇵'; 
+          color = 'var(--highlight-level-1)';
+          break;
+        case 'zh': 
+          icon = '🇨🇳'; 
+          color = 'var(--highlight-level-2)';
+          break;
+        default: 
+          icon = '🌐'; 
+          break;
+      }
+      
+      return { 
+        id: lang.code, 
+        label: lang.name, 
+        icon, 
+        color 
+      };
+    });
+    
+    return [...baseFilters, ...languageFilters];
+  };
+  
+  const [filters, setFilters] = useState([]);
+  
+  // Load vocabulary and languages from storage
   useEffect(() => {
     setIsLoading(true);
     try {
-      const savedVocabulary = localStorage.getItem('vocabularyList');
-      if (savedVocabulary) {
-        setVocabularyList(JSON.parse(savedVocabulary));
-      }
+      // Get supported languages
+      const languages = getSupportedLanguages();
+      setSupportedLanguages(languages);
+      
+      // Get all vocabulary words
+      const vocabWords = getAllVocabulary();
+      setVocabularyList(vocabWords);
     } catch (error) {
       console.error('Error loading vocabulary:', error);
     } finally {
@@ -28,45 +100,36 @@ const VocabularyManager = ({ onNavigate }) => {
     }
   }, []);
   
-  // Save vocabulary to localStorage when it changes
-  const saveVocabulary = (updatedVocabulary) => {
-    try {
-      localStorage.setItem('vocabularyList', JSON.stringify(updatedVocabulary));
-      setVocabularyList(updatedVocabulary);
-    } catch (error) {
-      console.error('Error saving vocabulary:', error);
+  // Update filters when languages are loaded
+  useEffect(() => {
+    if (supportedLanguages.length > 0) {
+      setFilters(generateLanguageFilters());
     }
-  };
+  }, [supportedLanguages]);
 
   // Delete a word
-  const handleDeleteWord = (word) => {
-    const updatedVocabulary = { ...vocabularyList };
-    delete updatedVocabulary[word.toLowerCase()];
-    saveVocabulary(updatedVocabulary);
+  const handleDeleteWord = (wordId) => {
+    const updatedVocabulary = vocabularyList.filter(item => item.id !== wordId);
+    setVocabularyList(updatedVocabulary);
+    
+    // Here you would call your storage service to delete the word
+    // removeVocabularyWord(wordId);
   };
 
   // Update word familiarity
-  const handleUpdateFamiliarity = (word, newLevel) => {
-    if (vocabularyList[word]) {
-      const updatedVocabulary = {
-        ...vocabularyList,
-        [word]: {
-          ...vocabularyList[word],
-          familiarityRating: newLevel
-        }
-      };
-      saveVocabulary(updatedVocabulary);
-    }
+  const handleUpdateFamiliarity = (wordId, newLevel) => {
+    const updatedVocabulary = vocabularyList.map(item => {
+      if (item.id === wordId) {
+        return { ...item, familiarityRating: newLevel };
+      }
+      return item;
+    });
+    
+    setVocabularyList(updatedVocabulary);
+    
+    // Here you would call your storage service to update the word
+    // updateVocabularyWord(wordId, { familiarityRating: newLevel });
   };
-
-  // Filter options with icons and colors
-  const filters = [
-    { id: 'all', label: 'All Words', icon: '🔤', color: 'var(--primary-color)' },
-    { id: 'en', label: 'English', icon: '🇬🇧', color: 'var(--accent-purple)' },
-    { id: 'es', label: 'Spanish', icon: '🇪🇸', color: 'var(--accent-coral)' },
-    { id: 'familiar', label: 'Familiar', icon: '✓', color: 'var(--secondary-color)' },
-    { id: 'learning', label: 'Learning', icon: '📝', color: 'var(--accent-yellow)' },
-  ];
 
   // Toggle a filter
   const toggleFilter = (filterId) => {
@@ -86,18 +149,8 @@ const VocabularyManager = ({ onNavigate }) => {
     }
   };
 
-  // Convert vocabulary object to array for display
-  const vocabularyArray = Object.entries(vocabularyList).map(([word, data]) => ({
-    id: word,
-    word,
-    definition: data.definition?.meanings?.[0]?.definitions?.[0]?.definition || 'No definition available',
-    familiarity: data.familiarityRating || 0,
-    language: data.sourceLang || 'en',
-    date: data.date || new Date().toISOString()
-  }));
-
   // Apply filters and search to vocabulary
-  const filteredVocabulary = vocabularyArray.filter(word => {
+  const filteredVocabulary = vocabularyList.filter(word => {
     // If no filters are active, show all words
     if (activeFilters.length === 0) {
       // Only apply search if present
@@ -114,10 +167,13 @@ const VocabularyManager = ({ onNavigate }) => {
     let hasFamiliarityFilter = false;
     
     // Check language filters
-    if (activeFilters.includes('en') || activeFilters.includes('es')) {
+    const languageFilters = activeFilters.filter(
+      filterId => filterId !== 'familiar' && filterId !== 'learning'
+    );
+    
+    if (languageFilters.length > 0) {
       hasLanguageFilter = true;
-      if ((activeFilters.includes('en') && word.language === 'en') ||
-          (activeFilters.includes('es') && word.language === 'es')) {
+      if (languageFilters.includes(word.sourceLang) || languageFilters.includes(word.targetLang)) {
         matchesLanguageFilter = true;
       }
     }
@@ -125,8 +181,8 @@ const VocabularyManager = ({ onNavigate }) => {
     // Check familiarity filters
     if (activeFilters.includes('familiar') || activeFilters.includes('learning')) {
       hasFamiliarityFilter = true;
-      if ((activeFilters.includes('familiar') && word.familiarity >= 4) ||
-          (activeFilters.includes('learning') && word.familiarity < 4)) {
+      if ((activeFilters.includes('familiar') && word.familiarityRating >= 4) ||
+          (activeFilters.includes('learning') && word.familiarityRating < 4)) {
         matchesFamiliarityFilter = true;
       }
     }
@@ -165,6 +221,46 @@ const VocabularyManager = ({ onNavigate }) => {
       case 4: return 'Advanced';
       case 5: return 'Mastered';
       default: return '';
+    }
+  };
+  
+  // Get language name from code
+  const getLanguageName = (code) => {
+    const language = supportedLanguages.find(lang => lang.code === code);
+    return language ? language.name : code.toUpperCase();
+  };
+  
+  // Get language icon based on code
+  const getLanguageIcon = (code) => {
+    switch(code) {
+      case 'en': return '🇬🇧';
+      case 'es': return '🇪🇸';
+      case 'fr': return '🇫🇷';
+      case 'de': return '🇩🇪';
+      case 'it': return '🇮🇹';
+      case 'ja': return '🇯🇵';
+      case 'zh': return '🇨🇳';
+      case 'ru': return '🇷🇺';
+      case 'pt': return '🇵🇹';
+      case 'ko': return '🇰🇷';
+      case 'ar': return '🇸🇦';
+      case 'hi': return '🇮🇳';
+      case 'tr': return '🇹🇷';
+      case 'nl': return '🇳🇱';
+      case 'sv': return '🇸🇪';
+      default: return '🌐';
+    }
+  };
+  
+  // Get language color based on code
+  const getLanguageColor = (code) => {
+    switch(code) {
+      case 'en': return 'var(--accent-purple)';
+      case 'es': return 'var(--accent-coral)';
+      case 'fr': return 'var(--accent-blue)';
+      case 'de': return 'var(--accent-red)';
+      case 'it': return 'var(--accent-green)';
+      default: return 'var(--primary-color)';
     }
   };
 
@@ -480,7 +576,7 @@ const VocabularyManager = ({ onNavigate }) => {
                 borderRadius: 'var(--radius-md)',
                 boxShadow: 'var(--shadow-sm)',
                 padding: 'var(--space-md)',
-                borderLeft: `4px solid ${getFamiliarityColor(word.familiarity)}`,
+                borderLeft: `4px solid ${getFamiliarityColor(word.familiarityRating)}`,
                 transition: 'all 0.2s ease',
                 position: 'relative',
                 overflow: 'hidden',
@@ -493,7 +589,7 @@ const VocabularyManager = ({ onNavigate }) => {
                 right: 0,
                 width: '100px',
                 height: '100px',
-                background: `linear-gradient(135deg, transparent 50%, ${getFamiliarityColor(word.familiarity).replace(')', ', 0.1)')} 50%)`,
+                background: `linear-gradient(135deg, transparent 50%, ${getFamiliarityColor(word.familiarityRating).replace(')', ', 0.1)')} 50%)`,
                 zIndex: 0,
               }} />
               
@@ -510,23 +606,46 @@ const VocabularyManager = ({ onNavigate }) => {
                 }}>
                   {word.word}
                 </h3>
-                <span style={{
-                  fontSize: 'var(--font-size-sm)',
-                  fontWeight: 'var(--font-weight-medium)',
-                  textTransform: 'uppercase',
-                  color: word.language === 'en' ? 'white' : 'white',
-                  backgroundColor: word.language === 'en' 
-                    ? 'var(--accent-purple)' 
-                    : 'var(--accent-coral)',
-                  padding: '2px 8px',
-                  borderRadius: 'var(--radius-md)',
+                
+                {/* Language translation badge */}
+                <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px',
+                  gap: '3px',
                 }}>
-                  {word.language === 'en' ? '🇬🇧' : '🇪🇸'} {word.language.toUpperCase()}
-                </span>
+                  <span style={{
+                    fontSize: 'var(--font-size-sm)',
+                    fontWeight: 'var(--font-weight-medium)',
+                    textTransform: 'uppercase',
+                    color: 'white',
+                    backgroundColor: getLanguageColor(word.sourceLang),
+                    padding: '2px 6px',
+                    borderRadius: 'var(--radius-md)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                  }}>
+                    {getLanguageIcon(word.sourceLang)}
+                  </span>
+                  <span style={{ color: 'var(--text-secondary)' }}>→</span>
+                  <span style={{
+                    fontSize: 'var(--font-size-sm)',
+                    fontWeight: 'var(--font-weight-medium)',
+                    textTransform: 'uppercase',
+                    color: 'white',
+                    backgroundColor: getLanguageColor(word.targetLang),
+                    padding: '2px 6px',
+                    borderRadius: 'var(--radius-md)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                  }}>
+                    {getLanguageIcon(word.targetLang)}
+                  </span>
+                </div>
               </div>
+              
+              {/* Translation */}
               <p style={{
                 margin: 0,
                 marginBottom: 'var(--space-md)',
@@ -534,8 +653,9 @@ const VocabularyManager = ({ onNavigate }) => {
                 position: 'relative',
                 zIndex: 1,
               }}>
-                {word.definition}
+                {word.translation || 'No translation available'}
               </p>
+              
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -551,11 +671,11 @@ const VocabularyManager = ({ onNavigate }) => {
                     <motion.div
                       key={level}
                       whileHover={{ scale: 1.2 }}
-                      onClick={() => handleUpdateFamiliarity(word.word, level)}
+                      onClick={() => handleUpdateFamiliarity(word.id, level)}
                       style={{
                         width: '20px',
                         height: '8px',
-                        backgroundColor: level <= word.familiarity 
+                        backgroundColor: level <= word.familiarityRating 
                           ? getFamiliarityColor(level) 
                           : 'var(--border)',
                         borderRadius: '4px',
@@ -568,17 +688,17 @@ const VocabularyManager = ({ onNavigate }) => {
                 <span style={{
                   fontSize: 'var(--font-size-sm)',
                   color: 'white',
-                  backgroundColor: getFamiliarityColor(word.familiarity),
+                  backgroundColor: getFamiliarityColor(word.familiarityRating),
                   padding: '3px 10px',
                   borderRadius: 'var(--radius-md)',
                   fontWeight: 'var(--font-weight-medium)',
                 }}>
-                  {getFamiliarityLabel(word.familiarity)}
+                  {getFamiliarityLabel(word.familiarityRating)}
                 </span>
 
                 {/* Delete button */}
                 <button
-                  onClick={() => handleDeleteWord(word.word)}
+                  onClick={() => handleDeleteWord(word.id)}
                   style={{
                     position: 'absolute',
                     top: '10px',
