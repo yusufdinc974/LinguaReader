@@ -2,10 +2,13 @@ import React, { useState } from 'react';
 import './assets/styles/global.css';
 import { PDFProvider } from './contexts/PDFContext';
 import { VocabularyProvider } from './contexts/VocabularyContext';
+import { QuizProvider } from './contexts/QuizContext'; // Import QuizProvider
 import MainView from './components/layout/MainView';
 import Home from './pages/Home';
 import VocabularyManager from './pages/VocabularyManager';
 import VocabularyMode from './pages/VocabularyMode';
+import Quiz from './pages/Quiz'; // Import Quiz page
+import QuizStats from './pages/QuizStats'; // Import QuizStats page
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
@@ -16,11 +19,13 @@ function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [hoveredTab, setHoveredTab] = useState(null);
 
-  // Navigation tabs configuration - REMOVED Reader tab
+  // Navigation tabs configuration - Added Quiz and Stats tabs
   const tabs = [
     { id: 'home', label: 'Home', icon: '🏠' },
-    { id: 'vocabulary-mode', label: 'PDF Reader', icon: '📄' }, // Keep the PDF Reader label but point to vocabulary-mode
+    { id: 'vocabulary-mode', label: 'PDF Reader', icon: '📄' },
     { id: 'vocabulary', label: 'Word List', icon: '📋' },
+    { id: 'quiz', label: 'Quiz', icon: '🎯' },
+    { id: 'quiz-stats', label: 'Stats', icon: '📊' },
   ];
 
   // Handle navigation with redirection for old 'reader' route
@@ -42,6 +47,10 @@ function App() {
         return <VocabularyMode onNavigate={handleNavigation} />;
       case 'vocabulary':
         return <VocabularyManager onNavigate={handleNavigation} />;
+      case 'quiz':
+        return <Quiz onNavigate={handleNavigation} />;
+      case 'quiz-stats':
+        return <QuizStats onNavigate={handleNavigation} />;
       default:
         return <Home onNavigate={handleNavigation} />;
     }
@@ -57,142 +66,144 @@ function App() {
   return (
     <PDFProvider>
       <VocabularyProvider>
-        <div className="app-container" style={{
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100vh',
-          overflow: 'hidden',
-          backgroundColor: 'var(--background)'
-        }}>
-          {/* Header with navigation tabs */}
-          <div style={{
+        <QuizProvider>
+          <div className="app-container" style={{
             display: 'flex',
-            backgroundColor: 'var(--surface)',
-            borderBottom: '1px solid var(--border)',
-            boxShadow: 'var(--shadow-sm)',
-            padding: '0 var(--space-md)',
-            position: 'relative',
-            zIndex: 5
+            flexDirection: 'column',
+            height: '100vh',
+            overflow: 'hidden',
+            backgroundColor: 'var(--background)'
           }}>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center',
-              padding: '0 var(--space-lg)'
+            {/* Header with navigation tabs */}
+            <div style={{
+              display: 'flex',
+              backgroundColor: 'var(--surface)',
+              borderBottom: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-sm)',
+              padding: '0 var(--space-md)',
+              position: 'relative',
+              zIndex: 5
             }}>
-              <motion.div
-                whileHover={{ rotate: 5 }}
-                style={{
-                  fontSize: '1.5rem',
-                  marginRight: '0.75rem',
-                }}
-              >
-                📖
-              </motion.div>
-              <h1 style={{
-                margin: 0,
-                fontSize: '1.25rem',
-                fontWeight: 600,
-                background: 'var(--gradient-primary)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center',
+                padding: '0 var(--space-lg)'
               }}>
-                LinguaReader
-              </h1>
-            </div>
-
-            <div style={{ display: 'flex', flex: 1 }}>
-              {tabs.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => handleNavigation(tab.id)}
-                  onMouseEnter={() => setHoveredTab(tab.id)}
-                  onMouseLeave={() => setHoveredTab(null)}
+                <motion.div
+                  whileHover={{ rotate: 5 }}
                   style={{
-                    padding: 'var(--space-md) var(--space-lg)',
-                    backgroundColor: hoveredTab === tab.id ? 'rgba(0, 0, 0, 0.03)' : 'transparent',
-                    border: 'none',
-                    borderBottom: currentPage === tab.id 
-                      ? '3px solid var(--primary-color)' 
-                      : '3px solid transparent',
-                    color: currentPage === tab.id ? 'var(--primary-color)' : 'var(--text-secondary)',
-                    fontWeight: currentPage === tab.id ? 'var(--font-weight-medium)' : 'var(--font-weight-normal)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--space-sm)',
-                    position: 'relative',
-                    overflow: 'hidden',
+                    fontSize: '1.5rem',
+                    marginRight: '0.75rem',
                   }}
                 >
-                  <span style={{ fontSize: '1.1rem' }}>{tab.icon}</span>
-                  <span>{tab.label}</span>
-                  
-                  {/* Active tab indicator with animation */}
-                  {currentPage === tab.id && (
-                    <motion.div
-                      layoutId="activeTab"
-                      style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        height: '3px',
-                        backgroundColor: 'var(--primary-color)',
-                      }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    />
-                  )}
-                </button>
-              ))}
+                  📖
+                </motion.div>
+                <h1 style={{
+                  margin: 0,
+                  fontSize: '1.25rem',
+                  fontWeight: 600,
+                  background: 'var(--gradient-primary)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}>
+                  LinguaReader
+                </h1>
+              </div>
+
+              <div style={{ display: 'flex', flex: 1 }}>
+                {tabs.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleNavigation(tab.id)}
+                    onMouseEnter={() => setHoveredTab(tab.id)}
+                    onMouseLeave={() => setHoveredTab(null)}
+                    style={{
+                      padding: 'var(--space-md) var(--space-lg)',
+                      backgroundColor: hoveredTab === tab.id ? 'rgba(0, 0, 0, 0.03)' : 'transparent',
+                      border: 'none',
+                      borderBottom: currentPage === tab.id 
+                        ? '3px solid var(--primary-color)' 
+                        : '3px solid transparent',
+                      color: currentPage === tab.id ? 'var(--primary-color)' : 'var(--text-secondary)',
+                      fontWeight: currentPage === tab.id ? 'var(--font-weight-medium)' : 'var(--font-weight-normal)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 'var(--space-sm)',
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <span style={{ fontSize: '1.1rem' }}>{tab.icon}</span>
+                    <span>{tab.label}</span>
+                    
+                    {/* Active tab indicator with animation */}
+                    {currentPage === tab.id && (
+                      <motion.div
+                        layoutId="activeTab"
+                        style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          height: '3px',
+                          backgroundColor: 'var(--primary-color)',
+                        }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center',
+                padding: '0 var(--space-md)'
+              }}>
+                <motion.button
+                  whileHover={{ rotate: 15 }}
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    borderRadius: 'var(--radius-circle)',
+                    width: '2.5rem',
+                    height: '2.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: 'var(--text-secondary)',
+                    fontSize: '1.25rem',
+                  }}
+                >
+                  ⚙️
+                </motion.button>
+              </div>
             </div>
 
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center',
-              padding: '0 var(--space-md)'
-            }}>
-              <motion.button
-                whileHover={{ rotate: 15 }}
-                style={{
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  borderRadius: 'var(--radius-circle)',
-                  width: '2.5rem',
-                  height: '2.5rem',
+            {/* Main content area with page transitions */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentPage}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                variants={pageVariants}
+                transition={{ duration: 0.3 }}
+                style={{ 
+                  flex: 1, 
+                  overflow: 'auto',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  color: 'var(--text-secondary)',
-                  fontSize: '1.25rem',
+                  flexDirection: 'column'
                 }}
               >
-                ⚙️
-              </motion.button>
-            </div>
+                {renderPage()}
+              </motion.div>
+            </AnimatePresence>
           </div>
-
-          {/* Main content area with page transitions */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentPage}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              variants={pageVariants}
-              transition={{ duration: 0.3 }}
-              style={{ 
-                flex: 1, 
-                overflow: 'auto',
-                display: 'flex',
-                flexDirection: 'column'
-              }}
-            >
-              {renderPage()}
-            </motion.div>
-          </AnimatePresence>
-        </div>
+        </QuizProvider>
       </VocabularyProvider>
     </PDFProvider>
   );
