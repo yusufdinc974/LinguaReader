@@ -10,6 +10,7 @@ import * as storageService from '../services/storageService';
 /**
  * VocabularyMode - Page component for vocabulary-focused PDF reading
  * Extracts text from PDF and presents it in a word-by-word interactive format
+ * Enhanced with original PDF rendering
  * 
  * @param {Object} props - Component props
  * @param {Function} props.onNavigate - Function to navigate to other pages
@@ -22,7 +23,8 @@ const VocabularyMode = ({ onNavigate }) => {
     pdfMetadata,
     textContent: contextTextContent,
     vocabModePage, // Get the page from context
-    goToVocabPage // Get the page navigation method from context
+    goToVocabPage, // Get the page navigation method from context
+    scale // Get the scale from context
   } = useContext(PDFContext);
   
   // Now using vocabModePage from context instead of local state
@@ -42,8 +44,15 @@ const VocabularyMode = ({ onNavigate }) => {
     colorPalette: 'standard' // 'standard', 'pastel', or 'vibrant'
   });
   
+  // New state for view mode
+  const [viewMode, setViewMode] = useState('text'); // 'text', 'pdf', or 'split'
+  
   // For page changes only - do not increment for word updates
   const [pageChangeCounter, setPageChangeCounter] = useState(0);
+  
+  // References for canvas elements
+  const canvasRef = useRef(null);
+  const pdfCanvasContainerRef = useRef(null);
 
   // When saved vocabulary words change, update the vocabularyList to include list info
   useEffect(() => {
@@ -93,7 +102,67 @@ const VocabularyMode = ({ onNavigate }) => {
   // Update page change counter when vocabModePage changes
   useEffect(() => {
     setPageChangeCounter(prev => prev + 1);
+    
+    // Render the PDF page when the page changes if in PDF or split view mode
+    if (viewMode !== 'text') {
+      renderPDFPage();
+    }
   }, [vocabModePage]);
+  
+  // Re-render PDF page when view mode changes
+  useEffect(() => {
+    if (viewMode !== 'text') {
+      renderPDFPage();
+    }
+  }, [viewMode]);
+  
+  // Function to render the current PDF page
+  const renderPDFPage = useCallback(async () => {
+    if (!pdfDocument || !canvasRef.current) return;
+    
+    try {
+      // Get the page
+      const page = await pdfDocument.getPage(vocabModePage);
+      
+      // Get the canvas element
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+      
+      // Calculate the viewport based on the container size
+      const containerWidth = pdfCanvasContainerRef.current?.clientWidth || 800;
+      const viewport = page.getViewport({ scale: scale * (containerWidth / page.getViewport({ scale: 1 }).width) });
+      
+      // Set canvas height and width
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+      
+      // Render the page
+      const renderContext = {
+        canvasContext: context,
+        viewport: viewport
+      };
+      
+      await page.render(renderContext).promise;
+      
+      console.log(`Rendered PDF page ${vocabModePage}`);
+    } catch (error) {
+      console.error('Error rendering PDF page:', error);
+    }
+  }, [pdfDocument, vocabModePage, scale]);
+  
+  // Handle window resizing
+  useEffect(() => {
+    const handleResize = () => {
+      if (viewMode !== 'text') {
+        renderPDFPage();
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [renderPDFPage, viewMode]);
   
   // Handle highlighting changes
   const handleHighlightingChange = useCallback((newHighlightSettings) => {
@@ -129,8 +198,14 @@ const VocabularyMode = ({ onNavigate }) => {
         console.log('Loaded highlighting settings:', parsedSettings);
         setHighlightSettings(parsedSettings);
       }
+      
+      // Try to get saved view mode
+      const savedViewMode = localStorage.getItem('vocabularyViewMode');
+      if (savedViewMode) {
+        setViewMode(savedViewMode);
+      }
     } catch (error) {
-      console.error('Error loading highlighting settings:', error);
+      console.error('Error loading settings:', error);
     }
     
     return () => {
@@ -164,13 +239,20 @@ const VocabularyMode = ({ onNavigate }) => {
         
         setPdfPages(simplePages);
         setPlainText(contextTextContent);
+        
+        // Render the PDF page if in PDF or split view mode
+        if (viewMode !== 'text') {
+          setTimeout(() => {
+            renderPDFPage();
+          }, 100);
+        }
       } else {
         console.log('No text content available in context, setting error state');
         setError(new Error('No text content available'));
         setLoading(false);
       }
     }
-  }, [pdfDocument, pdfPath, contextTextContent]);
+  }, [pdfDocument, pdfPath, contextTextContent, renderPDFPage, viewMode]);
   
   // Load vocabulary list from storage service
   const loadVocabularyList = useCallback(() => {
@@ -289,6 +371,19 @@ const VocabularyMode = ({ onNavigate }) => {
       onNavigate('reader');
     }
   }, [onNavigate]);
+  
+  // Handle change view mode
+  const handleViewModeChange = useCallback((mode) => {
+    setViewMode(mode);
+    localStorage.setItem('vocabularyViewMode', mode);
+    
+    // If switching to PDF or split view, render the PDF page
+    if (mode !== 'text') {
+      setTimeout(() => {
+        renderPDFPage();
+      }, 100);
+    }
+  }, [renderPDFPage]);
   
   // Animation variants with conditional transitions
   const pageVariants = {
@@ -471,6 +566,78 @@ const VocabularyMode = ({ onNavigate }) => {
         <h2 style={{ margin: 0, fontSize: '1.2rem' }}>
           Vocabulary Mode
         </h2>
+        
+        {/* View Mode Toggles */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '5px',
+          backgroundColor: 'rgba(0,0,0,0.05)',
+          padding: '4px',
+          borderRadius: '8px',
+          marginLeft: '20px'
+        }}>
+          <button
+            onClick={() => handleViewModeChange('text')}
+            style={{
+              backgroundColor: viewMode === 'text' ? '#4a69bd' : 'transparent',
+              color: viewMode === 'text' ? 'white' : '#4a5568',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '6px 12px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              transition: 'all 0.2s'
+            }}
+          >
+            <span>📝</span>
+            <span>Text</span>
+          </button>
+          
+          <button
+            onClick={() => handleViewModeChange('pdf')}
+            style={{
+              backgroundColor: viewMode === 'pdf' ? '#4a69bd' : 'transparent',
+              color: viewMode === 'pdf' ? 'white' : '#4a5568',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '6px 12px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              transition: 'all 0.2s'
+            }}
+          >
+            <span>📄</span>
+            <span>PDF</span>
+          </button>
+          
+          <button
+            onClick={() => handleViewModeChange('split')}
+            style={{
+              backgroundColor: viewMode === 'split' ? '#4a69bd' : 'transparent',
+              color: viewMode === 'split' ? 'white' : '#4a5568',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '6px 12px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              transition: 'all 0.2s'
+            }}
+          >
+            <span>⚡</span>
+            <span>Split</span>
+          </button>
+        </div>
+        
         <div
           style={{
             display: 'flex',
@@ -544,50 +711,163 @@ const VocabularyMode = ({ onNavigate }) => {
           padding: '20px'
         }}
       >
-        <AnimatePresence mode="wait">
-          {/* Only use the page number in the key to prevent remounting on word updates */}
-          <motion.div
-            key={`page-${vocabModePage}-${pageChangeCounter}`}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            variants={pageVariants}
-            transition={{ duration: 0.3 }}
+        {/* Text Mode - Original text-only view */}
+        {viewMode === 'text' && (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`page-${vocabModePage}-${pageChangeCounter}`}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              variants={pageVariants}
+              transition={{ duration: 0.3 }}
+            >
+              {/* Debug indicator - only shown in development */}
+              {process.env.NODE_ENV === 'development' && (
+                <div 
+                  style={{
+                    position: 'fixed',
+                    bottom: '80px',
+                    right: '20px',
+                    backgroundColor: 'rgba(0,0,0,0.7)',
+                    color: 'white',
+                    padding: '8px 12px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    zIndex: 999
+                  }}
+                >
+                  Vocabulary: {Object.keys(vocabularyList).length} words | 
+                  Page: {vocabModePage} | 
+                  Mode: {viewMode}
+                </div>
+              )}
+              
+              <PageView
+                text={currentPageContent}
+                paragraphs={currentPageParagraphs}
+                vocabularyState={vocabularyList}
+                onWordClick={handleWordClick}
+                highlightSettings={highlightSettings}
+              />
+            </motion.div>
+          </AnimatePresence>
+        )}
+        
+        {/* PDF Mode - Just the PDF with clickable words */}
+        {viewMode === 'pdf' && (
+          <div 
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              maxWidth: '100%',
+              margin: '0 auto',
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.08)',
+              padding: '20px',
+              position: 'relative'
+            }}
           >
-            {/* Debug indicator - only shown in development */}
-            {process.env.NODE_ENV === 'development' && (
-              <div 
+            {/* Interactive Word Layer (Will be implemented in phase 2) */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '20px',
+                left: '20px',
+                right: '20px',
+                bottom: '20px',
+                pointerEvents: 'none',
+                zIndex: 2
+              }}
+            >
+              {/* In future versions, we'd add interactivity here */}
+            </div>
+            
+            {/* PDF Rendering Canvas */}
+            <div 
+              ref={pdfCanvasContainerRef}
+              style={{
+                width: '100%',
+                maxWidth: '800px',
+                overflow: 'auto',
+                textAlign: 'center'
+              }}
+            >
+              <canvas
+                ref={canvasRef}
                 style={{
-                  position: 'fixed',
-                  bottom: '80px',
-                  right: '20px',
-                  backgroundColor: 'rgba(0,0,0,0.7)',
-                  color: 'white',
-                  padding: '8px 12px',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  zIndex: 999
+                  maxWidth: '100%',
+                  height: 'auto',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                }}
+              />
+            </div>
+            
+            {/* PDF Navigation will use the existing NavigationControls component */}
+          </div>
+        )}
+        
+        {/* Split Mode - PDF on left, Text with highlights on right */}
+        {viewMode === 'split' && (
+          <div
+            style={{
+              display: 'flex',
+              gap: '20px',
+              height: '100%',
+              flexWrap: 'wrap'
+            }}
+          >
+            {/* PDF View */}
+            <div 
+              style={{
+                flex: '1 1 300px',
+                maxHeight: '100%',
+                overflowY: 'auto',
+                backgroundColor: 'white',
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.08)',
+                padding: '20px',
+                position: 'relative'
+              }}
+            >
+              <div 
+                ref={pdfCanvasContainerRef}
+                style={{
+                  width: '100%',
+                  textAlign: 'center'
                 }}
               >
-                Vocabulary: {Object.keys(vocabularyList).length} words | 
-                Page Change Counter: {pageChangeCounter} | 
-                Current Page: {vocabModePage}
+                <canvas
+                  ref={canvasRef}
+                  style={{
+                    maxWidth: '100%',
+                    height: 'auto',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
               </div>
-            )}
+            </div>
             
-            {/* 
-              Important: No "key" prop on PageView so it doesn't remount 
-              when vocabulary changes, only updates its props
-            */}
-            <PageView
-              text={currentPageContent}
-              paragraphs={currentPageParagraphs}
-              vocabularyState={vocabularyList}
-              onWordClick={handleWordClick}
-              highlightSettings={highlightSettings}
-            />
-          </motion.div>
-        </AnimatePresence>
+            {/* Text View */}
+            <div
+              style={{
+                flex: '1 1 300px',
+                maxHeight: '100%',
+                overflowY: 'auto'
+              }}
+            >
+              <PageView
+                text={currentPageContent}
+                paragraphs={currentPageParagraphs}
+                vocabularyState={vocabularyList}
+                onWordClick={handleWordClick}
+                highlightSettings={highlightSettings}
+              />
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Navigation Controls */}
@@ -603,7 +883,6 @@ const VocabularyMode = ({ onNavigate }) => {
         word={selectedWord}
         isVisible={showDefinition}
         onClose={() => setShowDefinition(false)}
-        // Fix the callback prop name mismatch
         onSaved={handleWordSaved}  
         onSaveWord={handleSaveWord}
       />
