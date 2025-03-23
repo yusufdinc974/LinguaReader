@@ -5,12 +5,13 @@ import PageView from '../components/vocabulary-mode/PageView';
 import DefinitionDisplay from '../components/vocabulary-mode/DefinitionDisplay';
 import NavigationControls from '../components/vocabulary-mode/NavigationControls';
 import SettingsPopup from '../components/vocabulary-mode/SettingsPopup';
+import PDFUpload from '../components/pdf/PDFUpload';
+import Button from '../components/common/Button';
 import * as storageService from '../services/storageService';
 
 /**
  * VocabularyMode - Page component for vocabulary-focused PDF reading
- * Extracts text from PDF and presents it in a word-by-word interactive format
- * Enhanced with original PDF rendering
+ * Enhanced with PDF library and viewing capabilities
  * 
  * @param {Object} props - Component props
  * @param {Function} props.onNavigate - Function to navigate to other pages
@@ -24,7 +25,8 @@ const VocabularyMode = ({ onNavigate }) => {
     textContent: contextTextContent,
     vocabModePage, // Get the page from context
     goToVocabPage, // Get the page navigation method from context
-    scale // Get the scale from context
+    scale, // Get the scale from context
+    loadPDF, // Add loadPDF function to load PDFs
   } = useContext(PDFContext);
   
   // Now using vocabModePage from context instead of local state
@@ -44,6 +46,10 @@ const VocabularyMode = ({ onNavigate }) => {
     colorPalette: 'standard' // 'standard', 'pastel', or 'vibrant'
   });
   
+  // PDF Library state - added from Reader component
+  const [showLibrary, setShowLibrary] = useState(false);
+  const recentPDFs = storageService.getPDFList();
+  
   // New state for view mode
   const [viewMode, setViewMode] = useState('text'); // 'text', 'pdf', or 'split'
   
@@ -53,6 +59,41 @@ const VocabularyMode = ({ onNavigate }) => {
   // References for canvas elements
   const canvasRef = useRef(null);
   const pdfCanvasContainerRef = useRef(null);
+
+  // Format date for display in the library
+  const formatDate = (dateString) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString();
+    } catch (error) {
+      return 'Unknown date';
+    }
+  };
+
+  // Handle new PDF upload - added from Reader component
+  const handleNewPdfClick = async () => {
+    if (window.electron) {
+      try {
+        const result = await window.electron.selectPdf();
+        if (!result.canceled && !result.error) {
+          await loadPDF(result.path);
+          setShowLibrary(false);
+        }
+      } catch (error) {
+        console.error('Error selecting PDF:', error);
+      }
+    }
+  };
+
+  // Handle loading a PDF from the library - added from Reader component
+  const handleLoadPdf = async (pdfPath) => {
+    try {
+      await loadPDF(pdfPath);
+      setShowLibrary(false); // Close the library after selecting a PDF
+    } catch (error) {
+      console.error('Error loading PDF from library:', error);
+    }
+  };
 
   // When saved vocabulary words change, update the vocabularyList to include list info
   useEffect(() => {
@@ -365,13 +406,6 @@ const VocabularyMode = ({ onNavigate }) => {
   
   const currentPageParagraphs = getParagraphsForPage(vocabModePage);
   
-  // Switch to PDF view mode
-  const handleSwitchToPdfView = useCallback(() => {
-    if (onNavigate) {
-      onNavigate('reader');
-    }
-  }, [onNavigate]);
-  
   // Handle change view mode
   const handleViewModeChange = useCallback((mode) => {
     setViewMode(mode);
@@ -393,7 +427,7 @@ const VocabularyMode = ({ onNavigate }) => {
   };
 
   // Show loading state
-  if (loading) {
+  if (loading && pdfDocument) {
     return (
       <div
         style={{
@@ -426,6 +460,11 @@ const VocabularyMode = ({ onNavigate }) => {
         </div>
       </div>
     );
+  }
+  
+  // Show upload interface if no PDF is loaded
+  if (!pdfDocument) {
+    return <PDFUpload />;
   }
   
   // Show error state
@@ -463,7 +502,7 @@ const VocabularyMode = ({ onNavigate }) => {
         </div>
         <p>Try loading a different PDF or check the console for more details.</p>
         <button
-          onClick={handleSwitchToPdfView}
+          onClick={handleNewPdfClick}
           style={{
             backgroundColor: '#4a69bd',
             color: 'white',
@@ -475,65 +514,7 @@ const VocabularyMode = ({ onNavigate }) => {
             fontSize: '1rem'
           }}
         >
-          Return to PDF View
-        </button>
-      </div>
-    );
-  }
-  
-  // Show message if no PDF loaded
-  if (!pdfDocument || plainText.length === 0) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100%',
-          color: '#4a5568',
-          textAlign: 'center',
-          padding: '20px'
-        }}
-      >
-        <div style={{ fontSize: '3rem', marginBottom: '20px' }}>📚</div>
-        <h2>No PDF Content Available</h2>
-        <p>{pdfDocument ? 'Text extraction failed. Please try another PDF.' : 'Please upload a PDF document to begin learning vocabulary.'}</p>
-        
-        <div style={{
-          marginTop: '20px',
-          padding: '15px',
-          background: 'rgba(0,0,0,0.05)',
-          borderRadius: '5px',
-          maxWidth: '600px',
-          textAlign: 'left'
-        }}>
-          <h3>Diagnostic Information:</h3>
-          <ul style={{ textAlign: 'left' }}>
-            <li>PDF Document Loaded: {pdfDocument ? 'Yes' : 'No'}</li>
-            <li>PDF Path: {pdfPath || 'None'}</li>
-            <li>Is Initialized: {isInitialized ? 'Yes' : 'No'}</li>
-            <li>Extracted Text Pages: {plainText.length}</li>
-            <li>PDF Pages Processed: {pdfPages.length}</li>
-            <li>Context Text Content: {contextTextContent ? contextTextContent.length : 0} pages</li>
-            <li>Vocabulary Items: {Object.keys(vocabularyList).length}</li>
-          </ul>
-        </div>
-        
-        <button
-          onClick={() => onNavigate('reader')}
-          style={{
-            backgroundColor: '#4a69bd',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '10px 20px',
-            marginTop: '20px',
-            cursor: 'pointer',
-            fontSize: '1rem'
-          }}
-        >
-          Go to PDF Reader
+          Upload a Different PDF
         </button>
       </div>
     );
@@ -549,333 +530,509 @@ const VocabularyMode = ({ onNavigate }) => {
         paddingBottom: '70px' // Space for navigation controls
       }}
     >
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        style={{
-          padding: '15px 20px',
-          backgroundColor: 'white',
-          borderBottom: '1px solid #e0e6ed',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}
-      >
-        <h2 style={{ margin: 0, fontSize: '1.2rem' }}>
-          Vocabulary Mode
-        </h2>
-        
-        {/* View Mode Toggles */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '5px',
-          backgroundColor: 'rgba(0,0,0,0.05)',
-          padding: '4px',
-          borderRadius: '8px',
-          marginLeft: '20px'
-        }}>
-          <button
-            onClick={() => handleViewModeChange('text')}
-            style={{
-              backgroundColor: viewMode === 'text' ? '#4a69bd' : 'transparent',
-              color: viewMode === 'text' ? 'white' : '#4a5568',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '6px 12px',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              transition: 'all 0.2s'
-            }}
-          >
-            <span>📝</span>
-            <span>Text</span>
-          </button>
-          
-          <button
-            onClick={() => handleViewModeChange('pdf')}
-            style={{
-              backgroundColor: viewMode === 'pdf' ? '#4a69bd' : 'transparent',
-              color: viewMode === 'pdf' ? 'white' : '#4a5568',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '6px 12px',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              transition: 'all 0.2s'
-            }}
-          >
-            <span>📄</span>
-            <span>PDF</span>
-          </button>
-          
-          <button
-            onClick={() => handleViewModeChange('split')}
-            style={{
-              backgroundColor: viewMode === 'split' ? '#4a69bd' : 'transparent',
-              color: viewMode === 'split' ? 'white' : '#4a5568',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '6px 12px',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              transition: 'all 0.2s'
-            }}
-          >
-            <span>⚡</span>
-            <span>Split</span>
-          </button>
-        </div>
-        
-        <div
+      {/* PDF metadata header - Added from Reader component */}
+      {pdfDocument && pdfMetadata && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
           style={{
             display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '10px'
+            padding: 'var(--space-md) var(--space-lg)',
+            backgroundColor: 'var(--surface)',
+            borderRadius: 'var(--radius-md)',
+            boxShadow: 'var(--shadow-sm)',
+            marginBottom: 'var(--space-md)',
+            position: 'relative',
+            zIndex: 2,
           }}
         >
-          {/* Settings button */}
-          <button
-            style={{
-              backgroundColor: 'transparent',
-              border: 'none',
-              color: '#4a69bd',
-              fontSize: '1.2rem',
-              cursor: 'pointer',
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: 'rgba(74, 105, 189, 0.1)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '5px'
-            }}
-            onClick={() => setShowSettings(true)}
-            title="Settings"
-          >
-            ⚙️
-          </button>
-          
-          {/* Statistics button */}
-          <button
-            style={{
-              backgroundColor: 'transparent',
-              border: 'none',
-              color: '#4a69bd',
-              fontSize: '1rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px'
-            }}
-          >
-            <span>📊</span>
-            <span>{Object.keys(vocabularyList).length} words saved</span>
-          </button>
-          
-          {/* Vocabulary list button */}
-          <button
-            style={{
-              backgroundColor: '#1dd1a1',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '8px 12px',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px'
-            }}
-            onClick={() => onNavigate('vocabulary')}
-          >
-            <span>📚</span>
-            <span>View Vocabulary List</span>
-          </button>
-        </div>
-      </motion.div>
+              fontSize: '1.25rem',
+              color: 'var(--primary-color)',
+            }}>
+              📄
+            </div>
+            <div>
+              <h2 style={{ 
+                margin: 0,
+                fontSize: 'var(--font-size-lg)',
+                color: 'var(--text-primary)',
+                maxWidth: '500px',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}>
+                {pdfMetadata.title || pdfMetadata.fileName || 'Untitled Document'}
+              </h2>
+              <p style={{ 
+                margin: 0,
+                fontSize: 'var(--font-size-sm)',
+                color: 'var(--text-secondary)',
+              }}>
+                {pdfMetadata.author ? `By ${pdfMetadata.author} • ` : ''}
+                {pdfMetadata.pageCount} pages
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+            <Button 
+              size="sm" 
+              variant={showLibrary ? 'outline' : 'primary'}
+              onClick={() => setShowLibrary(!showLibrary)}
+              style={{ 
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-xs)', 
+              }}
+            >
+              <span style={{ fontSize: '1.1rem' }}>📚</span>
+              <span>{showLibrary ? 'Hide Library' : 'Show Library'}</span>
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleNewPdfClick}>
+              New PDF
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => setShowSettings(true)}
+              style={{ 
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-xs)', 
+              }}
+            >
+              <span style={{ fontSize: '1.1rem' }}>⚙️</span>
+              <span>Settings</span>
+            </Button>
+          </div>
+        </motion.div>
+      )}
       
-      {/* Main content area */}
-      <div
-        style={{
+      {/* Main content with optional library sidebar */}
+      <div 
+        style={{ 
+          display: 'flex',
           flex: 1,
-          overflow: 'auto',
-          padding: '20px'
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
-        {/* Text Mode - Original text-only view */}
-        {viewMode === 'text' && (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`page-${vocabModePage}-${pageChangeCounter}`}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              variants={pageVariants}
-              transition={{ duration: 0.3 }}
-            >
-              {/* Debug indicator - only shown in development */}
-              {process.env.NODE_ENV === 'development' && (
-                <div 
-                  style={{
-                    position: 'fixed',
-                    bottom: '80px',
-                    right: '20px',
-                    backgroundColor: 'rgba(0,0,0,0.7)',
-                    color: 'white',
-                    padding: '8px 12px',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    zIndex: 999
-                  }}
-                >
-                  Vocabulary: {Object.keys(vocabularyList).length} words | 
-                  Page: {vocabModePage} | 
-                  Mode: {viewMode}
-                </div>
-              )}
-              
-              <PageView
-                text={currentPageContent}
-                paragraphs={currentPageParagraphs}
-                vocabularyState={vocabularyList}
-                onWordClick={handleWordClick}
-                highlightSettings={highlightSettings}
-              />
-            </motion.div>
-          </AnimatePresence>
-        )}
-        
-        {/* PDF Mode - Just the PDF with clickable words */}
-        {viewMode === 'pdf' && (
-          <div 
-            style={{
+        {/* Main content area */}
+        <motion.div 
+          animate={{ 
+            width: showLibrary ? 'calc(100% - 300px)' : '100%',
+          }}
+          transition={{ duration: 0.3 }}
+          style={{ 
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Mode selector */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            padding: '10px 0',
+            backgroundColor: 'white',
+            borderBottom: '1px solid var(--border)',
+            borderRadius: '8px 8px 0 0',
+            marginBottom: '10px'
+          }}>
+            <div style={{
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
-              maxWidth: '100%',
-              margin: '0 auto',
-              backgroundColor: 'white',
-              borderRadius: '8px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.08)',
-              padding: '20px',
-              position: 'relative'
-            }}
-          >
-            {/* Interactive Word Layer (Will be implemented in phase 2) */}
-            <div
-              style={{
-                position: 'absolute',
-                top: '20px',
-                left: '20px',
-                right: '20px',
-                bottom: '20px',
-                pointerEvents: 'none',
-                zIndex: 2
-              }}
-            >
-              {/* In future versions, we'd add interactivity here */}
-            </div>
-            
-            {/* PDF Rendering Canvas */}
-            <div 
-              ref={pdfCanvasContainerRef}
-              style={{
-                width: '100%',
-                maxWidth: '800px',
-                overflow: 'auto',
-                textAlign: 'center'
-              }}
-            >
-              <canvas
-                ref={canvasRef}
+              gap: '5px',
+              backgroundColor: 'rgba(0,0,0,0.05)',
+              padding: '4px',
+              borderRadius: '8px'
+            }}>
+              <button
+                onClick={() => handleViewModeChange('text')}
                 style={{
-                  maxWidth: '100%',
-                  height: 'auto',
-                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-                }}
-              />
-            </div>
-            
-            {/* PDF Navigation will use the existing NavigationControls component */}
-          </div>
-        )}
-        
-        {/* Split Mode - PDF on left, Text with highlights on right */}
-        {viewMode === 'split' && (
-          <div
-            style={{
-              display: 'flex',
-              gap: '20px',
-              height: '100%',
-              flexWrap: 'wrap'
-            }}
-          >
-            {/* PDF View */}
-            <div 
-              style={{
-                flex: '1 1 300px',
-                maxHeight: '100%',
-                overflowY: 'auto',
-                backgroundColor: 'white',
-                borderRadius: '8px',
-                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.08)',
-                padding: '20px',
-                position: 'relative'
-              }}
-            >
-              <div 
-                ref={pdfCanvasContainerRef}
-                style={{
-                  width: '100%',
-                  textAlign: 'center'
+                  backgroundColor: viewMode === 'text' ? '#4a69bd' : 'transparent',
+                  color: viewMode === 'text' ? 'white' : '#4a5568',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '6px 12px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  transition: 'all 0.2s'
                 }}
               >
-                <canvas
-                  ref={canvasRef}
-                  style={{
-                    maxWidth: '100%',
-                    height: 'auto',
-                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-                  }}
-                />
-              </div>
-            </div>
-            
-            {/* Text View */}
-            <div
-              style={{
-                flex: '1 1 300px',
-                maxHeight: '100%',
-                overflowY: 'auto'
-              }}
-            >
-              <PageView
-                text={currentPageContent}
-                paragraphs={currentPageParagraphs}
-                vocabularyState={vocabularyList}
-                onWordClick={handleWordClick}
-                highlightSettings={highlightSettings}
-              />
+                <span>📝</span>
+                <span>Text</span>
+              </button>
+              
+              <button
+                onClick={() => handleViewModeChange('pdf')}
+                style={{
+                  backgroundColor: viewMode === 'pdf' ? '#4a69bd' : 'transparent',
+                  color: viewMode === 'pdf' ? 'white' : '#4a5568',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '6px 12px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <span>📄</span>
+                <span>PDF</span>
+              </button>
+              
+              <button
+                onClick={() => handleViewModeChange('split')}
+                style={{
+                  backgroundColor: viewMode === 'split' ? '#4a69bd' : 'transparent',
+                  color: viewMode === 'split' ? 'white' : '#4a5568',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '6px 12px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <span>⚡</span>
+                <span>Split</span>
+              </button>
             </div>
           </div>
-        )}
+          
+          {/* Content area based on view mode */}
+          <div style={{ 
+            flex: 1, 
+            overflow: 'auto',
+            padding: '20px'
+          }}>
+            {/* Text Mode - Original text-only view */}
+            {viewMode === 'text' && (
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`page-${vocabModePage}-${pageChangeCounter}`}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  variants={pageVariants}
+                  transition={{ duration: 0.3 }}
+                >
+                  <PageView
+                    text={currentPageContent}
+                    paragraphs={currentPageParagraphs}
+                    vocabularyState={vocabularyList}
+                    onWordClick={handleWordClick}
+                    highlightSettings={highlightSettings}
+                  />
+                </motion.div>
+              </AnimatePresence>
+            )}
+            
+            {/* PDF Mode - Just the PDF with clickable words */}
+            {viewMode === 'pdf' && (
+              <div 
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  maxWidth: '100%',
+                  margin: '0 auto',
+                  backgroundColor: 'white',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.08)',
+                  padding: '20px',
+                  position: 'relative'
+                }}
+              >
+                {/* Interactive Word Layer (Will be implemented in phase 2) */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '20px',
+                    left: '20px',
+                    right: '20px',
+                    bottom: '20px',
+                    pointerEvents: 'none',
+                    zIndex: 2
+                  }}
+                >
+                  {/* In future versions, we'd add interactivity here */}
+                </div>
+                
+                {/* PDF Rendering Canvas */}
+                <div 
+                  ref={pdfCanvasContainerRef}
+                  style={{
+                    width: '100%',
+                    maxWidth: '800px',
+                    overflow: 'auto',
+                    textAlign: 'center'
+                  }}
+                >
+                  <canvas
+                    ref={canvasRef}
+                    style={{
+                      maxWidth: '100%',
+                      height: 'auto',
+                      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+            
+            {/* Split Mode - PDF on left, Text with highlights on right */}
+            {viewMode === 'split' && (
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '20px',
+                  height: '100%',
+                  flexWrap: 'wrap'
+                }}
+              >
+                {/* PDF View */}
+                <div 
+                  style={{
+                    flex: '1 1 300px',
+                    maxHeight: '100%',
+                    overflowY: 'auto',
+                    backgroundColor: 'white',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.08)',
+                    padding: '20px',
+                    position: 'relative'
+                  }}
+                >
+                  <div 
+                    ref={pdfCanvasContainerRef}
+                    style={{
+                      width: '100%',
+                      textAlign: 'center'
+                    }}
+                  >
+                    <canvas
+                      ref={canvasRef}
+                      style={{
+                        maxWidth: '100%',
+                        height: 'auto',
+                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                {/* Text View */}
+                <div
+                  style={{
+                    flex: '1 1 300px',
+                    maxHeight: '100%',
+                    overflowY: 'auto'
+                  }}
+                >
+                  <PageView
+                    text={currentPageContent}
+                    paragraphs={currentPageParagraphs}
+                    vocabularyState={vocabularyList}
+                    onWordClick={handleWordClick}
+                    highlightSettings={highlightSettings}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </motion.div>
+        
+        {/* Library sidebar */}
+        <AnimatePresence>
+          {showLibrary && (
+            <motion.div
+              initial={{ x: 300, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 300, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              style={{
+                width: '300px',
+                backgroundColor: 'var(--surface)',
+                height: '100%',
+                boxShadow: 'var(--shadow-md)',
+                borderLeft: '1px solid var(--border)',
+                zIndex: 5,
+                display: 'flex',
+                flexDirection: 'column',
+                padding: 'var(--space-md)',
+                overflow: 'hidden',
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 'var(--space-md)',
+              }}>
+                <h3 style={{ 
+                  margin: 0, 
+                  fontSize: 'var(--font-size-lg)',
+                  color: 'var(--primary-color)',
+                }}>
+                  PDF Library
+                </h3>
+                <button
+                  onClick={() => setShowLibrary(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '1.2rem',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 'var(--space-xs)',
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: 'var(--space-xs)',
+              }}>
+                {recentPDFs.length > 0 ? (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 'var(--space-sm)',
+                  }}>
+                    {recentPDFs.map((pdf) => (
+                      <motion.div
+                        key={pdf.id}
+                        whileHover={{ y: -2, backgroundColor: 'rgba(74, 105, 189, 0.05)' }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => handleLoadPdf(pdf.path)}
+                        style={{
+                          padding: 'var(--space-sm)',
+                          borderRadius: 'var(--radius-md)',
+                          cursor: 'pointer',
+                          backgroundColor: pdfMetadata?.id === pdf.id 
+                            ? 'rgba(74, 105, 189, 0.1)' 
+                            : 'transparent',
+                          border: '1px solid',
+                          borderColor: pdfMetadata?.id === pdf.id 
+                            ? 'rgba(74, 105, 189, 0.3)' 
+                            : 'transparent',
+                        }}
+                      >
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 'var(--space-sm)',
+                        }}>
+                          <div style={{
+                            fontSize: '1.25rem',
+                            color: 'var(--primary-color)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}>
+                            📄
+                          </div>
+                          <div style={{ flex: 1, overflow: 'hidden' }}>
+                            <div style={{
+                              fontSize: 'var(--font-size-md)',
+                              fontWeight: pdfMetadata?.id === pdf.id 
+                                ? 'var(--font-weight-medium)' 
+                                : 'var(--font-weight-normal)',
+                              color: pdfMetadata?.id === pdf.id 
+                                ? 'var(--primary-color)' 
+                                : 'var(--text-primary)',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}>
+                              {pdf.fileName || 'Untitled PDF'}
+                            </div>
+                            <div style={{
+                              fontSize: 'var(--font-size-xs)',
+                              color: 'var(--text-muted)',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                            }}>
+                              <span>{formatDate(pdf.lastOpened)}</span>
+                              <span>{pdf.pageCount || '?'} pages</span>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{
+                    padding: 'var(--space-lg)',
+                    textAlign: 'center',
+                    color: 'var(--text-muted)',
+                  }}>
+                    No PDFs in library yet
+                  </div>
+                )}
+              </div>
+              
+              <div style={{
+                marginTop: 'var(--space-md)',
+                display: 'flex',
+                justifyContent: 'center',
+              }}>
+                <Button 
+                  onClick={handleNewPdfClick} 
+                  size="sm"
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 'var(--space-xs)',
+                  }}
+                >
+                  <span>📄</span>
+                  <span>Upload New PDF</span>
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       
-      {/* Navigation Controls */}
+      {/* Navigation Controls - Updated to use view mode */}
       <NavigationControls
         currentPage={vocabModePage}
         totalPages={plainText.length}
         onPageChange={handlePageChange}
-        onSwitchToPdfView={handleSwitchToPdfView}
+        onViewModeChange={handleViewModeChange}
+        currentViewMode={viewMode}
       />
       
       {/* Definition Display */}
@@ -887,12 +1044,11 @@ const VocabularyMode = ({ onNavigate }) => {
         onSaveWord={handleSaveWord}
       />
       
-      {/* Settings Popup */}
+      {/* Settings Popup - Added Settings button and component */}
       <SettingsPopup
         isVisible={showSettings}
         onClose={() => setShowSettings(false)}
         onHighlightingChange={handleHighlightingChange}
-        initialHighlightSettings={highlightSettings}
       />
     </div>
   );

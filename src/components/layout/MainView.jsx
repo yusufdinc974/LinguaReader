@@ -4,8 +4,6 @@ import PDFContext from '../../contexts/PDFContext';
 import AppHeader from './AppHeader';
 import Sidebar from './Sidebar';
 import PDFUpload from '../pdf/PDFUpload';
-import PDFViewer from '../pdf/PDFViewer';
-import PDFControls from '../pdf/PDFControls';
 
 /**
  * MainView Component
@@ -27,6 +25,10 @@ const MainView = ({ children }) => {
         const result = await window.electron.selectPdf();
         if (!result.canceled && !result.error) {
           await loadPDF(result.path);
+          // Optionally, redirect to vocabulary mode after loading
+          // if (onNavigate) {
+          //   onNavigate('vocabulary-mode');
+          // }
         }
       } catch (error) {
         console.error('Error selecting PDF:', error);
@@ -75,23 +77,17 @@ const MainView = ({ children }) => {
             // Render children if provided
             children
           ) : (
-            // Default PDF viewer content
-            <>
-              <AnimatePresence>
-                {!pdfDocument && (
-                  <motion.div
-                    key="pdf-upload"
-                    initial={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <PDFUpload />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              
-              <PDFViewer />
-              {pdfDocument && <PDFControls />}
-            </>
+            // Default content - just show PDF Upload
+            <AnimatePresence>
+              <motion.div
+                key="pdf-upload"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <PDFUpload />
+              </motion.div>
+            </AnimatePresence>
           )}
         </motion.main>
 

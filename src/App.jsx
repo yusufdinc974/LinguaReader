@@ -4,7 +4,6 @@ import { PDFProvider } from './contexts/PDFContext';
 import { VocabularyProvider } from './contexts/VocabularyContext';
 import MainView from './components/layout/MainView';
 import Home from './pages/Home';
-import Reader from './pages/Reader';
 import VocabularyManager from './pages/VocabularyManager';
 import VocabularyMode from './pages/VocabularyMode';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,27 +16,34 @@ function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [hoveredTab, setHoveredTab] = useState(null);
 
-  // Navigation tabs configuration
+  // Navigation tabs configuration - REMOVED Reader tab
   const tabs = [
     { id: 'home', label: 'Home', icon: '🏠' },
-    { id: 'reader', label: 'PDF Reader', icon: '📄' },
-    { id: 'vocabulary-mode', label: 'Vocabulary Mode', icon: '📚' },
+    { id: 'vocabulary-mode', label: 'PDF Reader', icon: '📄' }, // Keep the PDF Reader label but point to vocabulary-mode
     { id: 'vocabulary', label: 'Word List', icon: '📋' },
   ];
+
+  // Handle navigation with redirection for old 'reader' route
+  const handleNavigation = (page) => {
+    // If navigating to 'reader', redirect to 'vocabulary-mode'
+    if (page === 'reader') {
+      setCurrentPage('vocabulary-mode');
+    } else {
+      setCurrentPage(page);
+    }
+  };
 
   // Render the appropriate page based on current route
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
-        return <Home onNavigate={setCurrentPage} />;
-      case 'reader':
-        return <Reader onNavigate={setCurrentPage} />;
+        return <Home onNavigate={handleNavigation} />;
       case 'vocabulary-mode':
-        return <VocabularyMode onNavigate={setCurrentPage} />;
+        return <VocabularyMode onNavigate={handleNavigation} />;
       case 'vocabulary':
-        return <VocabularyManager onNavigate={setCurrentPage} />;
+        return <VocabularyManager onNavigate={handleNavigation} />;
       default:
-        return <Home onNavigate={setCurrentPage} />;
+        return <Home onNavigate={handleNavigation} />;
     }
   };
 
@@ -98,7 +104,7 @@ function App() {
               {tabs.map(tab => (
                 <button
                   key={tab.id}
-                  onClick={() => setCurrentPage(tab.id)}
+                  onClick={() => handleNavigation(tab.id)}
                   onMouseEnter={() => setHoveredTab(tab.id)}
                   onMouseLeave={() => setHoveredTab(null)}
                   style={{

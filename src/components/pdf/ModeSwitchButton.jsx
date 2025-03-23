@@ -2,14 +2,56 @@ import React from 'react';
 import { motion } from 'framer-motion';
 
 /**
- * ModeSwitchButton - Component for switching between PDF Reader and Vocabulary Mode
+ * ModeSwitchButton - Component for switching between text, PDF, and split view modes
  * 
  * @param {Object} props - Component props
- * @param {Function} props.onSwitchMode - Function to call when switching modes
- * @param {string} props.currentMode - Current mode ('pdf' or 'vocabulary')
+ * @param {Function} props.onViewModeChange - Function to call when changing view mode
+ * @param {string} props.currentViewMode - Current view mode ('text', 'pdf', or 'split')
  */
-const ModeSwitchButton = ({ onSwitchMode, currentMode = 'pdf' }) => {
-  const isPdfMode = currentMode === 'pdf';
+const ModeSwitchButton = ({ onViewModeChange, currentViewMode = 'text' }) => {
+  // Determine the next view mode in the cycle: text → PDF → split → text
+  const getNextMode = () => {
+    switch(currentViewMode) {
+      case 'text': return 'pdf';
+      case 'pdf': return 'split';
+      case 'split': return 'text';
+      default: return 'text';
+    }
+  };
+  
+  // Get button text based on current mode
+  const getButtonText = () => {
+    switch(currentViewMode) {
+      case 'text': return 'Switch to PDF View';
+      case 'pdf': return 'Switch to Split View';
+      case 'split': return 'Switch to Text View';
+      default: return 'Change View Mode';
+    }
+  };
+  
+  // Get button icon based on current mode
+  const getButtonIcon = () => {
+    switch(currentViewMode) {
+      case 'text': return '📄';
+      case 'pdf': return '⚡';
+      case 'split': return '📝';
+      default: return '🔄';
+    }
+  };
+  
+  // Get button color based on current mode
+  const getButtonColor = () => {
+    switch(currentViewMode) {
+      case 'text': return 'var(--primary-color)';
+      case 'pdf': return 'var(--secondary-color)';
+      case 'split': return 'var(--accent-green)';
+      default: return 'var(--primary-color)';
+    }
+  };
+  
+  const handleClick = () => {
+    onViewModeChange(getNextMode());
+  };
   
   return (
     <motion.div
@@ -26,13 +68,13 @@ const ModeSwitchButton = ({ onSwitchMode, currentMode = 'pdf' }) => {
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        onClick={onSwitchMode}
+        onClick={handleClick}
         className="app-button mode-switch-btn"
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          backgroundColor: isPdfMode ? 'var(--secondary-color)' : 'var(--primary-color)',
+          backgroundColor: getButtonColor(),
           color: 'white',
           border: 'none',
           borderRadius: 'var(--radius-md)',
@@ -44,10 +86,10 @@ const ModeSwitchButton = ({ onSwitchMode, currentMode = 'pdf' }) => {
         }}
       >
         <span style={{ fontSize: '1.2rem' }}>
-          {isPdfMode ? '📚' : '📄'}
+          {getButtonIcon()}
         </span>
         <span>
-          {isPdfMode ? 'Switch to Vocabulary Mode' : 'Switch to PDF View'}
+          {getButtonText()}
         </span>
       </motion.button>
     </motion.div>

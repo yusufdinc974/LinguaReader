@@ -12,17 +12,40 @@ import PDFContext from '../../contexts/PDFContext';
  * @param {boolean} props.showSidebar - Whether the sidebar is visible
  * @param {Function} props.toggleSidebar - Function to toggle sidebar visibility
  * @param {Function} props.handleNewPdfClick - Function to handle uploading a new PDF
+ * @param {string} props.currentPage - The current active page (optional)
+ * @param {Function} props.onNavigate - Function to navigate between pages (optional)
  */
-const AppHeader = ({ showSidebar, toggleSidebar, handleNewPdfClick }) => {
+const AppHeader = ({ 
+  showSidebar, 
+  toggleSidebar, 
+  handleNewPdfClick,
+  currentPage,
+  onNavigate
+}) => {
   const { pdfDocument } = useContext(PDFContext);
-  const [activeTab, setActiveTab] = useState('reader');
+  // Default to vocabulary-mode if no external current page is provided
+  const [activeTab, setActiveTab] = useState(currentPage || 'vocabulary-mode');
 
-  // Header tabs configuration
+  // Header tabs configuration - updated to match our new structure
   const tabs = [
-    { id: 'reader', label: 'PDF Reader', icon: '📄' },
-    { id: 'vocabulary', label: 'Vocabulary', icon: '📚' },
-    { id: 'profile', label: 'Profile', icon: '👤' },
+    { id: 'home', label: 'Home', icon: '🏠' },
+    { id: 'vocabulary-mode', label: 'PDF Reader', icon: '📄' },
+    { id: 'vocabulary', label: 'Word List', icon: '📋' },
   ];
+
+  // Handle tab click
+  const handleTabClick = (tabId) => {
+    setActiveTab(tabId);
+    // If onNavigate is provided, use it to navigate to the selected page
+    if (onNavigate) {
+      onNavigate(tabId);
+    }
+  };
+
+  // Update activeTab when currentPage changes (if provided)
+  if (currentPage && currentPage !== activeTab) {
+    setActiveTab(currentPage);
+  }
 
   return (
     <motion.header
@@ -78,7 +101,7 @@ const AppHeader = ({ showSidebar, toggleSidebar, handleNewPdfClick }) => {
             key={tab.id}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabClick(tab.id)}
             style={{
               display: 'flex',
               alignItems: 'center',
