@@ -167,7 +167,9 @@ const VocabularyManager = ({ onNavigate }) => {
     
     if (languageFilters.length > 0) {
       hasLanguageFilter = true;
-      if (languageFilters.includes(word.sourceLang) || languageFilters.includes(word.targetLang)) {
+      
+      // FIXED: Only match on sourceLang (base language of the word)
+      if (languageFilters.includes(word.sourceLang)) {
         matchesLanguageFilter = true;
       }
     }
@@ -650,7 +652,8 @@ const VocabularyManager = ({ onNavigate }) => {
                 variants={itemVariants}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                  // FIXED: Made grid more responsive with smaller minimum width
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
                   gap: 'var(--space-md)',
                   overflowY: 'auto',
                   padding: 'var(--space-xs)',
@@ -670,7 +673,14 @@ const VocabularyManager = ({ onNavigate }) => {
                       borderLeft: `4px solid ${getFamiliarityColor(word.familiarityRating)}`,
                       transition: 'all 0.2s ease',
                       position: 'relative',
+                      // FIXED: Added overflow hidden to prevent content from spilling out
                       overflow: 'hidden',
+                      // FIXED: Set minimum and maximum heights
+                      minHeight: '150px',
+                      maxHeight: '200px',
+                      // FIXED: Added display: flex and flexDirection: column for better layout
+                      display: 'flex',
+                      flexDirection: 'column',
                     }}
                   >
                     {/* Background decoration */}
@@ -691,9 +701,15 @@ const VocabularyManager = ({ onNavigate }) => {
                       position: 'relative',
                       zIndex: 1,
                     }}>
+                      {/* FIXED: Added text-overflow for word */}
                       <h3 style={{ 
                         margin: 0,
                         fontSize: 'var(--font-size-lg)',
+                        // FIXED: Added these styles to handle overflow
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '60%'
                       }}>
                         {word.word}
                       </h3>
@@ -703,6 +719,8 @@ const VocabularyManager = ({ onNavigate }) => {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '3px',
+                        // FIXED: Added flex-shrink to prevent the badges from growing
+                        flexShrink: 0,
                       }}>
                         <span style={{
                           fontSize: 'var(--font-size-sm)',
@@ -743,6 +761,13 @@ const VocabularyManager = ({ onNavigate }) => {
                       color: 'var(--text-secondary)',
                       position: 'relative',
                       zIndex: 1,
+                      // FIXED: Added flex-grow to push the bottom content down
+                      flexGrow: 1,
+                      // FIXED: Added styles to handle text overflow
+                      overflow: 'hidden',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
                     }}>
                       {word.translation || 'No translation available'}
                     </p>
@@ -753,6 +778,9 @@ const VocabularyManager = ({ onNavigate }) => {
                       alignItems: 'center',
                       position: 'relative',
                       zIndex: 1,
+                      // FIXED: Added flex-wrap to handle narrow screens
+                      flexWrap: 'wrap',
+                      gap: 'var(--space-xs)',
                     }}>
                       <div style={{
                         display: 'flex',
@@ -792,8 +820,8 @@ const VocabularyManager = ({ onNavigate }) => {
                         onClick={() => handleDeleteWord(word.id)}
                         style={{
                           position: 'absolute',
-                          top: '10px',
-                          right: '10px',
+                          top: '-24px',  // FIXED: Moved to top right corner
+                          right: '-8px',
                           backgroundColor: 'transparent',
                           border: 'none',
                           cursor: 'pointer',

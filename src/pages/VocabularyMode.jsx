@@ -20,10 +20,12 @@ const VocabularyMode = ({ onNavigate }) => {
     pdfDocument, 
     pdfPath, 
     pdfMetadata,
-    textContent: contextTextContent
+    textContent: contextTextContent,
+    vocabModePage, // Get the page from context
+    goToVocabPage // Get the page navigation method from context
   } = useContext(PDFContext);
   
-  const [currentPage, setCurrentPage] = useState(1);
+  // Now using vocabModePage from context instead of local state
   const [selectedWord, setSelectedWord] = useState(null);
   const [showDefinition, setShowDefinition] = useState(false);
   const [vocabularyList, setVocabularyList] = useState({});
@@ -39,6 +41,9 @@ const VocabularyMode = ({ onNavigate }) => {
     selectedListId: null,
     colorPalette: 'standard' // 'standard', 'pastel', or 'vibrant'
   });
+  
+  // For page changes only - do not increment for word updates
+  const [pageChangeCounter, setPageChangeCounter] = useState(0);
 
   // When saved vocabulary words change, update the vocabularyList to include list info
   useEffect(() => {
@@ -79,10 +84,16 @@ const VocabularyMode = ({ onNavigate }) => {
         if (listsChanged) {
           console.log('Updating vocabulary list with list membership info');
           setVocabularyList(updatedList);
+          // We don't need to force a refresh here, just update the state
         }
       }
     }
   }, [vocabularyList]);
+  
+  // Update page change counter when vocabModePage changes
+  useEffect(() => {
+    setPageChangeCounter(prev => prev + 1);
+  }, [vocabModePage]);
   
   // Handle highlighting changes
   const handleHighlightingChange = useCallback((newHighlightSettings) => {
@@ -133,7 +144,6 @@ const VocabularyMode = ({ onNavigate }) => {
     if (pdfDocument && isMounted.current) {
       console.log('PDF document or path changed in VocabularyMode');
       
-      setCurrentPage(1);
       setSelectedWord(null);
       setShowDefinition(false);
       setIsInitialized(true);
@@ -163,7 +173,7 @@ const VocabularyMode = ({ onNavigate }) => {
   }, [pdfDocument, pdfPath, contextTextContent]);
   
   // Load vocabulary list from storage service
-  useEffect(() => {
+  const loadVocabularyList = useCallback(() => {
     try {
       // Get all vocabulary words directly from the storage service
       const allVocabulary = storageService.getAllVocabulary();
@@ -193,6 +203,11 @@ const VocabularyMode = ({ onNavigate }) => {
       setVocabularyList({});
     }
   }, []);
+
+  // Initial vocabulary load
+  useEffect(() => {
+    loadVocabularyList();
+  }, [loadVocabularyList]);
   
   // Handle word click
   const handleWordClick = useCallback((word) => {
@@ -235,16 +250,26 @@ const VocabularyMode = ({ onNavigate }) => {
     
     setShowDefinition(false);
   }, []);
+
+  // Handle word saved from DefinitionDisplay
+  const handleWordSaved = useCallback((savedWord) => {
+    console.log('Word saved callback received:', savedWord);
+    
+    // Immediately refresh vocabulary list to get latest data
+    loadVocabularyList();
+    
+    // We do NOT increment any counters here to avoid remounting components
+  }, [loadVocabularyList]);
   
-  // Handle page change
+  // Handle page change - now using goToVocabPage from context
   const handlePageChange = useCallback((pageNum) => {
     const validPage = Math.max(1, Math.min(pageNum, plainText.length));
-    setCurrentPage(validPage);
-  }, [plainText.length]);
+    goToVocabPage(validPage);
+  }, [plainText.length, goToVocabPage]);
   
-  // Get current page content
+  // Get current page content - using vocabModePage from context now
   const currentPageContent = plainText && plainText.length > 0 
-    ? plainText[currentPage - 1] || ''
+    ? plainText[vocabModePage - 1] || ''
     : '';
   
   // Get paragraphs for current page
@@ -256,7 +281,7 @@ const VocabularyMode = ({ onNavigate }) => {
     return [];
   }, [pdfPages]);
   
-  const currentPageParagraphs = getParagraphsForPage(currentPage);
+  const currentPageParagraphs = getParagraphsForPage(vocabModePage);
   
   // Switch to PDF view mode
   const handleSwitchToPdfView = useCallback(() => {
@@ -265,6 +290,13 @@ const VocabularyMode = ({ onNavigate }) => {
     }
   }, [onNavigate]);
   
+  // Animation variants with conditional transitions
+  const pageVariants = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 }
+  };
+
   // Show loading state
   if (loading) {
     return (
@@ -513,30 +545,40 @@ const VocabularyMode = ({ onNavigate }) => {
         }}
       >
         <AnimatePresence mode="wait">
+          {/* Only use the page number in the key to prevent remounting on word updates */}
           <motion.div
-            key={currentPage}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            key={`page-${vocabModePage}-${pageChangeCounter}`}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            variants={pageVariants}
             transition={{ duration: 0.3 }}
           >
-            {/* Debug indicator for vocabulary count */}
-            <div 
-              style={{
-                position: 'fixed',
-                bottom: '80px',
-                right: '20px',
-                backgroundColor: 'rgba(0,0,0,0.7)',
-                color: 'white',
-                padding: '8px 12px',
-                borderRadius: '4px',
-                fontSize: '12px',
-                zIndex: 999
-              }}
-            >
-              Vocabulary: {Object.keys(vocabularyList).length} words
-            </div>
+            {/* Debug indicator - only shown in development */}
+            {process.env.NODE_ENV === 'development' && (
+              <div 
+                style={{
+                  position: 'fixed',
+                  bottom: '80px',
+                  right: '20px',
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  color: 'white',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  zIndex: 999
+                }}
+              >
+                Vocabulary: {Object.keys(vocabularyList).length} words | 
+                Page Change Counter: {pageChangeCounter} | 
+                Current Page: {vocabModePage}
+              </div>
+            )}
             
+            {/* 
+              Important: No "key" prop on PageView so it doesn't remount 
+              when vocabulary changes, only updates its props
+            */}
             <PageView
               text={currentPageContent}
               paragraphs={currentPageParagraphs}
@@ -550,7 +592,7 @@ const VocabularyMode = ({ onNavigate }) => {
       
       {/* Navigation Controls */}
       <NavigationControls
-        currentPage={currentPage}
+        currentPage={vocabModePage}
         totalPages={plainText.length}
         onPageChange={handlePageChange}
         onSwitchToPdfView={handleSwitchToPdfView}
@@ -561,6 +603,8 @@ const VocabularyMode = ({ onNavigate }) => {
         word={selectedWord}
         isVisible={showDefinition}
         onClose={() => setShowDefinition(false)}
+        // Fix the callback prop name mismatch
+        onSaved={handleWordSaved}  
         onSaveWord={handleSaveWord}
       />
       

@@ -31,7 +31,9 @@ export const PDFProvider = ({ children }) => {
   const [pdfMetadata, setPdfMetadata] = useState(null);
   // State for the current page number
   const [currentPage, setCurrentPage] = useState(1);
-  // State for the total number of pages
+  // State for vocabulary mode page (separate tracking)
+  const [vocabModePage, setVocabModePage] = useState(1);
+  // State for the total pages
   const [totalPages, setTotalPages] = useState(0);
   // State for the scale/zoom level
   const [scale, setScale] = useState(DEFAULT_SCALE);
@@ -61,6 +63,7 @@ export const PDFProvider = ({ children }) => {
       
       // Reset current page and scale to default values
       setCurrentPage(1);
+      setVocabModePage(1); // Also reset vocabulary mode page
       setScale(DEFAULT_SCALE);
       
       // Store the PDF path - this is crucial for text extraction
@@ -119,6 +122,20 @@ export const PDFProvider = ({ children }) => {
     
     const page = Math.max(1, Math.min(pageNumber, totalPages));
     setCurrentPage(page);
+  }, [pdfDocument, totalPages]);
+
+  /**
+   * Change the vocabulary mode page
+   * @param {number} pageNumber - The page number to navigate to in vocabulary mode
+   */
+  const goToVocabPage = useCallback((pageNumber) => {
+    if (!pdfDocument) return;
+    
+    const page = Math.max(1, Math.min(pageNumber, totalPages));
+    setVocabModePage(page);
+    
+    // Log for debugging
+    console.log(`Vocabulary mode page set to: ${page}`);
   }, [pdfDocument, totalPages]);
 
   /**
@@ -221,6 +238,7 @@ export const PDFProvider = ({ children }) => {
     setPdfPath(null); // Also clear the path when closing
     setPdfMetadata(null);
     setCurrentPage(1);
+    setVocabModePage(1); // Also reset vocabulary mode page
     setTotalPages(0);
     setTextContent([]);
     setScale(DEFAULT_SCALE);
@@ -242,6 +260,7 @@ export const PDFProvider = ({ children }) => {
     pdfPath, // Explicitly include the path in the context
     pdfMetadata,
     currentPage,
+    vocabModePage, // Add vocabulary mode page to context
     totalPages,
     scale,
     textContent,
@@ -260,6 +279,7 @@ export const PDFProvider = ({ children }) => {
     // Actions
     loadPDF,
     goToPage,
+    goToVocabPage, // Add vocabulary mode page navigation method
     nextPage,
     prevPage,
     zoomIn,
