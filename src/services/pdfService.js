@@ -7,8 +7,8 @@ import * as pdfjsLib from 'pdfjs-dist';
 // eslint-disable-next-line no-unused-vars
 import { PDFDocumentProxy } from 'pdfjs-dist';
 
-// Set up worker source (required for PDF.js)
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// IMPORTANT: Use HTTPS explicit protocol instead of protocol-relative URL (which can fail in Electron)
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 // Keep track of the current rendering task so we can cancel it if needed
 let currentRenderTask = null;
@@ -23,30 +23,87 @@ const pageCache = new Map();
  */
 export const loadPDFDocument = async (filePath) => {
   try {
+    console.log(`Attempting to load PDF from path: ${filePath}`);
+    
     // Clear page cache when loading a new document
     pageCache.clear();
     
     // In Electron environment
     if (window.electron) {
-      // Read the file using Electron's file system API
-      const data = await window.electron.readFile(filePath);
+      // Try the specialized PDF IPC method first (most reliable in production)
+      if (window.electron.readPdfFile) {
+        console.log('Using readPdfFile IPC method');
+        try {
+          const data = await window.electron.readPdfFile(filePath);
+          console.log(`Successfully read PDF data via specialized IPC, size: ${data ? data.length || data.byteLength : 'unknown'}`);
+          
+          // Load the PDF document with enhanced rendering options
+          const loadingTask = pdfjsLib.getDocument({
+            data,
+            // Enable better image quality
+            cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/cmaps/',
+            cMapPacked: true,
+            // Enable enhanced rendering options
+            useSystemFonts: true,
+            disableFontFace: false,
+            // Set higher quality rendering
+            maxImageSize: 8192 * 8192,
+            isEvalSupported: true,
+            isOffscreenCanvasSupported: true
+          });
+          
+          return await loadingTask.promise;
+        } catch (ipcError) {
+          console.error('Error loading PDF via specialized IPC, falling back to standard method:', ipcError);
+          // Fall back to regular method
+        }
+      }
       
-      // Load the PDF document with enhanced rendering options
-      const loadingTask = pdfjsLib.getDocument({
-        data,
-        // Enable better image quality
-        cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/cmaps/',
-        cMapPacked: true,
-        // Enable enhanced rendering options
-        useSystemFonts: true,
-        disableFontFace: false,
-        // Set higher quality rendering
-        maxImageSize: 8192 * 8192,
-        isEvalSupported: true,
-        isOffscreenCanvasSupported: true
-      });
-      
-      return await loadingTask.promise;
+      // Fallback: Read the file using Electron's standard file system API
+      console.log('Using standard readFile method');
+      try {
+        const data = await window.electron.readFile(filePath);
+        console.log(`Successfully read PDF file via standard method, size: ${data ? data.length || data.byteLength : 'unknown'}`);
+        
+        // Load the PDF document with enhanced rendering options
+        const loadingTask = pdfjsLib.getDocument({
+          data,
+          // Enable better image quality
+          cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/cmaps/',
+          cMapPacked: true,
+          // Enable enhanced rendering options
+          useSystemFonts: true,
+          disableFontFace: false,
+          // Set higher quality rendering
+          maxImageSize: 8192 * 8192,
+          isEvalSupported: true,
+          isOffscreenCanvasSupported: true
+        });
+        
+        return await loadingTask.promise;
+      } catch (readError) {
+        console.error('Error with standard readFile method:', readError);
+        
+        // Last resort: Try direct URL loading in Electron (may work in development)
+        console.log('Attempting direct URL loading as last resort');
+        try {
+          const loadingTask = pdfjsLib.getDocument({
+            url: filePath,
+            cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/cmaps/',
+            cMapPacked: true,
+            useSystemFonts: true,
+            disableFontFace: false,
+            maxImageSize: 8192 * 8192,
+            isEvalSupported: true,
+            isOffscreenCanvasSupported: true
+          });
+          
+          return await loadingTask.promise;
+        } catch (urlError) {
+          console.error('All PDF loading methods failed:', urlError);
+          throw new Error(`Failed to load PDF after trying all methods: ${urlError.message}`);
+        }
+      }
     } 
     // In web environment (for development/testing)
     else {
