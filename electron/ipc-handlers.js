@@ -67,5 +67,35 @@ module.exports = function registerIpcHandlers(ipcMain, mainWindow) {
     }
   });
 
+  // ADDED: Enhanced PDF reading with detailed logging and error handling
+  ipcMain.handle('read-pdf-data', async (event, filePath) => {
+    try {
+      console.log('IPC Handler: Reading PDF file data:', filePath);
+      
+      // Verify file exists
+      if (!fs.existsSync(filePath)) {
+        console.error('IPC Handler: PDF file does not exist:', filePath);
+        return { error: 'File does not exist', path: filePath };
+      }
+      
+      // Get file stats for metadata
+      const stats = fs.statSync(filePath);
+      
+      // Read the actual file data
+      const data = await fs.promises.readFile(filePath);
+      console.log('IPC Handler: Successfully read PDF file, size:', data.length);
+      
+      return {
+        data: data,
+        name: path.basename(filePath),
+        size: stats.size,
+        lastModified: stats.mtime.toISOString()
+      };
+    } catch (error) {
+      console.error('IPC Handler: Error reading PDF data:', error);
+      return { error: error.message };
+    }
+  });
+
   console.log('IPC handlers registered successfully');
 };

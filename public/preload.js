@@ -14,14 +14,31 @@ contextBridge.exposeInMainWorld(
     // File operations
     selectPdf: () => ipcRenderer.invoke('select-pdf'),
     
-    // File system operations (limited for security)
+    // Enhanced file system operations with better error handling
     readFile: async (filePath) => {
       try {
-        return await fs.promises.readFile(filePath);
+        console.log('Attempting to read file:', filePath);
+        
+        // Check if file exists first
+        if (!fs.existsSync(filePath)) {
+          console.error('File does not exist:', filePath);
+          throw new Error(`File doesn't exist: ${filePath}`);
+        }
+        
+        const data = await fs.promises.readFile(filePath);
+        console.log('Successfully read file:', filePath, 'Size:', data.length);
+        return data;
       } catch (error) {
-        console.error('Error reading file:', error);
+        console.error('Error reading file:', error.message);
+        console.error('Error stack:', error.stack);
         throw error;
       }
+    },
+    
+    // NEW: Specific PDF file reading method using IPC
+    readPdfFile: (filePath) => {
+      console.log('Requesting PDF file read via IPC:', filePath);
+      return ipcRenderer.invoke('read-pdf-file', filePath);
     },
     
     // Storage operations

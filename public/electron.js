@@ -77,7 +77,9 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow();
   
-  // Check for updates after app is ready (only in production)
+  // DISABLED temporarily to avoid update errors
+  // Will be re-enabled once proper GitHub release is set up
+  /*
   if (app.isPackaged) {
     log.info('Checking for updates...');
     // Wait a bit before checking for updates to ensure app is fully loaded
@@ -85,6 +87,7 @@ app.whenReady().then(() => {
       autoUpdater.checkForUpdatesAndNotify();
     }, 3000);
   }
+  */
 });
 
 // Quit when all windows are closed, except on macOS
@@ -174,6 +177,28 @@ ipcMain.handle('select-pdf', async () => {
     }
   }
   return { canceled: true };
+});
+
+// Add IPC handler for reading PDF files specifically
+ipcMain.handle('read-pdf-file', async (event, filePath) => {
+  try {
+    log.info('Reading PDF file:', filePath);
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      log.error('PDF file does not exist:', filePath);
+      throw new Error(`File does not exist: ${filePath}`);
+    }
+    
+    // Read file as buffer
+    const buffer = await fs.promises.readFile(filePath);
+    log.info('Successfully read PDF file, size:', buffer.length);
+    return buffer;
+  } catch (error) {
+    log.error('Error reading PDF file:', error.message);
+    log.error('Error stack:', error.stack);
+    throw error;
+  }
 });
 
 // Add IPC handler for manual update check
