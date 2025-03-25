@@ -9,6 +9,7 @@ import VocabularyManager from './pages/VocabularyManager';
 import VocabularyMode from './pages/VocabularyMode';
 import Quiz from './pages/Quiz'; // Import Quiz page
 import QuizStats from './pages/QuizStats'; // Import QuizStats page
+import UpdateChecker from './components/common/UpdateChecker'; // Import UpdateChecker
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
@@ -18,6 +19,8 @@ function App() {
   // Simple routing - in Phase 3 we're using a simple approach instead of react-router
   const [currentPage, setCurrentPage] = useState('home');
   const [hoveredTab, setHoveredTab] = useState(null);
+  // State for settings dropdown
+  const [showSettings, setShowSettings] = useState(false);
 
   // Navigation tabs configuration - Added Quiz and Stats tabs
   const tabs = [
@@ -36,6 +39,9 @@ function App() {
     } else {
       setCurrentPage(page);
     }
+    
+    // Close settings dropdown when navigating
+    setShowSettings(false);
   };
 
   // Render the appropriate page based on current route
@@ -61,6 +67,12 @@ function App() {
     initial: { opacity: 0, x: 10 },
     animate: { opacity: 1, x: 0 },
     exit: { opacity: 0, x: -10 }
+  };
+
+  // Settings dropdown animation variants
+  const settingsVariants = {
+    hidden: { opacity: 0, y: -20, scale: 0.95 },
+    visible: { opacity: 1, y: 0, scale: 1 }
   };
 
   return (
@@ -160,12 +172,14 @@ function App() {
               <div style={{ 
                 display: 'flex', 
                 alignItems: 'center',
-                padding: '0 var(--space-md)'
+                padding: '0 var(--space-md)',
+                position: 'relative' // Added for dropdown positioning
               }}>
                 <motion.button
                   whileHover={{ rotate: 15 }}
+                  onClick={() => setShowSettings(!showSettings)}
                   style={{
-                    backgroundColor: 'transparent',
+                    backgroundColor: showSettings ? 'rgba(0, 0, 0, 0.05)' : 'transparent',
                     border: 'none',
                     borderRadius: 'var(--radius-circle)',
                     width: '2.5rem',
@@ -180,8 +194,93 @@ function App() {
                 >
                   ⚙️
                 </motion.button>
+
+                {/* Settings dropdown with UpdateChecker */}
+                <AnimatePresence>
+                  {showSettings && (
+                    <motion.div
+                      initial="hidden"
+                      animate="visible"
+                      exit="hidden"
+                      variants={settingsVariants}
+                      transition={{ duration: 0.2 }}
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        right: '0',
+                        width: '320px',
+                        backgroundColor: 'var(--surface)',
+                        borderRadius: 'var(--radius-md)',
+                        boxShadow: 'var(--shadow-lg)',
+                        border: '1px solid var(--border)',
+                        zIndex: 10,
+                        padding: 'var(--space-md)',
+                        marginTop: '8px',
+                      }}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: 'var(--space-md)',
+                        borderBottom: '1px solid var(--border)',
+                        paddingBottom: 'var(--space-sm)'
+                      }}>
+                        <h3 style={{ 
+                          margin: 0, 
+                          fontSize: '1rem',
+                          color: 'var(--text-primary)'
+                        }}>
+                          Settings
+                        </h3>
+                        <button
+                          onClick={() => setShowSettings(false)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '1.1rem',
+                            color: 'var(--text-secondary)'
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      
+                      {/* UpdateChecker component */}
+                      <div style={{ marginBottom: 'var(--space-md)' }}>
+                        <h4 style={{ 
+                          fontSize: '0.9rem', 
+                          marginTop: 0,
+                          marginBottom: 'var(--space-sm)',
+                          color: 'var(--text-secondary)'
+                        }}>
+                          Application Updates
+                        </h4>
+                        <UpdateChecker />
+                      </div>
+                      
+                      {/* You can add more settings sections here */}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
+
+            {/* Background overlay when settings dropdown is open */}
+            {showSettings && (
+              <div 
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  zIndex: 1
+                }}
+                onClick={() => setShowSettings(false)}
+              />
+            )}
 
             {/* Main content area with page transitions */}
             <AnimatePresence mode="wait">

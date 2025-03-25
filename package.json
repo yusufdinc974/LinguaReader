@@ -1,15 +1,17 @@
 {
-    "name": "vocabulary-pdf-reader",
+    "name": "LinguaReader",
     "version": "0.1.0",
     "description": "An Electron application for reading PDFs and building vocabulary",
-    "author": "Your Name",
+    "author": "Yusuf Dinç",
     "license": "MIT",
     "main": "public/electron.js",
     "homepage": "./",
     "private": true,
     "dependencies": {
         "@react-pdf-viewer/core": "^3.12.0",
+        "electron-log": "^5.3.2",
         "electron-store": "^8.1.0",
+        "electron-updater": "^6.3.9",
         "framer-motion": "^10.16.4",
         "pdfjs-dist": "^3.4.120",
         "react": "^18.2.0",
@@ -31,8 +33,12 @@
         "test": "react-scripts test",
         "eject": "react-scripts eject",
         "electron:dev": "concurrently \"cross-env BROWSER=none npm start\" \"wait-on http://localhost:3000 && electron .\"",
-        "electron:build": "npm run build && electron-builder",
-        "electron:start": "electron ."
+        "electron:build": "npm run build && electron-builder build --publish never",
+        "electron:start": "electron .",
+        "dist:win": "npm run build && electron-builder build --win --publish always",
+        "dist:mac": "npm run build && electron-builder build --mac --publish always",
+        "dist:linux": "npm run build && electron-builder build --linux --publish always",
+        "dist:all": "npm run build && electron-builder build -mwl --publish always"
     },
     "eslintConfig": {
         "extends": [
@@ -54,6 +60,7 @@
     },
     "build": {
         "appId": "com.vocabulary.pdfreader",
+        "productName": "LinguaReader",
         "files": [
             "build/**/*",
             "node_modules/**/*",
@@ -67,7 +74,66 @@
         "win": {
             "target": [
                 "nsis"
+            ],
+            "icon": "assets/icon.ico",
+            "publish": [
+                "github"
             ]
+        },
+        "mac": {
+            "target": [
+                "dmg",
+                "zip"
+            ],
+            "category": "public.app-category.education",
+            "icon": "assets/icon.icns",
+            "hardenedRuntime": true,
+            "gatekeeperAssess": false,
+            "publish": [
+                "github"
+            ]
+        },
+        "linux": {
+            "target": [
+                "AppImage",
+                "deb",
+                "rpm"
+            ],
+            "category": "Education",
+            "icon": "assets/icons",
+            "publish": [
+                "github"
+            ]
+        },
+        "publish": {
+            "provider": "github",
+            "owner": "yusufdinc974",
+            "repo": "LinguaReader",
+            "private": false,
+            "releaseType": "release"
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true
+        },
+        "dmg": {
+            "contents": [
+                {
+                    "x": 130,
+                    "y": 220
+                },
+                {
+                    "x": 410,
+                    "y": 220,
+                    "type": "link",
+                    "path": "/Applications"
+                }
+            ]
+        },
+        "appImage": {
+            "license": "LICENSE"
         }
     }
 }

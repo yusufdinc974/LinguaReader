@@ -2,6 +2,13 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const url = require('url');
 const fs = require('fs');
+const { autoUpdater } = require('electron-updater');
+const log = require('electron-log');
+
+// Configure logging for auto-updater
+autoUpdater.logger = log;
+autoUpdater.logger.transports.file.level = 'info';
+log.info('App starting...');
 
 // Keep a global reference of the window object to avoid
 // the window being closed automatically when the JavaScript object is garbage collected
@@ -32,22 +39,22 @@ function createWindow() {
   if (isDev) {
     // In development, load from development server
     mainWindow.loadURL('http://localhost:3000');
-    console.log('Loading from development server at http://localhost:3000');
+    log.info('Loading from development server at http://localhost:3000');
     
     // Display the path to the preload script for debugging
-    console.log('Preload script path:', path.join(__dirname, 'preload.js'));
+    log.info('Preload script path:', path.join(__dirname, 'preload.js'));
     
     // Check if preload script exists
     try {
       fs.accessSync(path.join(__dirname, 'preload.js'), fs.constants.R_OK);
-      console.log('Preload script exists and is readable');
+      log.info('Preload script exists and is readable');
     } catch (err) {
-      console.error('Error accessing preload script:', err);
+      log.error('Error accessing preload script:', err);
     }
   } else {
     // In production, load from build directory
     mainWindow.loadFile(path.join(__dirname, '../build/index.html'));
-    console.log('Loading from production build');
+    log.info('Loading from production build');
   }
 
   // Show window when ready to prevent white flash
@@ -67,7 +74,18 @@ function createWindow() {
 }
 
 // Create window when Electron has finished initialization
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+  
+  // Check for updates after app is ready (only in production)
+  if (app.isPackaged) {
+    log.info('Checking for updates...');
+    // Wait a bit before checking for updates to ensure app is fully loaded
+    setTimeout(() => {
+      autoUpdater.checkForUpdatesAndNotify();
+    }, 3000);
+  }
+});
 
 // Quit when all windows are closed, except on macOS
 app.on('window-all-closed', function () {
@@ -78,6 +96,59 @@ app.on('window-all-closed', function () {
 app.on('activate', function () {
   if (mainWindow === null) createWindow();
 });
+
+// ====== Auto-updater event handlers ======
+
+// When an update is available
+autoUpdater.on('update-available', (info) => {
+  log.info('Update available:', info);
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Update Available',
+    message: `A new version (${info.version}) of VocabularyPDFReader is available.`,
+    detail: 'The update will be downloaded in the background.',
+    buttons: ['OK']
+  });
+});
+
+// When an update has been downloaded
+autoUpdater.on('update-downloaded', (info) => {
+  log.info('Update downloaded:', info);
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Update Ready',
+    message: `Version ${info.version} has been downloaded and is ready to install.`,
+    detail: 'The application will restart to install the update.',
+    buttons: ['Restart Now', 'Later']
+  }).then((returnValue) => {
+    if (returnValue.response === 0) {
+      autoUpdater.quitAndInstall(false, true);
+    }
+  });
+});
+
+// When there's an error with the update
+autoUpdater.on('error', (err) => {
+  log.error('Update error:', err);
+  dialog.showMessageBox({
+    type: 'error',
+    title: 'Update Error',
+    message: 'An error occurred while checking for updates.',
+    detail: err.toString()
+  });
+});
+
+// When checking for updates
+autoUpdater.on('checking-for-update', () => {
+  log.info('Checking for update...');
+});
+
+// When no update is available
+autoUpdater.on('update-not-available', (info) => {
+  log.info('No update available:', info);
+});
+
+// ====== IPC Handlers ======
 
 // Handle PDF file selection dialog
 ipcMain.handle('select-pdf', async () => {
@@ -98,11 +169,26 @@ ipcMain.handle('select-pdf', async () => {
         lastModified: stats.mtime.toISOString()
       };
     } catch (error) {
-      console.error('Error reading file:', error);
+      log.error('Error reading file:', error);
       return { error: 'Could not read file information' };
     }
   }
   return { canceled: true };
+});
+
+// Add IPC handler for manual update check
+ipcMain.handle('check-for-updates', async () => {
+  if (!app.isPackaged) {
+    return { success: false, message: 'Updates are only available in production builds' };
+  }
+  
+  try {
+    await autoUpdater.checkForUpdates();
+    return { success: true };
+  } catch (error) {
+    log.error('Manual update check failed:', error);
+    return { success: false, message: error.toString() };
+  }
 });
 
 // Make app global for IPC handlers
@@ -112,5 +198,5 @@ global.mainWindow = mainWindow;
 try {
   require(path.join(__dirname, '../electron/ipc-handlers'))(ipcMain, mainWindow);
 } catch (e) {
-  console.log('No additional IPC handlers loaded:', e.message);
+  log.warn('No additional IPC handlers loaded:', e.message);
 }
