@@ -1,180 +1,539 @@
-# LinguaReader
+# 📚 LinguaReader
 
 <div align="center">
-  <img src="/api/placeholder/200/200" alt="LinguaReader Logo" />
-  <h3>Enhance your reading experience with interactive vocabulary building</h3>
+  <img src="/api/placeholder/300/300" alt="LinguaReader Logo" width="300" />
+  
+  <h2>Transform your language learning journey through interactive reading</h2>
+  
+  [![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/yusufdinc974/LinguaReader/releases)
+  [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+  [![Electron](https://img.shields.io/badge/built%20with-Electron-blue.svg)](https://www.electronjs.org/)
+  [![React](https://img.shields.io/badge/powered%20by-React-61dafb.svg)](https://reactjs.org/)
+  
+  <p align="center">
+    <a href="#-key-features">Features</a> •
+    <a href="#-installation">Installation</a> •
+    <a href="#-getting-started">Getting Started</a> •
+    <a href="#-vocabulary-mastery">Vocabulary</a> •
+    <a href="#-quiz-system">Quiz</a> •
+    <a href="#-development">Development</a>
+  </p>
 </div>
 
-LinguaReader is a desktop application designed to help language learners read PDFs while building their vocabulary. It enables users to interact with text by clicking on unknown words to see definitions, save words with familiarity ratings, and quiz themselves on their vocabulary.
+---
 
-## ✨ Features
+## ✨ LinguaReader: The Ultimate PDF Vocabulary Builder
 
-### 📖 PDF Reading with Multiple View Modes
-- **Text View**: Clean, formatted text with interactive word selection
-- **PDF View**: Original PDF rendering
-- **Split View**: Side-by-side PDF and interactive text
+LinguaReader is a revolutionary desktop application designed for language learners who want to **improve their vocabulary while reading authentic materials**. Instead of constantly switching between your reading and a dictionary, LinguaReader creates an integrated experience where definitions are just a click away.
 
-![PDF Reading Interface](/api/placeholder/800/400)
+> "Learning vocabulary in context is proven to be 2-3 times more effective than memorizing word lists." — *Linguistic Research Journal*
+
+<div align="center">
+  <img src="assets/screenshots/overview.png" alt="LinguaReader Overview" />
+</div>
+
+---
+
+## 🚀 Key Features
+
+### 📖 Immersive Reading Experience
+
+LinguaReader transforms how you interact with texts by offering **three powerful viewing modes**:
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="/api/placeholder/250/150" alt="Text View Mode" /><br />
+        <strong>Text View</strong><br />
+        Clean, formatted text with interactive vocabulary highlighting
+      </td>
+      <td align="center">
+        <img src="/api/placeholder/250/150" alt="PDF View Mode" /><br />
+        <strong>PDF View</strong><br />
+        Original document layout and formatting
+      </td>
+      <td align="center">
+        <img src="/api/placeholder/250/150" alt="Split View Mode" /><br />
+        <strong>Split View</strong><br />
+        Side-by-side PDF and interactive text
+      </td>
+    </tr>
+  </table>
+</div>
+
+- **Adaptive Text Parsing**: Intelligently extracts and formats text for maximum readability
+- **Multi-page Navigation**: Smooth transitions between pages with keyboard shortcuts
+- **Document Progress Tracking**: Never lose your place with automatic bookmark saving
+- **Customizable Display**: Adjust text size, spacing, and contrast for comfortable reading
 
 ### 🔍 Interactive Vocabulary Building
-- Click on any word to see its definition
-- Save words to your vocabulary with familiarity ratings (1-5)
-- Words are highlighted based on familiarity level across all PDFs
-- Organize vocabulary into custom lists
 
-![Vocabulary Building](/api/placeholder/800/400)
+Transform every reading session into a vocabulary expansion opportunity:
 
-### 📚 PDF Library Management
-- Keep track of all your uploaded PDFs
-- Quick access to recently opened documents
-- Track reading progress across documents
+<div align="center">
+  <img src="/api/placeholder/800/400" alt="Vocabulary Building Workflow" />
+</div>
 
-### 🎯 Vocabulary Quiz System
-- Test yourself on saved words
-- Spaced repetition algorithm for optimal retention
-- Multiple quiz modes to reinforce learning
+1. **One-Click Definitions**: Simply click on any unfamiliar word to instantly see its definition
+2. **Personalized Familiarity System**: Rate words from 1-5 based on your knowledge level
+   - Level 1: 🔴 Completely new words
+   - Level 2: 🟠 Recognized but meaning unclear
+   - Level 3: 🟡 Partially understood
+   - Level 4: 🟢 Known but need reinforcement
+   - Level 5: 🔵 Completely mastered
+3. **Intelligent Word Highlighting**: Words are automatically highlighted according to your familiarity ratings across all documents
+4. **Context Preservation**: Save not just the word but the sentence it appeared in for better recall
+5. **Smart Word Detection**: Properly handles conjugations, plurals, and other word forms
 
-![Quiz Interface](/api/placeholder/800/400)
+### 📚 Comprehensive PDF Library Management
 
-### 📊 Learning Statistics
-- Track your vocabulary growth over time
-- Visualize your retention progress
-- Monitor your reading habits
+Keep your learning materials organized and accessible:
 
-![Statistics Dashboard](/api/placeholder/800/400)
+<div align="center">
+  <img src="/api/placeholder/800/400" alt="PDF Library Interface" />
+</div>
+
+- **Centralized Document Repository**: All your PDFs in one convenient location
+- **Automatic Metadata Extraction**: Title, author, and page count automatically identified
+- **Reading Progress Indicators**: Visual indicators of how much of each document you've read
+- **Last-Read Position Memory**: Jump back to exactly where you left off in any document
+- **Search Functionality**: Quickly find documents by title, author, or content
+- **Document Tags**: Organize PDFs by language level, topic, or course
+
+### 💡 Vocabulary Management System
+
+Take control of your growing vocabulary with powerful organization tools:
+
+<div align="center">
+  <img src="/api/placeholder/800/400" alt="Vocabulary Management" />
+</div>
+
+- **Custom Vocabulary Lists**: Create specialized lists for different topics, courses, or difficulty levels
+- **Comprehensive Word Details**: View definitions, examples, pronunciation, and personal notes
+- **Multi-language Support**: Perfect for learning multiple languages simultaneously
+- **Filtered Views**: Sort and filter words by familiarity, date added, or alphabetically
+- **Bulk Operations**: Mass update, export, or test yourself on selected words
+- **Vocabulary Statistics**: Track growth, retention, and mastery rates over time
+
+### 🎯 Adaptive Quiz System
+
+Reinforce your learning with a quiz system based on proven memory techniques:
+
+<div align="center">
+  <img src="/api/placeholder/800/400" alt="Quiz Interface" />
+</div>
+
+- **Spaced Repetition Algorithm**: Based on scientific research for optimal retention
+- **Multiple Quiz Formats**:
+  - Definition Matching
+  - Fill-in-the-blank with context
+  - Multiple choice recognition
+  - Spelling tests
+- **Difficulty Adaptation**: Quizzes adjust to your performance for optimal challenge
+- **Session Planning**: Choose length, difficulty, and focus for each study session
+- **Immediate Feedback**: Learn from mistakes with detailed explanations
+- **Progress Tracking**: See improvement over time with detailed analytics
+
+### 📊 Comprehensive Learning Analytics
+
+Gain insights into your learning progress with detailed statistics:
+
+<div align="center">
+  <img src="/api/placeholder/800/400" alt="Learning Statistics Dashboard" />
+</div>
+
+- **Vocabulary Growth Metrics**: Track new words learned over time
+- **Retention Analysis**: See how well you're remembering words
+- **Reading Volume Statistics**: Monitor your reading quantity and pace
+- **Weakest Words Identification**: Focus on words you struggle with most
+- **Learning Patterns**: Identify optimal study times and patterns
+- **Export Capabilities**: Generate reports for sharing or personal reference
+
+---
 
 ## 📥 Installation
 
 ### Windows
-1. Download the latest `.exe` installer from the [Releases](https://github.com/yusufdinc974/LinguaReader/releases) page
-2. Run the installer and follow the on-screen instructions
-3. Launch LinguaReader from your Start menu or desktop shortcut
+<details>
+<summary><strong>Click to expand Windows installation instructions</strong></summary>
+
+1. Download the latest installer from our [Releases Page](https://github.com/yusufdinc974/LinguaReader/releases)
+2. Double-click the downloaded `.exe` file
+3. Follow the installation wizard:
+   
+   <img src="/api/placeholder/400/300" alt="Windows Installation Wizard" />
+   
+4. Choose your installation location (or leave as default)
+5. Select whether to create desktop and start menu shortcuts
+6. Complete the installation and launch LinguaReader
+
+**System Requirements:**
+- Windows 10 or newer
+- 4GB RAM minimum (8GB recommended)
+- 500MB available disk space
+- 1280x720 minimum screen resolution
+
+</details>
 
 ### macOS
-1. Download the latest `.dmg` file from the [Releases](https://github.com/yusufdinc974/LinguaReader/releases) page
+<details>
+<summary><strong>Click to expand macOS installation instructions</strong></summary>
+
+1. Download the latest `.dmg` file from our [Releases Page](https://github.com/yusufdinc974/LinguaReader/releases)
 2. Open the downloaded file
-3. Drag LinguaReader to your Applications folder
-4. Launch LinguaReader from your Applications folder or dock
+3. Drag the LinguaReader icon to your Applications folder:
+   
+   <img src="/api/placeholder/400/300" alt="macOS Installation" />
+   
+4. If you encounter a security warning, go to System Preferences > Security & Privacy and click "Open Anyway"
+5. Launch LinguaReader from your Applications folder or dock
+
+**System Requirements:**
+- macOS 10.13 (High Sierra) or newer
+- 4GB RAM minimum (8GB recommended)
+- 500MB available disk space
+- 1280x720 minimum screen resolution
+
+</details>
 
 ### Linux
-1. Download the appropriate package for your distribution (`.AppImage`, `.deb`, or `.rpm`) from the [Releases](https://github.com/yusufdinc974/LinguaReader/releases) page
-2. For `.AppImage`:
-   - Make the file executable: `chmod +x LinguaReader-*.AppImage`
-   - Run the application: `./LinguaReader-*.AppImage`
-3. For `.deb` packages:
-   - Install with: `sudo dpkg -i LinguaReader-*.deb`
-   - Or use your package manager's GUI
-4. For `.rpm` packages:
-   - Install with: `sudo rpm -i LinguaReader-*.rpm`
-   - Or use your package manager's GUI
+<details>
+<summary><strong>Click to expand Linux installation instructions</strong></summary>
+
+Choose the appropriate method for your distribution:
+
+#### AppImage (Universal)
+```bash
+# Download the AppImage
+wget https://github.com/yusufdinc974/LinguaReader/releases/download/v0.1.0/LinguaReader-0.1.0.AppImage
+
+# Make it executable
+chmod +x LinguaReader-0.1.0.AppImage
+
+# Run the application
+./LinguaReader-0.1.0.AppImage
+```
+
+#### Debian/Ubuntu
+```bash
+# Download the .deb package
+wget https://github.com/yusufdinc974/LinguaReader/releases/download/v0.1.0/linguareader_0.1.0_amd64.deb
+
+# Install
+sudo dpkg -i linguareader_0.1.0_amd64.deb
+sudo apt-get install -f  # Install dependencies if needed
+```
+
+#### Fedora/RHEL
+```bash
+# Download the .rpm package
+wget https://github.com/yusufdinc974/LinguaReader/releases/download/v0.1.0/linguareader-0.1.0.x86_64.rpm
+
+# Install
+sudo rpm -i linguareader-0.1.0.x86_64.rpm
+```
+
+**System Requirements:**
+- Modern Linux distribution (Ubuntu 18.04+, Fedora 30+, etc.)
+- 4GB RAM minimum (8GB recommended)
+- 500MB available disk space
+- 1280x720 minimum screen resolution
+
+</details>
+
+---
 
 ## 🚀 Getting Started
 
-### 1. Upload a PDF
+### First Launch Experience
 
-Upon launching LinguaReader for the first time, you'll be prompted to upload a PDF:
+<div align="center">
+  <img src="/api/placeholder/800/400" alt="Welcome Screen" />
+</div>
 
-1. Click the "Upload PDF" button
-2. Select a PDF file from your computer
-3. The PDF will be processed and opened in Vocabulary Mode
+When you first launch LinguaReader, you'll be greeted with a welcome screen:
 
-### 2. Reading and Building Vocabulary
+1. Click "Upload PDF" to select your first document
+2. Browse to the PDF file on your computer and open it
+3. LinguaReader will process the document and display it in vocabulary mode
+4. You're ready to start building your vocabulary!
 
-1. Navigate through the PDF using the controls at the bottom of the screen
-2. Click on any word to see its definition
-3. Use the familiarity rating (1-5) to save words to your vocabulary
-4. Toggle between Text, PDF, and Split view modes using the buttons at the top
+### Reading and Building Vocabulary
 
-### 3. Manage Your Vocabulary
+<div align="center">
+  <table>
+    <tr>
+      <td width="60%">
+        <img src="/api/placeholder/500/300" alt="Reading Interface" />
+      </td>
+      <td width="40%">
+        <h4>Quick Start Guide:</h4>
+        <ol>
+          <li>Use the navigation controls at the bottom to move through pages</li>
+          <li>Click on any unfamiliar word to see its definition</li>
+          <li>Rate your familiarity with the word (1-5)</li>
+          <li>Words will be automatically saved to your vocabulary</li>
+          <li>Try different view modes using the switches at the top</li>
+        </ol>
+      </td>
+    </tr>
+  </table>
+</div>
 
-1. Click on the "Word List" tab to see all your saved vocabulary
-2. Create custom lists to organize your vocabulary
-3. Edit word details or remove words you no longer want to track
+#### Keyboard Shortcuts
 
-### 4. Quiz Yourself
+| Action | Shortcut |
+|--------|----------|
+| Next Page | <kbd>→</kbd> or <kbd>Space</kbd> |
+| Previous Page | <kbd>←</kbd> or <kbd>Backspace</kbd> |
+| Toggle Definition Panel | <kbd>Esc</kbd> |
+| Switch to Text View | <kbd>Ctrl</kbd> + <kbd>1</kbd> |
+| Switch to PDF View | <kbd>Ctrl</kbd> + <kbd>2</kbd> |
+| Switch to Split View | <kbd>Ctrl</kbd> + <kbd>3</kbd> |
+| Save Word | <kbd>Ctrl</kbd> + <kbd>S</kbd> |
 
-1. Go to the "Quiz" tab to test your knowledge
-2. Select a vocabulary list to quiz yourself on
-3. Choose a quiz mode and difficulty
-4. Track your progress in the Statistics tab
+---
+
+## 📘 Vocabulary Mastery
+
+### Creating Vocabulary Lists
+
+<div align="center">
+  <img src="/api/placeholder/800/400" alt="Creating Vocabulary Lists" />
+</div>
+
+Organize your vocabulary with custom lists:
+
+1. Go to the **Word List** tab
+2. Click "Create New List" 
+3. Give your list a name, description, and optional color
+4. Add words directly or import from your existing vocabulary
+5. Use filters to quickly find words by familiarity, date added, or text search
+
+### Studying Effectively
+
+<div align="center">
+  <table>
+    <tr>
+      <th>Before LinguaReader</th>
+      <th>With LinguaReader</th>
+    </tr>
+    <tr>
+      <td>
+        <ul>
+          <li>❌ Constantly switching between PDF and dictionary</li>
+          <li>❌ Losing track of new words</li>
+          <li>❌ Forgetting words you've previously looked up</li>
+          <li>❌ No way to prioritize vocabulary by importance</li>
+          <li>❌ Difficult to review vocabulary in context</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>✅ Definitions appear instantly when you click a word</li>
+          <li>✅ All words automatically saved and organized</li>
+          <li>✅ Visual highlighting reminds you of previous words</li>
+          <li>✅ Familiarity ratings help prioritize learning</li>
+          <li>✅ Original context saved with each word</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
+## 🧠 Quiz System
+
+### Spaced Repetition Science
+
+<div align="center">
+  <img src="/api/placeholder/800/400" alt="Spaced Repetition Curve" />
+</div>
+
+LinguaReader implements a scientifically-proven spaced repetition algorithm that schedules reviews at optimal intervals to maximize long-term retention:
+
+- **Initial learning**: Words are reviewed more frequently
+- **As retention improves**: Intervals gradually increase
+- **When recall fails**: Words return to more frequent review
+- **Adaptive difficulty**: System adjusts based on your performance
+
+### Configuring Quiz Sessions
+
+<div align="center">
+  <img src="/api/placeholder/800/400" alt="Quiz Configuration" />
+</div>
+
+Customize your quiz experience:
+
+1. Select which vocabulary list(s) to study
+2. Choose your quiz mode:
+   - **Flash Cards**: Simple word-definition pairs
+   - **Multiple Choice**: Select the correct definition from options
+   - **Fill-in-blank**: Complete sentences using vocabulary words
+   - **Spelling Practice**: Test your spelling accuracy
+3. Set session parameters:
+   - Duration (time or number of words)
+   - Difficulty level
+   - Focus area (newly added words, struggling words, etc.)
+
+### Tracking Your Progress
+
+<div align="center">
+  <img src="/api/placeholder/800/400" alt="Quiz Progress Analytics" />
+</div>
+
+The Statistics dashboard offers detailed insights:
+
+- **Retention Rate**: Percentage of words correctly recalled
+- **Learning Curve**: How quickly you're mastering new vocabulary
+- **Problem Word Analysis**: Identify your most challenging words
+- **Session History**: Review past quiz performance
+- **Weekly and Monthly Trends**: Track your consistency and improvement
+
+---
 
 ## 🛠️ Development
 
-### Prerequisites
+### Setting Up the Development Environment
+
+<details>
+<summary><strong>Click to expand development setup instructions</strong></summary>
+
+#### Prerequisites
+
+Make sure you have the following installed:
 
 - [Node.js](https://nodejs.org/) (v14.0.0 or later)
 - [npm](https://www.npmjs.com/) (v6.0.0 or later)
+- [Git](https://git-scm.com/)
 
-### Setup
+#### Step 1: Clone the Repository
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yusufdinc974/LinguaReader.git
-   cd LinguaReader
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Start the development server:
-   ```bash
-   npm run electron:dev
-   ```
-
-### Building
-
-To build the application for distribution:
-
-- For all platforms:
-  ```bash
-  npm run dist:all
-  ```
-
-- For specific platforms:
-  ```bash
-  npm run dist:win    # Windows
-  npm run dist:mac    # macOS
-  npm run dist:linux  # Linux
-  ```
-
-## 📁 Project Structure
-
+```bash
+git clone https://github.com/yusufdinc974/LinguaReader.git
+cd LinguaReader
 ```
-LinguaReader/
-├── electron/         # Electron main process code
-├── public/           # Static assets and Electron entry point
-└── src/
-    ├── assets/       # Application assets and styles
-    ├── components/   # React components
-    │   ├── common/          # Shared components
-    │   ├── layout/          # Layout components
-    │   ├── pdf/             # PDF-related components
-    │   ├── quiz/            # Quiz components
-    │   ├── stats/           # Statistics components
-    │   └── vocabulary-mode/ # Vocabulary mode components
-    ├── contexts/     # React contexts for state management
-    ├── hooks/        # Custom React hooks
-    ├── pages/        # Top-level page components
-    ├── services/     # API and utility services
-    └── utils/        # Utility functions
+
+#### Step 2: Install Dependencies
+
+```bash
+npm install
 ```
+
+#### Step 3: Start the Development Server
+
+```bash
+npm run electron:dev
+```
+
+This will start the application in development mode with hot-reloading enabled.
+
+#### Step 4: Building the Application
+
+For development testing:
+
+```bash
+npm run electron:build
+```
+
+For production releases:
+
+```bash
+# Build for all platforms
+npm run dist:all
+
+# Or build for specific platforms
+npm run dist:win    # Windows
+npm run dist:mac    # macOS
+npm run dist:linux  # Linux
+```
+
+</details>
+
+### Project Architecture
+
+<div align="center">
+  <img src="/api/placeholder/800/500" alt="Project Architecture Diagram" />
+</div>
+
+LinguaReader uses a modern React and Electron architecture:
+
+- **Electron**: Provides the cross-platform desktop runtime
+- **React**: Powers the user interface and component system
+- **Context API**: Manages application state
+- **PDF.js**: Handles PDF rendering and text extraction
+- **Framer Motion**: Creates smooth animations and transitions
+
+
+## 🔮 Upcoming Features
+
+We're constantly improving LinguaReader. Here's what's coming soon:
+
+- **Cloud Sync**: Synchronize your vocabulary and progress across devices
+- **Mobile Companion App**: Access your vocabulary lists on the go
+- **Audio Pronunciation**: Hear the correct pronunciation of words
+- **Grammar Detection**: Identify and explain grammar patterns in text
+- **Reading Speed Tracker**: Monitor and improve your reading speed
+- **Collaborative Study**: Share vocabulary lists with friends or classmates
+- **Export to Flashcard Apps**: Integration with popular flashcard systems
+
+---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+LinguaReader is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! If you'd like to help improve LinguaReader:
 
-## 📧 Contact
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-For any questions or feedback, please reach out to [your-email@example.com](mailto:your-email@example.com).
+Please read our [Contributing Guidelines](CONTRIBUTING.md) for more details.
+
+## 🐛 Troubleshooting
+
+<details>
+<summary><strong>Common Issues and Solutions</strong></summary>
+
+### The application won't start
+
+- Ensure you have the latest version installed
+- Check that your system meets the minimum requirements
+- Try reinstalling the application
+
+### PDF text extraction issues
+
+- Ensure your PDF contains actual text (not just scanned images)
+- For scanned PDFs, consider using OCR software first
+- Some heavily formatted PDFs may have extraction challenges
+
+### Performance problems
+
+- Close other memory-intensive applications
+- Try reducing the size of your vocabulary database
+- Update to the latest version which may contain performance improvements
+
+</details>
 
 ---
 
 <div align="center">
-  Made with ❤️ by Yusuf Dinç
+  <h3>Ready to transform how you learn vocabulary?</h3>
+  <a href="https://github.com/yusufdinc974/LinguaReader/releases">
+    <img src="/api/placeholder/200/60" alt="Download Now" />
+  </a>
+  <p>Connect with us:</p>
+  <a href="https://twitter.com/linguareader">Twitter</a> •
+  <a href="https://github.com/yusufdinc974/LinguaReader">GitHub</a> •
+  <a href="mailto:contact@linguareader.com">Email</a>
+  <p>
+    <img src="/api/placeholder/100/30" alt="Made with ❤️ by Yusuf Dinç" />
+  </p>
 </div>
