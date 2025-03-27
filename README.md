@@ -337,10 +337,6 @@ Organize your vocabulary with custom lists:
 
 ### Spaced Repetition Science
 
-<div align="center">
-  <img src="assets/screenshots/repetitaion.png" alt="Spaced Repetition Curve" />
-</div>
-
 LinguaReader implements a scientifically-proven spaced repetition algorithm that schedules reviews at optimal intervals to maximize long-term retention:
 
 - **Initial learning**: Words are reviewed more frequently
