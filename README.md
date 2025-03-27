@@ -1,7 +1,7 @@
 # 📚 LinguaReader
 
 <div align="center">
-  <img src="/api/placeholder/300/300" alt="LinguaReader Logo" width="300" />
+  <img src="assets/icon.png" width="300" />
   
   <h2>Transform your language learning journey through interactive reading</h2>
   
@@ -44,17 +44,17 @@ LinguaReader transforms how you interact with texts by offering **three powerful
   <table>
     <tr>
       <td align="center">
-        <img src="/api/placeholder/250/150" alt="Text View Mode" /><br />
+        <img src="assets/screenshots/text.png" alt="Text View Mode" /><br />
         <strong>Text View</strong><br />
         Clean, formatted text with interactive vocabulary highlighting
       </td>
       <td align="center">
-        <img src="/api/placeholder/250/150" alt="PDF View Mode" /><br />
+        <img src="assets/screenshots/pdf.png" alt="PDF View Mode" /><br />
         <strong>PDF View</strong><br />
         Original document layout and formatting
       </td>
       <td align="center">
-        <img src="/api/placeholder/250/150" alt="Split View Mode" /><br />
+        <img src="assets/screenshots/split.png" alt="Split View Mode" /><br />
         <strong>Split View</strong><br />
         Side-by-side PDF and interactive text
       </td>
@@ -71,9 +71,6 @@ LinguaReader transforms how you interact with texts by offering **three powerful
 
 Transform every reading session into a vocabulary expansion opportunity:
 
-<div align="center">
-  <img src="/api/placeholder/800/400" alt="Vocabulary Building Workflow" />
-</div>
 
 1. **One-Click Definitions**: Simply click on any unfamiliar word to instantly see its definition
 2. **Personalized Familiarity System**: Rate words from 1-5 based on your knowledge level
@@ -91,7 +88,7 @@ Transform every reading session into a vocabulary expansion opportunity:
 Keep your learning materials organized and accessible:
 
 <div align="center">
-  <img src="/api/placeholder/800/400" alt="PDF Library Interface" />
+  <img src="assets/screenshots/pdflibrary.png" alt="PDF Library Interface" />
 </div>
 
 - **Centralized Document Repository**: All your PDFs in one convenient location
@@ -106,7 +103,7 @@ Keep your learning materials organized and accessible:
 Take control of your growing vocabulary with powerful organization tools:
 
 <div align="center">
-  <img src="/api/placeholder/800/400" alt="Vocabulary Management" />
+  <img src="assets/screenshots/vocabulary.png" alt="Vocabulary Management" />
 </div>
 
 - **Custom Vocabulary Lists**: Create specialized lists for different topics, courses, or difficulty levels
@@ -121,7 +118,7 @@ Take control of your growing vocabulary with powerful organization tools:
 Reinforce your learning with a quiz system based on proven memory techniques:
 
 <div align="center">
-  <img src="/api/placeholder/800/400" alt="Quiz Interface" />
+  <img src="assets/screenshots/quiz_interface.png" alt="Quiz Interface" />
 </div>
 
 - **Spaced Repetition Algorithm**: Based on scientific research for optimal retention
@@ -140,7 +137,11 @@ Reinforce your learning with a quiz system based on proven memory techniques:
 Gain insights into your learning progress with detailed statistics:
 
 <div align="center">
-  <img src="/api/placeholder/800/400" alt="Learning Statistics Dashboard" />
+  <img src="assets/screenshots/statistic.png" alt="Learning Statistics Dashboard" />
+</div>
+
+<div align="center">
+  <img src="assets/screenshots/statistic2.png" alt="Learning Statistics Dashboard" />
 </div>
 
 - **Vocabulary Growth Metrics**: Track new words learned over time
@@ -162,7 +163,11 @@ Gain insights into your learning progress with detailed statistics:
 2. Double-click the downloaded `.exe` file
 3. Follow the installation wizard:
    
-   <img src="/api/placeholder/400/300" alt="Windows Installation Wizard" />
+    <div align="center">
+  <a href="https://github.com/yusufdinc974/LinguaReader/releases">
+    <img src="https://img.shields.io/badge/Windows_Installation_Wizard-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows Installation Wizard" width="280"/>
+  </a>
+</div>
    
 4. Choose your installation location (or leave as default)
 5. Select whether to create desktop and start menu shortcuts
@@ -184,7 +189,11 @@ Gain insights into your learning progress with detailed statistics:
 2. Open the downloaded file
 3. Drag the LinguaReader icon to your Applications folder:
    
-   <img src="/api/placeholder/400/300" alt="macOS Installation" />
+   <div align="center">
+  <a href="https://github.com/yusufdinc974/LinguaReader/releases">
+    <img src="https://img.shields.io/badge/macOS_Installation-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Installation" width="230"/>
+  </a>
+</div>
    
 4. If you encounter a security warning, go to System Preferences > Security & Privacy and click "Open Anyway"
 5. Launch LinguaReader from your Applications folder or dock
@@ -249,7 +258,7 @@ sudo rpm -i linguareader-0.1.0.x86_64.rpm
 ### First Launch Experience
 
 <div align="center">
-  <img src="/api/placeholder/800/400" alt="Welcome Screen" />
+  <img src="assets/screenshots/welcomepage.png" alt="Welcome Screen" />
 </div>
 
 When you first launch LinguaReader, you'll be greeted with a welcome screen:
@@ -264,10 +273,6 @@ When you first launch LinguaReader, you'll be greeted with a welcome screen:
 <div align="center">
   <table>
     <tr>
-      <td width="60%">
-        <img src="/api/placeholder/500/300" alt="Reading Interface" />
-      </td>
-      <td width="40%">
         <h4>Quick Start Guide:</h4>
         <ol>
           <li>Use the navigation controls at the bottom to move through pages</li>
@@ -281,27 +286,11 @@ When you first launch LinguaReader, you'll be greeted with a welcome screen:
   </table>
 </div>
 
-#### Keyboard Shortcuts
-
-| Action | Shortcut |
-|--------|----------|
-| Next Page | <kbd>→</kbd> or <kbd>Space</kbd> |
-| Previous Page | <kbd>←</kbd> or <kbd>Backspace</kbd> |
-| Toggle Definition Panel | <kbd>Esc</kbd> |
-| Switch to Text View | <kbd>Ctrl</kbd> + <kbd>1</kbd> |
-| Switch to PDF View | <kbd>Ctrl</kbd> + <kbd>2</kbd> |
-| Switch to Split View | <kbd>Ctrl</kbd> + <kbd>3</kbd> |
-| Save Word | <kbd>Ctrl</kbd> + <kbd>S</kbd> |
-
 ---
 
 ## 📘 Vocabulary Mastery
 
 ### Creating Vocabulary Lists
-
-<div align="center">
-  <img src="/api/placeholder/800/400" alt="Creating Vocabulary Lists" />
-</div>
 
 Organize your vocabulary with custom lists:
 
@@ -349,7 +338,7 @@ Organize your vocabulary with custom lists:
 ### Spaced Repetition Science
 
 <div align="center">
-  <img src="/api/placeholder/800/400" alt="Spaced Repetition Curve" />
+  <img src="assets/screenshots/repetitaion.png" alt="Spaced Repetition Curve" />
 </div>
 
 LinguaReader implements a scientifically-proven spaced repetition algorithm that schedules reviews at optimal intervals to maximize long-term retention:
@@ -361,9 +350,6 @@ LinguaReader implements a scientifically-proven spaced repetition algorithm that
 
 ### Configuring Quiz Sessions
 
-<div align="center">
-  <img src="/api/placeholder/800/400" alt="Quiz Configuration" />
-</div>
 
 Customize your quiz experience:
 
@@ -381,7 +367,7 @@ Customize your quiz experience:
 ### Tracking Your Progress
 
 <div align="center">
-  <img src="/api/placeholder/800/400" alt="Quiz Progress Analytics" />
+  <img src="assets/screenshots/progress.png" alt="Quiz Progress Analytics" />
 </div>
 
 The Statistics dashboard offers detailed insights:
@@ -454,10 +440,6 @@ npm run dist:linux  # Linux
 
 ### Project Architecture
 
-<div align="center">
-  <img src="/api/placeholder/800/500" alt="Project Architecture Diagram" />
-</div>
-
 LinguaReader uses a modern React and Electron architecture:
 
 - **Electron**: Provides the cross-platform desktop runtime
@@ -527,13 +509,13 @@ Please read our [Contributing Guidelines](CONTRIBUTING.md) for more details.
 <div align="center">
   <h3>Ready to transform how you learn vocabulary?</h3>
   <a href="https://github.com/yusufdinc974/LinguaReader/releases">
-    <img src="/api/placeholder/200/60" alt="Download Now" />
+    <img src="https://img.shields.io/badge/Download_Now-4A69BD?style=for-the-badge&logo=github&logoColor=white" alt="Download Now" width="200"/>
   </a>
   <p>Connect with us:</p>
   <a href="https://twitter.com/linguareader">Twitter</a> •
   <a href="https://github.com/yusufdinc974/LinguaReader">GitHub</a> •
   <a href="mailto:contact@linguareader.com">Email</a>
   <p>
-    <img src="/api/placeholder/100/30" alt="Made with ❤️ by Yusuf Dinç" />
+    <img src="assets/screenshots/pp.png" alt="Made with ❤️ by Yusuf Dinç" />
   </p>
 </div>
