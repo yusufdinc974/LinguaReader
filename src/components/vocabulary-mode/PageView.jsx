@@ -39,12 +39,15 @@ const PageView = ({
   const [processedSegments, setProcessedSegments] = useState([]);
   const [filteredSegments, setFilteredSegments] = useState([]);
   const [selectionVisible, setSelectionVisible] = useState(false);
+  // Add local state for more immediate visual feedback
+  const [localSelectedMap, setLocalSelectedMap] = useState({});
   
   const { 
     addToSelectedWords, 
     selectedWords: contextSelectedWords, 
     clearSelectedWords,
-    setSelectedWords: setContextSelectedWords
+    setSelectedWords: setContextSelectedWords,
+    removeFromSelectedWords
   } = useVocabulary();
   
   // Use either external or context selected words
@@ -193,18 +196,38 @@ const PageView = ({
     }
   }, [onWordClick, pageLanguage]);
   
-  // Enhanced word selection handler with multi-selection support
-  const handleSelectionChange = useCallback((word, isSelected, language = pageLanguage, position) => {
+  // IMPROVED: Enhanced word selection handler with better position tracking
+  const handleSelectionChange = useCallback((word, isSelected, language = pageLanguage, pageIndex, wordIndex) => {
     if (!word) return;
+    
+    // Create a unique position identifier
+    const positionKey = `${pageIndex || 0}_${wordIndex || 0}`;
     
     // Create a word object with necessary info and position
     const wordData = {
-      id: `temp-${Math.random().toString(36).substr(2, 9)}`,
+      id: `word-${positionKey}-${word}`, // More predictable ID
       word: typeof word === 'string' ? word : String(word), // Ensure word is a string
       sourceLang: language || pageLanguage,
       targetLang: 'en', // Default target language
-      position: position // Add position to track specific instance
+      position: {
+        pageIndex: pageIndex || 0,
+        wordIndex: wordIndex || 0
+      }
     };
+    
+    // Update local selection map for immediate visual feedback
+    if (isSelected) {
+      setLocalSelectedMap(prev => ({
+        ...prev,
+        [positionKey]: true
+      }));
+    } else {
+      setLocalSelectedMap(prev => {
+        const newMap = { ...prev };
+        delete newMap[positionKey];
+        return newMap;
+      });
+    }
     
     if (onSelectionChange) {
       // If using external selection handler, use it
@@ -212,34 +235,58 @@ const PageView = ({
     } else {
       // Use context-based selection if no external handler
       if (isSelected) {
-        // Add to selected words if not already there
+        // Add to selected words
         addToSelectedWords(wordData);
       } else {
-        // Remove from selected words by matching both word and position
-        if (setContextSelectedWords) {
-          setContextSelectedWords(prev => 
-            prev ? prev.filter(w => 
-              !(w.word === wordData.word && w.position === wordData.position)
-            ) : []
-          );
-        }
+        // Remove from selected words - using the improved removeFromSelectedWords
+        removeFromSelectedWords(wordData);
       }
     }
-  }, [addToSelectedWords, setContextSelectedWords, pageLanguage, onSelectionChange]);
+  }, [addToSelectedWords, removeFromSelectedWords, pageLanguage, onSelectionChange]);
   
-  // Check if a word is selected
-  const isWordSelected = useCallback((word, position) => {
-    if (!selectedWords || !word) return false;
+  // IMPROVED: Check if a word is selected with better position checking
+  const isWordSelected = useCallback((word, pageIndex, wordIndex) => {
+    if (!word) return false;
+    
+    // Check local selection map first for immediate feedback
+    const positionKey = `${pageIndex || 0}_${wordIndex || 0}`;
+    if (localSelectedMap[positionKey]) return true;
+    
+    // Exit early if no selected words
+    if (!selectedWords || selectedWords.length === 0) return false;
+    
+    // Clean the word for more accurate comparison
+    const cleanedWord = cleanWord(word, pageLanguage);
     
     return selectedWords.some(selectedWord => {
+      // Handle different types of selectedWord objects
       if (typeof selectedWord === 'string') {
-        return selectedWord === word;
-      } else if (selectedWord && selectedWord.word) {
-        return selectedWord.word === word && selectedWord.position === position;
+        return cleanWord(selectedWord, pageLanguage) === cleanedWord;
       }
+      
+      if (!selectedWord) return false;
+      
+      // Get the word text from the selected word object
+      const selectedText = selectedWord.word || selectedWord.text || selectedWord;
+      if (!selectedText) return false;
+      
+      // Check for exact text match first
+      const selectedCleanedText = cleanWord(selectedText, pageLanguage);
+      if (selectedCleanedText === cleanedWord) {
+        // If we have position data, verify it matches
+        if (selectedWord.position) {
+          // Check both pageIndex and wordIndex for precise matching
+          return (
+            selectedWord.position.pageIndex === pageIndex && 
+            selectedWord.position.wordIndex === wordIndex
+          );
+        }
+        return true; // Text matches and no position to check
+      }
+      
       return false;
     });
-  }, [selectedWords]);
+  }, [selectedWords, pageLanguage, localSelectedMap]);
   
   // Handle legacy selectWord function
   const handleSelectWord = useCallback((word, language = pageLanguage) => {
@@ -254,10 +301,15 @@ const PageView = ({
     addToSelectedWords(wordData);
   }, [addToSelectedWords, pageLanguage]);
   
-  // Handle translation of selected words
+  // UPDATED: Handle translation of selected words with auto-clear
   const handleTranslateSelection = useCallback((words) => {
     if (onTranslateSelection) {
+      // Call external translation handler
       onTranslateSelection(words);
+      
+      // Clear selections after translation
+      clearSelectedWords();
+      setLocalSelectedMap({});
     } else if (onWordClick && words && words.length > 0) {
       // Fallback to clicking the first word
       const combinedWord = {
@@ -268,8 +320,12 @@ const PageView = ({
       };
       
       onWordClick(combinedWord);
+      
+      // Clear selections after translation
+      clearSelectedWords();
+      setLocalSelectedMap({});
     }
-  }, [onTranslateSelection, onWordClick, pageLanguage]);
+  }, [onTranslateSelection, onWordClick, pageLanguage, clearSelectedWords]);
   
   // This function filters out problematic content in Korean PDFs
   const renderProcessedSegments = useCallback((segments, language) => {
@@ -335,6 +391,7 @@ const PageView = ({
           
           if (segment.type === 'character' || segment.type === 'word') {
             const familiarityLevel = getWordFamiliarity(segment.content, segment.language || pageLanguage);
+            const pageIdx = 0; // Single page view
             
             return (
               <WordComponent
@@ -344,7 +401,6 @@ const PageView = ({
                 sourceLang={segment.language || pageLanguage}
                 targetLang="en" // Default target language
                 onWordClick={() => handleWordClick(segment.content, segment.language)}
-                onSelectWord={() => handleSelectWord(segment.content, segment.language)}
                 colorPalette={highlightSettings?.colorPalette || 'standard'}
                 style={{ 
                   display: 'inline-block',
@@ -355,10 +411,10 @@ const PageView = ({
                     padding: '0 2px'
                   } : {})
                 }}
-                // Multi-selection support
-                isSelected={isWordSelected(segment.content, index)}
+                // IMPROVED: Better selection state and handling
+                isSelected={isWordSelected(segment.content, pageIdx, index)}
                 onSelectionChange={(word, selected) => 
-                  handleSelectionChange(word, selected, segment.language, index)
+                  handleSelectionChange(word, selected, segment.language, pageIdx, index)
                 }
                 multiSelectionEnabled={multiSelectionEnabled}
                 onMouseEnter={() => setHoveredWord(segment.content)}
@@ -373,7 +429,10 @@ const PageView = ({
         {/* Multi-word selection toolbar */}
         <MultiWordSelection 
           visible={selectionVisible}
-          onClose={() => clearSelectedWords()}
+          onClose={() => {
+            clearSelectedWords();
+            setLocalSelectedMap({}); // Clear local map too
+          }}
           onTranslate={handleTranslateSelection}
           sourceLang={pageLanguage}
           targetLang="en"
@@ -448,10 +507,10 @@ const PageView = ({
                       onMouseEnter={() => setHoveredWord(cleanedWord)}
                       onMouseLeave={() => setHoveredWord(null)}
                       colorPalette={highlightSettings?.colorPalette || 'standard'}
-                      // Multi-selection support
-                      isSelected={isWordSelected(originalWord, wordIndex)}
+                      // IMPROVED: Better selection state and handling
+                      isSelected={isWordSelected(originalWord, paragraphIndex, wordIndex)}
                       onSelectionChange={(word, selected) => 
-                        handleSelectionChange(word, selected, pageLanguage, wordIndex)
+                        handleSelectionChange(word, selected, pageLanguage, paragraphIndex, wordIndex)
                       }
                       multiSelectionEnabled={multiSelectionEnabled}
                     />
@@ -466,7 +525,10 @@ const PageView = ({
         {/* Multi-word selection toolbar */}
         <MultiWordSelection 
           visible={selectionVisible}
-          onClose={() => clearSelectedWords()}
+          onClose={() => {
+            clearSelectedWords();
+            setLocalSelectedMap({}); // Clear local map too
+          }}
           onTranslate={handleTranslateSelection}
           sourceLang={pageLanguage}
           targetLang="en"
@@ -531,6 +593,7 @@ const PageView = ({
         const originalWord = word;
         const cleanedWord = cleanWord(word, pageLanguage);
         const familiarity = getWordFamiliarity(cleanedWord, pageLanguage);
+        const pageIdx = 0; // Single page view
         
         return (
           <React.Fragment key={index}>
@@ -543,10 +606,10 @@ const PageView = ({
               onMouseEnter={() => setHoveredWord(cleanedWord)}
               onMouseLeave={() => setHoveredWord(null)}
               colorPalette={highlightSettings?.colorPalette || 'standard'}
-              // Multi-selection support
-              isSelected={isWordSelected(originalWord, index)}
+              // IMPROVED: Better selection state and handling
+              isSelected={isWordSelected(originalWord, pageIdx, index)}
               onSelectionChange={(word, selected) => 
-                handleSelectionChange(word, selected, pageLanguage, index)
+                handleSelectionChange(word, selected, pageLanguage, pageIdx, index)
               }
               multiSelectionEnabled={multiSelectionEnabled}
             />
@@ -558,7 +621,10 @@ const PageView = ({
       {/* Multi-word selection toolbar */}
       <MultiWordSelection 
         visible={selectionVisible}
-        onClose={() => clearSelectedWords()}
+        onClose={() => {
+          clearSelectedWords();
+          setLocalSelectedMap({}); // Clear local map too
+        }}
         onTranslate={handleTranslateSelection}
         sourceLang={pageLanguage}
         targetLang="en"

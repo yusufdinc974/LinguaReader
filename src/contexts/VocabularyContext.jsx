@@ -414,6 +414,11 @@ export const VocabularyProvider = ({ children }) => {
     }
   }, []);
   
+  // Clear all selected words - MOVED UP to avoid reference errors
+  const clearSelectedWords = useCallback(() => {
+    setSelectedWords([]);
+  }, []);
+  
   // Add a word to selected words (for multi-selection)
   const addToSelectedWords = useCallback((word) => {
     if (!word) return;
@@ -421,32 +426,63 @@ export const VocabularyProvider = ({ children }) => {
     setSelectedWords(prev => {
       if (!prev) return [word];
       
-      // Check if already selected
-      if (prev.some(w => w.id === word.id)) {
+      // FIXED: Check for duplicates properly based on word property
+      const wordText = typeof word === 'string' ? word : (word.word || word.text || word);
+      
+      // Check if it's already in the selection by comparing the word text
+      const isDuplicate = prev.some(existingWord => {
+        const existingText = typeof existingWord === 'string' ? 
+          existingWord : (existingWord.word || existingWord.text || existingWord);
+        return existingText === wordText;
+      });
+      
+      // If already selected, don't add it again
+      if (isDuplicate) {
         return prev;
       }
+      
+      // Add new word to selection
       return [...prev, word];
     });
   }, []);
   
   // Remove a word from selected words
-  const removeFromSelectedWords = useCallback((wordId) => {
-    if (!wordId) return;
+  const removeFromSelectedWords = useCallback((wordToRemove) => {
+    if (!wordToRemove) return;
     
     setSelectedWords(prev => {
       if (!prev) return [];
-      return prev.filter(w => w.id !== wordId);
+      
+      // FIXED: Support removing by word text, word object, or id
+      const wordText = typeof wordToRemove === 'string' ? 
+        wordToRemove : (wordToRemove.word || wordToRemove.text || wordToRemove.id || wordToRemove);
+      
+      return prev.filter(w => {
+        const currentWordText = typeof w === 'string' ? 
+          w : (w.word || w.text || w.id || w);
+        return currentWordText !== wordText;
+      });
     });
   }, []);
   
-  // Clear all selected words
-  const clearSelectedWords = useCallback(() => {
-    setSelectedWords([]);
-  }, []);
-  
-  // Batch process selected words (e.g., translate all, add all to list)
+  // Process selected words (e.g., translate all, add all to list)
   const processSelectedWords = useCallback(async (action, options = {}) => {
     if (!selectedWords || !selectedWords.length) return false;
+    
+    // Remove any duplicates before processing
+    const uniqueWords = selectedWords.filter((word, index, self) =>
+      index === self.findIndex(w => {
+        // Handle different word object structures
+        const wText = w.text || w.word || w;
+        const wordText = word.text || word.word || word;
+        const wPos = w.position || {};
+        const wordPos = word.position || {};
+        
+        return wText === wordText && 
+               wPos.pageIndex === wordPos.pageIndex && 
+               wPos.wordIndex === wordPos.wordIndex;
+      })
+    );
     
     switch (action) {
       case 'addToList':
@@ -454,7 +490,7 @@ export const VocabularyProvider = ({ children }) => {
         
         // Add all selected words to the specified list
         const results = await Promise.all(
-          selectedWords.map(word => addWordToList(word.id, options.listId))
+          uniqueWords.map(word => addWordToList(word.id, options.listId))
         );
         
         // Return true if all operations succeeded
@@ -465,7 +501,7 @@ export const VocabularyProvider = ({ children }) => {
         
         // Update familiarity for all selected words
         const updateResults = await Promise.all(
-          selectedWords.map(word => updateWordFamiliarity(word.id, options.rating))
+          uniqueWords.map(word => updateWordFamiliarity(word.id, options.rating))
         );
         
         // Return true if all operations succeeded
@@ -474,7 +510,7 @@ export const VocabularyProvider = ({ children }) => {
       case 'delete':
         // Delete all selected words
         const deleteResults = await Promise.all(
-          selectedWords.map(word => removeWord(word.id))
+          uniqueWords.map(word => removeWord(word.id))
         );
         
         // Clear selection after deletion

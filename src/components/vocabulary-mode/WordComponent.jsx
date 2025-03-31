@@ -98,15 +98,23 @@ const WordComponent = ({
     const isMultiSelectKey = e.ctrlKey || e.metaKey;
     
     if (multiSelectionEnabled && isMultiSelectKey && onSelectionChange) {
-      // Select both the word and its instance
+      // Call the selection change handler with the current state toggled
       onSelectionChange(cleanedWord, !isSelected);
-      onSelectionChange(word, !isSelected); // Add the original word as well
-      e.preventDefault(); // Prevent default browser behavior
+      
+      // Make sure to prevent default browser behavior
+      e.preventDefault();
+      e.stopPropagation();
     } else if (onWordClick) {
       // Regular word click behavior (translation)
       onWordClick(cleanedWord);
     }
-  }, [cleanedWord, word, isValid, onWordClick, onSelectionChange, isSelected, multiSelectionEnabled]);
+  }, [cleanedWord, isValid, onWordClick, onSelectionChange, isSelected, multiSelectionEnabled]);
+  
+  // Make sure the component reacts to isSelected prop changes
+  useEffect(() => {
+    // This ensures the component re-renders when isSelected changes
+    // You can add any selection-specific logic here if needed
+  }, [isSelected]);
   
   // Handle detailed view toggle
   const handleDetailsToggle = useCallback((e) => {
@@ -120,7 +128,7 @@ const WordComponent = ({
     
     // If the word is selected, use a distinct highlight color
     if (isSelected) {
-      return 'rgba(75, 105, 255, 0.4)'; // Selection blue
+      return 'rgba(75, 105, 255, 0.4)'; // Selection blue - make sure this is visible enough
     }
     
     // Get the selected color palette

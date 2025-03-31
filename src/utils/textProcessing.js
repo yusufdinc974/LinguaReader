@@ -59,10 +59,10 @@ export const isValidWord = (word, language = 'en') => {
 };
 
 /**
- * Extract words from a text string with proper CJK language support
+ * Extract words from a text string with proper position tracking
  * @param {string} text - Text to extract words from
  * @param {string} language - Language code of the text
- * @returns {Array} - Array of extracted words
+ * @returns {Array} - Array of extracted words with positions
  */
 export const extractWords = (text, language = null) => {
   if (!text) return [];
@@ -73,17 +73,46 @@ export const extractWords = (text, language = null) => {
   // Use language-specific tokenization
   switch (detectedLanguage) {
     case 'ja':
-      return extractJapaneseWords(text);
     case 'zh':
-      return extractChineseWords(text);
     case 'ko':
-      return extractKoreanWords(text);
+      // For CJK languages, preserve the original text without splitting
+      return [{
+        text: text,
+        position: 0,
+        length: text.length,
+        language: detectedLanguage
+      }];
     default:
-      // Original logic for space-delimited languages
-      const wordMatches = text.match(/\b[\w''-]+\b/g) || [];
-      return wordMatches
-        .map(word => cleanWord(word))
-        .filter(word => isValidWord(word));
+      // For Latin languages, use word boundary matching
+      const words = [];
+      const regex = /\b[\p{L}\p{N}]+(?:[-''][\p{L}\p{N}]+)*\b/gu;
+      let match;
+      
+      // Track processed positions to prevent duplicates
+      const processedPositions = new Set();
+      
+      while ((match = regex.exec(text)) !== null) {
+        const position = match.index;
+        const originalWord = match[0];
+        
+        // Create a unique position identifier
+        const positionKey = `${originalWord}:${position}`;
+        
+        // Only add if we haven't processed this exact position before
+        if (!processedPositions.has(positionKey)) {
+          processedPositions.add(positionKey);
+          
+          words.push({
+            text: originalWord,
+            position: position,
+            length: originalWord.length,
+            language: detectedLanguage,
+            cleaned: originalWord.toLowerCase().replace(/^[^\w\u0080-\uFFFF]+|[^\w\u0080-\uFFFF]+$/g, '')
+          });
+        }
+      }
+      
+      return words;
   }
 };
 
@@ -358,141 +387,226 @@ export const calculateReadingLevel = (text, language = null) => {
 };
 
 /**
- * Detect probable language of text
- * Enhanced detection for CJK languages
- * @param {string} text - Text to analyze
- * @returns {string} - Detected language code
+ * Detects the language of a given text with high accuracy
+ * @param {string} text - The text to analyze
+ * @returns {string} - The detected language code ('en', 'es', 'ja', 'zh', 'ko', etc.)
  */
 export const detectLanguage = (text) => {
-  if (!text || text.length < 10) return 'en';
-  
-  // Check for CJK scripts with better differentiation
-  
-  // Japanese specific characters (hiragana and katakana)
-  const hasJapaneseSpecific = /[\u3040-\u309F\u30A0-\u30FF]/.test(text);
-  
-  // Korean specific characters (Hangul)
-  const hasKoreanSpecific = /[\uAC00-\uD7AF\u1100-\u11FF]/.test(text);
-  
-  // Chinese/Kanji characters (shared by Japanese and Chinese)
-  const hasHanCharacters = /[\u4E00-\u9FFF\u3400-\u4DBF\u20000-\u2A6DF\u2A700-\u2B73F\u2B740-\u2B81F\u2B820-\u2CEAF]/.test(text);
-  
-  // Check for Japanese first (presence of hiragana/katakana is a strong indicator)
-  if (hasJapaneseSpecific) {
+  if (!text || typeof text !== 'string') return 'en';
+
+  // Clean the text first
+  const cleanText = text.trim();
+  if (!cleanText) return 'en';
+
+  // Character type counters
+  const counts = {
+    latin: 0,          // Basic Latin letters
+    latinExt: 0,       // Extended Latin (accented characters)
+    cjk: 0,            // Chinese/Japanese Kanji
+    hiragana: 0,       // Japanese Hiragana
+    katakana: 0,       // Japanese Katakana
+    hangul: 0,         // Korean Hangul
+    cyrillic: 0,       // Russian and other Cyrillic scripts
+    arabic: 0,         // Arabic script
+    devanagari: 0,     // Hindi and other Indic scripts
+    thai: 0,           // Thai script
+    punctuation: 0     // General punctuation
+  };
+
+  // Regular expressions for different scripts
+  const patterns = {
+    latin: /[a-zA-Z]/,
+    latinExt: /[\u00C0-\u00FF\u0100-\u017F]/,
+    cjk: /[\u4E00-\u9FFF\u3400-\u4DBF]/,
+    hiragana: /[\u3040-\u309F]/,
+    katakana: /[\u30A0-\u30FF]/,
+    hangul: /[\uAC00-\uD7AF\u1100-\u11FF]/,
+    cyrillic: /[\u0400-\u04FF]/,
+    arabic: /[\u0600-\u06FF]/,
+    devanagari: /[\u0900-\u097F]/,
+    thai: /[\u0E00-\u0E7F]/,
+    punctuation: /[!.,;:?'"()\-]/
+  };
+
+  // Common words patterns for different languages
+  const commonPatterns = {
+    en: /\b(the|and|in|to|of|a|is|that|for|it|with|you|this|on|are|was|have)\b/gi,
+    es: /\b(el|la|en|de|que|y|a|los|se|del|las|un|por|con|una|su|para|es)\b/gi,
+    fr: /\b(le|la|les|des|un|une|et|en|de|du|dans|sur|pour|par|avec|qui)\b/gi,
+    de: /\b(der|die|das|und|in|zu|den|mit|von|für|auf|dem|sie|ist|ein)\b/gi,
+    pt: /\b(o|a|de|que|e|do|da|em|um|para|com|não|uma|os|no|se)\b/gi
+  };
+
+  // Count character types
+  for (const char of cleanText) {
+    for (const [script, pattern] of Object.entries(patterns)) {
+      if (pattern.test(char)) {
+        counts[script]++;
+      }
+    }
+  }
+
+  // Calculate total meaningful characters (excluding punctuation and spaces)
+  const totalChars = Object.values(counts).reduce((sum, count) => sum + count, 0) - counts.punctuation;
+  if (totalChars === 0) return 'en';
+
+  // Calculate percentages
+  const percentages = {};
+  for (const [script, count] of Object.entries(counts)) {
+    if (script !== 'punctuation') {
+      percentages[script] = (count / totalChars) * 100;
+    }
+  }
+
+  // Common word matches for Latin-based languages
+  const wordMatches = {};
+  if (percentages.latin + percentages.latinExt > 30) {
+    for (const [lang, pattern] of Object.entries(commonPatterns)) {
+      const matches = cleanText.match(pattern) || [];
+      wordMatches[lang] = matches.length;
+    }
+  }
+
+  // Decision logic with thresholds
+  const STRONG_THRESHOLD = 60;  // Strong indication of a script
+  const MEDIUM_THRESHOLD = 30;  // Medium indication of a script
+  const WEAK_THRESHOLD = 15;    // Weak indication of a script
+
+  // Japanese detection (combination of Kanji, Hiragana, and Katakana)
+  const japaneseTotal = percentages.hiragana + percentages.katakana + percentages.cjk;
+  if (japaneseTotal > MEDIUM_THRESHOLD && percentages.hiragana > 5) {
     return 'ja';
   }
-  
-  // Check for Korean
-  if (hasKoreanSpecific) {
+
+  // Korean detection (Hangul with possible Hanja)
+  if (percentages.hangul > MEDIUM_THRESHOLD) {
     return 'ko';
   }
-  
-  // If we have Han characters but no hiragana/katakana or Hangul, it's likely Chinese
-  if (hasHanCharacters) {
+
+  // Chinese detection (primarily CJK characters)
+  if (percentages.cjk > STRONG_THRESHOLD && percentages.hiragana + percentages.katakana < 5) {
     return 'zh';
   }
-  
-  // Russian (Cyrillic)
-  if (/[\u0400-\u04FF]/.test(text)) {
-    return 'ru';
+
+  // Latin script languages
+  if (percentages.latin + percentages.latinExt > MEDIUM_THRESHOLD) {
+    // Find the language with the most common word matches
+    const maxMatches = Math.max(...Object.values(wordMatches));
+    if (maxMatches > 0) {
+      const detectedLang = Object.keys(wordMatches).find(lang => wordMatches[lang] === maxMatches);
+      return detectedLang;
+    }
   }
-  
-  // Arabic
-  if (/[\u0600-\u06FF]/.test(text)) {
-    return 'ar';
-  }
-  
-  // Check for special Latin characters
-  // If text contains Spanish characters, likely Spanish
-  if (/[áéíóúüñ¿¡]/i.test(text)) {
-    return 'es';
-  }
-  
-  // If text contains French characters, likely French
-  if (/[àâçéèêëîïôùûüÿæœ]/i.test(text)) {
-    return 'fr';
-  }
-  
-  // If text contains German characters, likely German
-  if (/[äöüß]/i.test(text)) {
-    return 'de';
-  }
-  
-  // Check common word patterns for Latin alphabets
-  const commonEnglishWords = ['the', 'and', 'of', 'to', 'in', 'a', 'is', 'that', 'for', 'it'];
-  const commonSpanishWords = ['el', 'la', 'de', 'que', 'y', 'a', 'en', 'un', 'ser', 'se'];
-  const commonFrenchWords = ['le', 'la', 'de', 'et', 'à', 'un', 'être', 'que', 'en', 'qui'];
-  const commonGermanWords = ['der', 'die', 'das', 'und', 'ist', 'in', 'von', 'zu', 'mit', 'den'];
-  
-  const words = extractWords(text.toLowerCase());
-  
-  let englishCount = 0;
-  let spanishCount = 0;
-  let frenchCount = 0;
-  let germanCount = 0;
-  
-  for (const word of words) {
-    if (commonEnglishWords.includes(word)) englishCount++;
-    if (commonSpanishWords.includes(word)) spanishCount++;
-    if (commonFrenchWords.includes(word)) frenchCount++;
-    if (commonGermanWords.includes(word)) germanCount++;
-  }
-  
-  // Calculate relative frequency
-  const totalWords = words.length || 1; // Avoid division by zero
-  const englishFreq = englishCount / totalWords;
-  const spanishFreq = spanishCount / totalWords;
-  const frenchFreq = frenchCount / totalWords;
-  const germanFreq = germanCount / totalWords;
-  
-  // Find highest frequency
-  const frequencies = [
-    { lang: 'en', freq: englishFreq },
-    { lang: 'es', freq: spanishFreq },
-    { lang: 'fr', freq: frenchFreq },
-    { lang: 'de', freq: germanFreq }
-  ];
-  
-  // Sort by frequency (descending)
-  frequencies.sort((a, b) => b.freq - a.freq);
-  
-  // If highest frequency is significant, return that language
-  if (frequencies[0].freq > 0.05) {
-    return frequencies[0].lang;
-  }
-  
-  // Default to English for Latin alphabet without special markers
-  if (/^[a-z0-9\s.,;:!?"'()\-]+$/i.test(text)) {
-    return 'en';
-  }
-  
-  return 'en'; // Default fallback
+
+  // Other scripts
+  if (percentages.cyrillic > STRONG_THRESHOLD) return 'ru';
+  if (percentages.arabic > STRONG_THRESHOLD) return 'ar';
+  if (percentages.devanagari > STRONG_THRESHOLD) return 'hi';
+  if (percentages.thai > STRONG_THRESHOLD) return 'th';
+
+  // If no strong matches found, use the script with the highest percentage
+  const dominantScript = Object.entries(percentages)
+    .filter(([script]) => script !== 'punctuation')
+    .reduce((a, b) => (a[1] > b[1] ? a : b))[0];
+
+  // Map dominant script to language
+  const scriptToLang = {
+    latin: 'en',
+    latinExt: 'en',
+    cjk: 'zh',
+    hiragana: 'ja',
+    katakana: 'ja',
+    hangul: 'ko',
+    cyrillic: 'ru',
+    arabic: 'ar',
+    devanagari: 'hi',
+    thai: 'th'
+  };
+
+  return scriptToLang[dominantScript] || 'en';
 };
 
 /**
- * Split text into tokens while preserving whitespace and punctuation
- * Enhanced for CJK languages
+ * Split text into tokens while preserving positions
  * @param {string} text - Text to split
  * @param {string} language - Language of the text
- * @returns {Array} - Array of tokens (words, whitespace, punctuation)
+ * @returns {Array} - Array of tokens with positions
  */
 export const splitTextIntoTokens = (text, language = null) => {
   if (!text) return [];
   
   const detectedLanguage = language || detectLanguage(text);
   
-  // For CJK languages, we tokenize differently
+  // For CJK languages, preserve the original text
   if (['ja', 'zh', 'ko'].includes(detectedLanguage)) {
-    // For CJK, we tokenize each character individually
-    const tokens = [];
-    for (let i = 0; i < text.length; i++) {
-      tokens.push(text[i]);
-    }
-    return tokens;
+    return [{
+      text: text,
+      type: 'text',
+      position: 0,
+      length: text.length,
+      language: detectedLanguage
+    }];
   }
   
-  // Original logic for Latin script languages
-  return text.split(/(\b\w+\b|\s+|[^\w\s]+)/g).filter(Boolean);
+  const tokens = [];
+  const regex = /(\b[\p{L}\p{N}]+(?:[-''][\p{L}\p{N}]+)*\b)|(\s+)|([^\w\s])/gu;
+  let match;
+  let lastIndex = 0;
+  
+  while ((match = regex.exec(text)) !== null) {
+    const [fullMatch, word, whitespace, punctuation] = match;
+    const position = match.index;
+    
+    // Add any skipped text
+    if (position > lastIndex) {
+      tokens.push({
+        text: text.slice(lastIndex, position),
+        type: 'other',
+        position: lastIndex,
+        length: position - lastIndex
+      });
+    }
+    
+    // Add the matched token
+    if (word) {
+      tokens.push({
+        text: word,
+        type: 'word',
+        position: position,
+        length: word.length,
+        language: detectedLanguage,
+        cleaned: word.toLowerCase().replace(/^[^\w\u0080-\uFFFF]+|[^\w\u0080-\uFFFF]+$/g, '')
+      });
+    } else if (whitespace) {
+      tokens.push({
+        text: whitespace,
+        type: 'whitespace',
+        position: position,
+        length: whitespace.length
+      });
+    } else if (punctuation) {
+      tokens.push({
+        text: punctuation,
+        type: 'punctuation',
+        position: position,
+        length: punctuation.length
+      });
+    }
+    
+    lastIndex = position + fullMatch.length;
+  }
+  
+  // Add any remaining text
+  if (lastIndex < text.length) {
+    tokens.push({
+      text: text.slice(lastIndex),
+      type: 'other',
+      position: lastIndex,
+      length: text.length - lastIndex
+    });
+  }
+  
+  return tokens;
 };
 
 /**

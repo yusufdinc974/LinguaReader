@@ -83,7 +83,7 @@ export const extractPdfText = async (pdfData) => {
       
       // Extract text items and process them
       console.log(`Processing text content for page ${pageNum}`);
-      const processedContent = processTextContent(textContent, page);
+      const processedContent = await processTextContent(textContent, page);
       console.log(`Page ${pageNum} processed, paragraphs:`, processedContent.paragraphs.length);
       
       pages.push({
@@ -162,28 +162,28 @@ const loadPdfFromPath = async (path) => {
 
 /**
  * Process text content from a PDF page
- * Enhanced with CJK language support
+ * Enhanced with CJK language support and better image handling
  * @param {Object} textContent - Text content object from PDF.js
  * @param {Object} page - PDF.js page object
  * @returns {Object} - Processed text with paragraphs, sentences, and words
  */
-const processTextContent = (textContent, page) => {
+const processTextContent = async (textContent, page) => {
   // Get page viewport for coordinate reference
   const viewport = page.getViewport({ scale: 1.0 });
   
-  // Extract text items
+  // Get page dimensions
+  const { width, height } = viewport;
+  
+  // Extract text items with their positions and dimensions
   const textItems = textContent.items.map(item => ({
     text: item.str,
     x: item.transform[4],
     y: item.transform[5],
     width: item.width,
     height: item.height,
-    fontName: item.fontName
+    fontName: item.fontName,
+    fontSize: Math.sqrt(item.transform[0] * item.transform[0] + item.transform[1] * item.transform[1])
   }));
-  
-  // Check if the text contains CJK characters
-  const allText = textItems.map(item => item.text).join(' ');
-  const hasCJKCharacters = /[\u3000-\u9FFF\uAC00-\uD7AF]/.test(allText);
   
   // Sort text items by vertical position (top to bottom)
   // And then by horizontal position (left to right)
@@ -200,26 +200,40 @@ const processTextContent = (textContent, page) => {
   });
   
   // Detect language
+  const allText = textItems.map(item => item.text).join(' ');
   const detectedLanguage = detectLanguage(allText);
   console.log('Detected language:', detectedLanguage);
   
-  // Group text items into lines with special handling for CJK languages
-  const lines = hasCJKCharacters ? 
-    groupIntoLinesForCJK(textItems, detectedLanguage) : 
-    groupIntoLines(textItems);
+  // Group text items into lines
+  const lines = groupIntoLines(textItems);
   
-  // Process differently based on language
+  // Process text based on language
   let paragraphs, words;
   
   if (['ja', 'zh', 'ko'].includes(detectedLanguage)) {
-    // For CJK languages, use special processing
-    const result = processCJKContent(lines, detectedLanguage);
-    paragraphs = result.paragraphs;
-    words = result.words;
+    // For CJK languages, preserve original text structure
+    paragraphs = lines.map(line => ({
+      text: line.items.map(item => item.text).join(''),
+      items: line.items,
+      language: detectedLanguage
+    }));
+    
+    // For CJK, keep original text items as words
+    words = textItems.map(item => ({
+      text: item.text,
+      x: item.x,
+      y: item.y,
+      width: item.width,
+      height: item.height,
+      fontName: item.fontName,
+      fontSize: item.fontSize,
+      language: detectedLanguage,
+      isOriginal: true // Flag to indicate this is original text
+    }));
   } else {
-    // For Latin and other scripts, use the standard processing
+    // For Latin languages, process normally
     paragraphs = groupIntoParagraphs(lines);
-    words = extractWords(textItems);
+    words = extractWords(lines, detectedLanguage);
   }
   
   return {
@@ -235,250 +249,39 @@ const processTextContent = (textContent, page) => {
 };
 
 /**
- * Special line grouping for CJK languages
- */
-const groupIntoLinesForCJK = (textItems, language) => {
-  const lines = [];
-  let currentLine = [];
-  let prevY = null;
-  
-  for (const item of textItems) {
-    // For Korean, check for English text that might be mixed in
-    if (language === 'ko') {
-      // Detect if this item is primarily English
-      const isEnglishText = /^[a-zA-Z0-9\s.,;:!?"'()\-]+$/.test(item.text);
-      
-      // If it's English text in a Korean document, handle it specially
-      if (isEnglishText) {
-        // If there's a current line, finalize it
-        if (currentLine.length > 0) {
-          const lineText = currentLine.map(item => item.text).join('');
-          lines.push({
-            text: lineText,
-            items: [...currentLine],
-            y: currentLine[0].y,
-            isKorean: true
-          });
-          currentLine = [];
-        }
-        
-        // Add the English text as its own line
-        lines.push({
-          text: item.text,
-          items: [item],
-          y: item.y,
-          isEnglish: true
-        });
-        
-        prevY = item.y;
-        continue;
-      }
-    }
-    
-    // Regular CJK line handling
-    // If this is first item or the Y position is similar to previous item
-    if (prevY === null || Math.abs(item.y - prevY) < 5) {
-      currentLine.push(item);
-    } else {
-      // New line detected
-      if (currentLine.length > 0) {
-        // For CJK, we don't add spaces between characters in the same line
-        const lineText = currentLine.map(item => item.text).join('');
-        lines.push({
-          text: lineText,
-          items: [...currentLine],
-          y: currentLine[0].y,
-          isCJK: true
-        });
-        currentLine = [item];
-      }
-    }
-    
-    prevY = item.y;
-  }
-  
-  // Add the last line if not empty
-  if (currentLine.length > 0) {
-    const lineText = currentLine.map(item => item.text).join('');
-    lines.push({
-      text: lineText,
-      items: [...currentLine],
-      y: currentLine[0].y,
-      isCJK: true
-    });
-  }
-  
-  return lines;
-};
-
-/**
- * Process CJK content specially
- * @param {Array} lines - Array of text lines
- * @param {string} language - The detected language
- * @returns {Object} - Processed paragraphs and words
- */
-const processCJKContent = (lines, language) => {
-  const paragraphs = [];
-  const words = [];
-  
-  // Group lines into paragraphs
-  let currentParagraph = [];
-  
-  for (let i = 0; i < lines.length; i++) {
-    // Skip English lines in Korean text for paragraph grouping
-    if (language === 'ko' && lines[i].isEnglish) {
-      // If we have a partial paragraph, complete it before the English content
-      if (currentParagraph.length > 0) {
-        const paragraphText = currentParagraph.map(line => line.text).join('');
-        paragraphs.push({
-          text: paragraphText,
-          lines: [...currentParagraph],
-          language: language
-        });
-        currentParagraph = [];
-      }
-      
-      // Add English content as separate paragraph
-      paragraphs.push({
-        text: lines[i].text,
-        lines: [lines[i]],
-        language: 'en',
-        isEmbeddedEnglish: true
-      });
-      
-      continue;
-    }
-    
-    currentParagraph.push(lines[i]);
-    
-    // Check if this is the end of a paragraph
-    const isLastLine = i === lines.length - 1;
-    const hasSignificantGap = i < lines.length - 1 && 
-                             (lines[i].y - lines[i+1].y) > 15;
-    const nextLineIsEnglish = i < lines.length - 1 && lines[i+1].isEnglish;
-    
-    if (isLastLine || hasSignificantGap || nextLineIsEnglish) {
-      // End of paragraph
-      // Join without spaces for CJK text
-      const paragraphText = currentParagraph.map(line => line.text).join('');
-      paragraphs.push({
-        text: paragraphText,
-        lines: [...currentParagraph],
-        language: language
-      });
-      currentParagraph = [];
-    }
-  }
-  
-  // For CJK languages, extract individual characters as "words"
-  for (const line of lines) {
-    // Skip English lines in Korean text for character extraction
-    if (language === 'ko' && line.isEnglish) {
-      // For English text in Korean document, extract words normally
-      const englishWords = line.text.match(/\b[\w''-]+\b/g) || [];
-      
-      // Calculate approximate character width for positioning
-      const avgCharWidth = line.items[0].width / line.items[0].text.length;
-      
-      for (const word of englishWords) {
-        // Find position of this word in the original string
-        const wordIndex = line.text.indexOf(word);
-        if (wordIndex === -1) continue;
-        
-        // Calculate approximate position
-        const wordX = line.items[0].x + (wordIndex * avgCharWidth);
-        const wordWidth = word.length * avgCharWidth;
-        
-        words.push({
-          text: word,
-          x: wordX,
-          y: line.y,
-          width: wordWidth,
-          height: line.items[0].height || 20, // Default height if not available
-          fontName: line.items[0].fontName,
-          isEnglish: true,
-          isCJK: false,
-          language: 'en'
-        });
-      }
-      
-      continue;
-    }
-    
-    const lineText = line.text;
-    
-    // Calculate approximate character width for positioning
-    const avgCharWidth = line.items.reduce((sum, item) => sum + (item.width / item.text.length), 0) / line.items.length;
-    
-    // Process each character in the line
-    for (let i = 0; i < lineText.length; i++) {
-      const char = lineText[i];
-      
-      // Skip whitespace and control characters
-      if (/\s/.test(char) || char.charCodeAt(0) < 32) continue;
-      
-      // Calculate approximate X position
-      const charX = line.items[0].x + (i * avgCharWidth);
-      
-      // Check if this is a genuine Korean/CJK character
-      const isCJKChar = language === 'ko' ? 
-        /[\uAC00-\uD7AF\u1100-\u11FF]/.test(char) : 
-        /[\u3000-\u9FFF\uAC00-\uD7AF]/.test(char);
-      
-      words.push({
-        text: char,
-        x: charX,
-        y: line.y,
-        width: avgCharWidth,
-        height: line.items[0].height || 20, // Default height if not available
-        fontName: line.items[0].fontName,
-        isCJK: true,
-        isHanScript: isCJKChar,
-        language: language
-      });
-    }
-  }
-  
-  return { paragraphs, words };
-};
-
-/**
- * Group text items into lines based on Y coordinates
+ * Group text items into lines based on Y coordinates and line breaks
  * @param {Array} textItems - Array of text items
  * @returns {Array} - Array of line objects
  */
 const groupIntoLines = (textItems) => {
   const lines = [];
   let currentLine = [];
-  let prevY = null;
+  let lastY = null;
   
   for (const item of textItems) {
-    // If this is first item or the Y position is similar to previous item
-    if (prevY === null || Math.abs(item.y - prevY) < 5) {
+    if (lastY === null || Math.abs(item.y - lastY) < 5) {
+      // Same line
       currentLine.push(item);
     } else {
-      // New line detected
+      // New line
       if (currentLine.length > 0) {
-        const lineText = currentLine.map(item => item.text).join(' ');
         lines.push({
-          text: lineText,
-          items: [...currentLine],
-          y: currentLine[0].y
+          items: currentLine,
+          y: currentLine[0].y,
+          text: currentLine.map(item => item.text).join('')
         });
-        currentLine = [item];
       }
+      currentLine = [item];
     }
-    
-    prevY = item.y;
+    lastY = item.y;
   }
   
-  // Add the last line if not empty
+  // Add last line
   if (currentLine.length > 0) {
-    const lineText = currentLine.map(item => item.text).join(' ');
     lines.push({
-      text: lineText,
-      items: [...currentLine],
-      y: currentLine[0].y
+      items: currentLine,
+      y: currentLine[0].y,
+      text: currentLine.map(item => item.text).join('')
     });
   }
   
@@ -519,43 +322,67 @@ const groupIntoParagraphs = (lines) => {
 };
 
 /**
- * Extract individual words from text items
- * @param {Array} textItems - Array of text items
+ * Extract individual words from text lines
+ * @param {Array} lines - Array of line objects
+ * @param {string} language - Detected language
  * @returns {Array} - Array of word objects with position data
  */
-const extractWords = (textItems) => {
+const extractWords = (lines, language) => {
   const words = [];
   
-  for (const item of textItems) {
-    // Split text into words (handling various separators)
-    const wordMatches = item.text.match(/\b[\w''-]+\b/g);
+  for (const line of lines) {
+    // Get the text content of the line
+    const lineText = line.text;
+    
+    // Split the line into words using spaces and punctuation as delimiters
+    // This regex matches words including accented characters and hyphens
+    const wordMatches = lineText.match(/[\p{L}\p{N}]+(?:[-''][\p{L}\p{N}]+)*/gu);
     
     if (!wordMatches) continue;
     
     let currentPosition = 0;
+    let accumulatedWidth = 0;
     
     for (const word of wordMatches) {
       // Find position of this word in the original string
-      const wordIndex = item.text.indexOf(word, currentPosition);
+      const wordIndex = lineText.indexOf(word, currentPosition);
       if (wordIndex === -1) continue;
       
-      // Calculate approximate position based on character index
-      const charWidth = item.width / item.text.length;
-      const wordX = item.x + (wordIndex * charWidth);
-      const wordWidth = word.length * charWidth;
+      // Calculate the x position based on the original line items
+      let wordX = line.items[0].x;
+      let wordWidth = 0;
+      
+      // Find which text item contains this word
+      for (const item of line.items) {
+        if (item.text.includes(word)) {
+          const itemWordIndex = item.text.indexOf(word);
+          const charWidth = item.width / item.text.length;
+          wordX = item.x + (itemWordIndex * charWidth);
+          wordWidth = word.length * charWidth;
+          break;
+        }
+      }
+      
+      // If we couldn't find the exact item, estimate based on position
+      if (wordWidth === 0) {
+        const avgCharWidth = line.items[0].width / line.items[0].text.length;
+        wordWidth = word.length * avgCharWidth;
+      }
       
       words.push({
         text: word,
         x: wordX,
-        y: item.y,
+        y: line.items[0].y,
         width: wordWidth,
-        height: item.height,
-        fontName: item.fontName,
-        originalItem: item,
-        isCJK: false
+        height: line.items[0].height,
+        fontName: line.items[0].fontName,
+        originalLine: line,
+        isCJK: false,
+        language: language
       });
       
       currentPosition = wordIndex + word.length;
+      accumulatedWidth += wordWidth;
     }
   }
   
