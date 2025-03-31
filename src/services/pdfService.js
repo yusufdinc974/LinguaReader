@@ -1,6 +1,7 @@
 /**
  * PDF Service
  * Handles PDF loading, parsing, and rendering using PDF.js
+ * Enhanced with CJK language support
  */
 
 import * as pdfjsLib from 'pdfjs-dist';
@@ -9,6 +10,10 @@ import { PDFDocumentProxy } from 'pdfjs-dist';
 
 // IMPORTANT: Use HTTPS explicit protocol instead of protocol-relative URL (which can fail in Electron)
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+// Use local cmaps to avoid CORS issues for CJK languages
+const CMAP_URL = '/cmaps/';
+const CMAP_PACKED = true;
 
 // Keep track of the current rendering task so we can cancel it if needed
 let currentRenderTask = null;
@@ -40,10 +45,10 @@ export const loadPDFDocument = async (filePath) => {
           // Load the PDF document with enhanced rendering options
           const loadingTask = pdfjsLib.getDocument({
             data,
+            // Use local cmaps to avoid CORS issues
+            cMapUrl: CMAP_URL,
+            cMapPacked: CMAP_PACKED,
             // Enable better image quality
-            cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/cmaps/',
-            cMapPacked: true,
-            // Enable enhanced rendering options
             useSystemFonts: true,
             disableFontFace: false,
             // Set higher quality rendering
@@ -68,9 +73,9 @@ export const loadPDFDocument = async (filePath) => {
         // Load the PDF document with enhanced rendering options
         const loadingTask = pdfjsLib.getDocument({
           data,
-          // Enable better image quality
-          cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/cmaps/',
-          cMapPacked: true,
+          // Use local cmaps to avoid CORS issues
+          cMapUrl: CMAP_URL,
+          cMapPacked: CMAP_PACKED,
           // Enable enhanced rendering options
           useSystemFonts: true,
           disableFontFace: false,
@@ -89,8 +94,8 @@ export const loadPDFDocument = async (filePath) => {
         try {
           const loadingTask = pdfjsLib.getDocument({
             url: filePath,
-            cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/cmaps/',
-            cMapPacked: true,
+            cMapUrl: CMAP_URL,
+            cMapPacked: CMAP_PACKED,
             useSystemFonts: true,
             disableFontFace: false,
             maxImageSize: 8192 * 8192,
@@ -110,8 +115,8 @@ export const loadPDFDocument = async (filePath) => {
       // Load PDF directly from URL with enhanced options
       const loadingTask = pdfjsLib.getDocument({
         url: filePath,
-        cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/cmaps/',
-        cMapPacked: true,
+        cMapUrl: CMAP_URL,
+        cMapPacked: CMAP_PACKED,
         useSystemFonts: true,
         disableFontFace: false,
         maxImageSize: 8192 * 8192,

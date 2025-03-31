@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { cleanWord, isValidWord } from '../../utils/textProcessing';
+import { cleanWord, isValidWord, getCharacterMetadata } from '../../utils/textProcessing';
 
 // Color palette options
 const colorPalettes = {
@@ -32,7 +32,7 @@ const colorPalettes = {
 
 /**
  * WordComponent - An interactive word display for vocabulary learning
- * Enhanced with language-specific handling
+ * Enhanced with language-specific handling for CJK languages
  * 
  * @param {Object} props - Component props
  * @param {string} props.word - The word text to display
@@ -42,6 +42,7 @@ const colorPalettes = {
  * @param {Function} props.onWordClick - Function to call when word is clicked
  * @param {string} props.colorPalette - Color palette to use ('standard', 'pastel', or 'vibrant')
  * @param {Object} props.style - Additional styles to apply
+ * @param {Object} props.metadata - Additional metadata for CJK characters (strokes, radicals, etc.)
  */
 const WordComponent = ({
   word,
@@ -50,10 +51,14 @@ const WordComponent = ({
   targetLang = 'es',
   onWordClick,
   colorPalette = 'standard',
-  style = {}
+  style = {},
+  metadata = null
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [actualFamiliarityLevel, setActualFamiliarityLevel] = useState(0);
+  const [characterData, setCharacterData] = useState(metadata);
+  const [showDetails, setShowDetails] = useState(false);
+  const isCJK = ['ja', 'zh', 'ko'].includes(sourceLang);
   
   // Validate and sanitize familiarityLevel when it changes
   useEffect(() => {
@@ -67,9 +72,17 @@ const WordComponent = ({
     }
   }, [familiarityLevel]);
   
-  // Clean and validate the word
-  const cleanedWord = cleanWord(word);
-  const isValid = isValidWord(cleanedWord);
+  // Load character metadata for CJK languages if not provided
+  useEffect(() => {
+    if (isCJK && word.length === 1 && !characterData) {
+      const data = getCharacterMetadata(word, sourceLang);
+      setCharacterData(data);
+    }
+  }, [word, sourceLang, isCJK, characterData]);
+  
+  // Clean and validate the word based on language
+  const cleanedWord = cleanWord(word, sourceLang);
+  const isValid = isValidWord(cleanedWord, sourceLang);
   
   // Handle word click
   const handleClick = useCallback(() => {
@@ -77,6 +90,12 @@ const WordComponent = ({
       onWordClick(cleanedWord);
     }
   }, [cleanedWord, isValid, onWordClick]);
+  
+  // Handle detailed view toggle
+  const handleDetailsToggle = useCallback((e) => {
+    e.stopPropagation();
+    setShowDetails(prev => !prev);
+  }, []);
   
   // Get background color based on familiarity level
   const getBackgroundColor = () => {
@@ -89,7 +108,7 @@ const WordComponent = ({
     return palette[actualFamiliarityLevel] || 'transparent';
   };
   
-  // Define the tooltip content based on familiarity level
+  // Define the tooltip content based on familiarity level and language
   const getTooltipText = () => {
     if (!isValid) return '';
     
@@ -116,6 +135,11 @@ const WordComponent = ({
         tooltipText = 'Click for translation';
     }
     
+    // Add character type for CJK if available
+    if (isCJK && characterData && characterData.type) {
+      tooltipText += ` (${characterData.type})`;
+    }
+    
     return tooltipText;
   };
   
@@ -131,11 +155,31 @@ const WordComponent = ({
     return backgroundColor;
   };
   
+  // Get character-specific styling for CJK languages
+  const getCJKStyle = () => {
+    if (!isCJK) return {};
+    
+    return {
+      display: 'inline-flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: '2px 3px',
+      margin: '0 1px',
+      borderRadius: '3px',
+      fontSize: sourceLang === 'zh' ? '1.2em' : '1em', // Slightly larger for Chinese
+      fontWeight: sourceLang === 'ja' && characterData?.type === 'kanji' ? 'bold' : 'normal',
+      lineHeight: '1.5',
+      textAlign: 'center',
+      verticalAlign: 'middle'
+    };
+  };
+  
   return (
     <motion.span
-      className="vocabulary-word"
+      className={`vocabulary-word ${isCJK ? 'cjk-word' : ''}`}
       data-word={cleanedWord}
       data-familiarity={actualFamiliarityLevel}
+      data-language={sourceLang}
       initial={{ backgroundColor }}
       animate={{ 
         backgroundColor,
@@ -154,10 +198,39 @@ const WordComponent = ({
         position: 'relative',
         backgroundColor, // Explicitly set background color in style
         border: actualFamiliarityLevel > 0 ? `1px solid ${getBorderColor()}` : 'none',
+        ...getCJKStyle(),
         ...style
       }}
     >
       {word}
+      
+      {/* CJK Info Button (only for single characters in CJK languages) */}
+      {isCJK && word.length === 1 && isInteractive && (
+        <motion.div
+          className="cjk-info-button"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: isHovered ? 1 : 0 }}
+          onClick={handleDetailsToggle}
+          style={{
+            position: 'absolute',
+            top: '-10px',
+            right: '-10px',
+            width: '16px',
+            height: '16px',
+            borderRadius: '50%',
+            backgroundColor: '#007bff',
+            color: 'white',
+            fontSize: '10px',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            cursor: 'pointer',
+            zIndex: 10
+          }}
+        >
+          i
+        </motion.div>
+      )}
       
       {/* Tooltip */}
       {isHovered && isInteractive && (
@@ -221,6 +294,75 @@ const WordComponent = ({
             border: '1px solid white'
           }}
         />
+      )}
+      
+      {/* Detailed Character Information (for CJK) */}
+      {showDetails && isCJK && characterData && (
+        <motion.div
+          className="character-details-panel"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.2 }}
+          style={{
+            position: 'absolute',
+            top: '30px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '200px',
+            padding: '10px',
+            backgroundColor: 'white',
+            border: '1px solid #ddd',
+            borderRadius: '4px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+            zIndex: 1001,
+            fontSize: '12px',
+            textAlign: 'left'
+          }}
+        >
+          <div style={{ fontSize: '24px', textAlign: 'center', margin: '5px 0' }}>
+            {characterData.character}
+          </div>
+          
+          <div style={{ marginBottom: '5px' }}>
+            <strong>Type:</strong> {characterData.type || 'Unknown'}
+          </div>
+          
+          {characterData.strokes && (
+            <div style={{ marginBottom: '5px' }}>
+              <strong>Strokes:</strong> {characterData.strokes}
+            </div>
+          )}
+          
+          {characterData.readings && characterData.readings.length > 0 && (
+            <div style={{ marginBottom: '5px' }}>
+              <strong>Readings:</strong> {characterData.readings.join(', ')}
+            </div>
+          )}
+          
+          {characterData.meaning && (
+            <div style={{ marginBottom: '5px' }}>
+              <strong>Meaning:</strong> {characterData.meaning}
+            </div>
+          )}
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDetails(false);
+            }}
+            style={{
+              marginTop: '5px',
+              padding: '3px 8px',
+              fontSize: '11px',
+              backgroundColor: '#f1f1f1',
+              border: '1px solid #ddd',
+              borderRadius: '3px',
+              cursor: 'pointer'
+            }}
+          >
+            Close
+          </button>
+        </motion.div>
       )}
     </motion.span>
   );

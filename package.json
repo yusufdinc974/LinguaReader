@@ -13,12 +13,15 @@
         "electron-store": "^8.1.0",
         "electron-updater": "^6.3.9",
         "framer-motion": "^10.16.4",
-        "pdfjs-dist": "^3.4.120",
+        "kuromoji": "^0.1.2",
+        "nodejieba": "^3.4.4",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "react-router-dom": "^6.18.0",
         "react-scripts": "5.0.1",
-        "recharts": "^2.15.1"
+        "recharts": "^2.15.1",
+        "tiny-segmenter": "^0.2.0",
+        "wanakana": "^5.3.1"
     },
     "devDependencies": {
         "concurrently": "^8.2.1",

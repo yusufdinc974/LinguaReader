@@ -1,11 +1,13 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import * as storageService from '../services/storageService';
+import { detectLanguage } from '../utils/textProcessing';
 
 // Create context
 const VocabularyContext = createContext();
 
 /**
  * Provider component for vocabulary management
+ * Enhanced with CJK language support
  * @param {Object} props - Component props
  * @param {React.ReactNode} props.children - Child components
  */
@@ -24,6 +26,9 @@ export const VocabularyProvider = ({ children }) => {
   // State for vocabulary lists
   const [vocabularyLists, setVocabularyLists] = useState([]);
   const [selectedListId, setSelectedListId] = useState(null);
+  
+  // State for selected words (new feature for multi-word selection)
+  const [selectedWords, setSelectedWords] = useState([]);
 
   // Load vocabulary on mount
   useEffect(() => {
@@ -106,6 +111,11 @@ export const VocabularyProvider = ({ children }) => {
   // Add a word to vocabulary
   const addWord = useCallback((wordData) => {
     try {
+      // Ensure language is set if not provided
+      if (!wordData.sourceLang) {
+        wordData.sourceLang = detectLanguage(wordData.word);
+      }
+      
       // Add to storage
       const newWord = storageService.addVocabularyWord(wordData, currentPdfId);
       
@@ -190,8 +200,8 @@ export const VocabularyProvider = ({ children }) => {
     }
   }, [vocabularyWords, currentPdfId, calculateStats]);
 
-// Remove a word from vocabulary
-const removeWord = useCallback((wordId) => {
+  // Remove a word from vocabulary
+  const removeWord = useCallback((wordId) => {
     try {
       // Create a filtered array first to get the actual remaining words
       const remainingWords = vocabularyWords.filter(word => word.id !== wordId);
@@ -255,6 +265,17 @@ const removeWord = useCallback((wordId) => {
   
   // Check if a word exists in vocabulary
   const hasWord = useCallback((word, sourceLang) => {
+    // Ensure word is a string before trying to use toLowerCase()
+    if (!word || typeof word !== 'string') return false;
+    
+    // For CJK languages, do exact comparison instead of lowercase
+    if (['ja', 'zh', 'ko'].includes(sourceLang)) {
+      return vocabularyWords.some(item => 
+        item.word === word && item.sourceLang === sourceLang
+      );
+    }
+    
+    // For other languages, use case-insensitive comparison
     return vocabularyWords.some(item => 
       item.word.toLowerCase() === word.toLowerCase() && 
       item.sourceLang === sourceLang
@@ -263,6 +284,17 @@ const removeWord = useCallback((wordId) => {
   
   // Get word details if it exists in vocabulary
   const getWordDetails = useCallback((word, sourceLang) => {
+    // Ensure word is a string before trying to use toLowerCase()
+    if (!word || typeof word !== 'string') return null;
+    
+    // For CJK languages, do exact comparison instead of lowercase
+    if (['ja', 'zh', 'ko'].includes(sourceLang)) {
+      return vocabularyWords.find(item => 
+        item.word === word && item.sourceLang === sourceLang
+      ) || null;
+    }
+    
+    // For other languages, use case-insensitive comparison
     return vocabularyWords.find(item => 
       item.word.toLowerCase() === word.toLowerCase() && 
       item.sourceLang === sourceLang
@@ -381,6 +413,80 @@ const removeWord = useCallback((wordId) => {
       return false;
     }
   }, []);
+  
+  // Add a word to selected words (for multi-selection)
+  const addToSelectedWords = useCallback((word) => {
+    if (!word) return;
+    
+    setSelectedWords(prev => {
+      if (!prev) return [word];
+      
+      // Check if already selected
+      if (prev.some(w => w.id === word.id)) {
+        return prev;
+      }
+      return [...prev, word];
+    });
+  }, []);
+  
+  // Remove a word from selected words
+  const removeFromSelectedWords = useCallback((wordId) => {
+    if (!wordId) return;
+    
+    setSelectedWords(prev => {
+      if (!prev) return [];
+      return prev.filter(w => w.id !== wordId);
+    });
+  }, []);
+  
+  // Clear all selected words
+  const clearSelectedWords = useCallback(() => {
+    setSelectedWords([]);
+  }, []);
+  
+  // Batch process selected words (e.g., translate all, add all to list)
+  const processSelectedWords = useCallback(async (action, options = {}) => {
+    if (!selectedWords || !selectedWords.length) return false;
+    
+    switch (action) {
+      case 'addToList':
+        if (!options.listId) return false;
+        
+        // Add all selected words to the specified list
+        const results = await Promise.all(
+          selectedWords.map(word => addWordToList(word.id, options.listId))
+        );
+        
+        // Return true if all operations succeeded
+        return results.every(result => result === true);
+        
+      case 'updateFamiliarity':
+        if (!options.rating) return false;
+        
+        // Update familiarity for all selected words
+        const updateResults = await Promise.all(
+          selectedWords.map(word => updateWordFamiliarity(word.id, options.rating))
+        );
+        
+        // Return true if all operations succeeded
+        return updateResults.every(result => !!result);
+        
+      case 'delete':
+        // Delete all selected words
+        const deleteResults = await Promise.all(
+          selectedWords.map(word => removeWord(word.id))
+        );
+        
+        // Clear selection after deletion
+        clearSelectedWords();
+        
+        // Return true if all operations succeeded
+        return deleteResults.every(result => result === true);
+        
+      default:
+        return false;
+    }
+  }, [selectedWords, addWordToList, updateWordFamiliarity, removeWord, clearSelectedWords]);
 
   // Context value
   const contextValue = {
@@ -411,7 +517,13 @@ const removeWord = useCallback((wordId) => {
     selectList,
     getSelectedList,
     setDefaultList,
-    refreshVocabularyLists: loadVocabularyLists
+    refreshVocabularyLists: loadVocabularyLists,
+    // Multi-selection functions
+    selectedWords,
+    addToSelectedWords,
+    removeFromSelectedWords,
+    clearSelectedWords,
+    processSelectedWords
   };
 
   return (

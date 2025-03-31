@@ -11,6 +11,7 @@ import Quiz from './pages/Quiz'; // Import Quiz page
 import QuizStats from './pages/QuizStats'; // Import QuizStats page
 import UpdateChecker from './components/common/UpdateChecker'; // Import UpdateChecker
 import { motion, AnimatePresence } from 'framer-motion';
+import './assets/styles/cjk-styles.css';
 
 /**
  * Main application component
