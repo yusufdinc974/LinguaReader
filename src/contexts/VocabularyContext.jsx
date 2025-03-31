@@ -520,6 +520,7 @@ export const VocabularyProvider = ({ children }) => {
     refreshVocabularyLists: loadVocabularyLists,
     // Multi-selection functions
     selectedWords,
+    setSelectedWords,
     addToSelectedWords,
     removeFromSelectedWords,
     clearSelectedWords,

@@ -98,14 +98,15 @@ const WordComponent = ({
     const isMultiSelectKey = e.ctrlKey || e.metaKey;
     
     if (multiSelectionEnabled && isMultiSelectKey && onSelectionChange) {
-      // Toggle the selection state
+      // Select both the word and its instance
       onSelectionChange(cleanedWord, !isSelected);
+      onSelectionChange(word, !isSelected); // Add the original word as well
       e.preventDefault(); // Prevent default browser behavior
     } else if (onWordClick) {
       // Regular word click behavior (translation)
       onWordClick(cleanedWord);
     }
-  }, [cleanedWord, isValid, onWordClick, onSelectionChange, isSelected, multiSelectionEnabled]);
+  }, [cleanedWord, word, isValid, onWordClick, onSelectionChange, isSelected, multiSelectionEnabled]);
   
   // Handle detailed view toggle
   const handleDetailsToggle = useCallback((e) => {

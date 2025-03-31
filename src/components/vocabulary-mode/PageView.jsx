@@ -194,15 +194,16 @@ const PageView = ({
   }, [onWordClick, pageLanguage]);
   
   // Enhanced word selection handler with multi-selection support
-  const handleSelectionChange = useCallback((word, isSelected, language = pageLanguage) => {
+  const handleSelectionChange = useCallback((word, isSelected, language = pageLanguage, position) => {
     if (!word) return;
     
-    // Create a word object with necessary info
+    // Create a word object with necessary info and position
     const wordData = {
       id: `temp-${Math.random().toString(36).substr(2, 9)}`,
       word: typeof word === 'string' ? word : String(word), // Ensure word is a string
       sourceLang: language || pageLanguage,
       targetLang: 'en', // Default target language
+      position: position // Add position to track specific instance
     };
     
     if (onSelectionChange) {
@@ -214,10 +215,12 @@ const PageView = ({
         // Add to selected words if not already there
         addToSelectedWords(wordData);
       } else {
-        // Remove from selected words
+        // Remove from selected words by matching both word and position
         if (setContextSelectedWords) {
           setContextSelectedWords(prev => 
-            prev ? prev.filter(w => w.word !== wordData.word) : []
+            prev ? prev.filter(w => 
+              !(w.word === wordData.word && w.position === wordData.position)
+            ) : []
           );
         }
       }
@@ -225,14 +228,14 @@ const PageView = ({
   }, [addToSelectedWords, setContextSelectedWords, pageLanguage, onSelectionChange]);
   
   // Check if a word is selected
-  const isWordSelected = useCallback((word) => {
+  const isWordSelected = useCallback((word, position) => {
     if (!selectedWords || !word) return false;
     
     return selectedWords.some(selectedWord => {
       if (typeof selectedWord === 'string') {
         return selectedWord === word;
       } else if (selectedWord && selectedWord.word) {
-        return selectedWord.word === word;
+        return selectedWord.word === word && selectedWord.position === position;
       }
       return false;
     });
@@ -332,7 +335,6 @@ const PageView = ({
           
           if (segment.type === 'character' || segment.type === 'word') {
             const familiarityLevel = getWordFamiliarity(segment.content, segment.language || pageLanguage);
-            const isSelected = isWordSelected(segment.content);
             
             return (
               <WordComponent
@@ -354,9 +356,9 @@ const PageView = ({
                   } : {})
                 }}
                 // Multi-selection support
-                isSelected={isSelected}
+                isSelected={isWordSelected(segment.content, index)}
                 onSelectionChange={(word, selected) => 
-                  handleSelectionChange(word, selected, segment.language)
+                  handleSelectionChange(word, selected, segment.language, index)
                 }
                 multiSelectionEnabled={multiSelectionEnabled}
                 onMouseEnter={() => setHoveredWord(segment.content)}
@@ -431,7 +433,6 @@ const PageView = ({
                 const originalWord = word;
                 const cleanedWord = cleanWord(word, pageLanguage);
                 const familiarity = getWordFamiliarity(cleanedWord, pageLanguage);
-                const isSelected = isWordSelected(originalWord);
                 
                 // Check if this is the last word in the paragraph
                 const isLastWord = wordIndex === paragraph.text.split(' ').length - 1;
@@ -448,9 +449,9 @@ const PageView = ({
                       onMouseLeave={() => setHoveredWord(null)}
                       colorPalette={highlightSettings?.colorPalette || 'standard'}
                       // Multi-selection support
-                      isSelected={isSelected}
+                      isSelected={isWordSelected(originalWord, wordIndex)}
                       onSelectionChange={(word, selected) => 
-                        handleSelectionChange(word, selected)
+                        handleSelectionChange(word, selected, pageLanguage, wordIndex)
                       }
                       multiSelectionEnabled={multiSelectionEnabled}
                     />
@@ -530,7 +531,6 @@ const PageView = ({
         const originalWord = word;
         const cleanedWord = cleanWord(word, pageLanguage);
         const familiarity = getWordFamiliarity(cleanedWord, pageLanguage);
-        const isSelected = isWordSelected(originalWord);
         
         return (
           <React.Fragment key={index}>
@@ -544,9 +544,9 @@ const PageView = ({
               onMouseLeave={() => setHoveredWord(null)}
               colorPalette={highlightSettings?.colorPalette || 'standard'}
               // Multi-selection support
-              isSelected={isSelected}
+              isSelected={isWordSelected(originalWord, index)}
               onSelectionChange={(word, selected) => 
-                handleSelectionChange(word, selected)
+                handleSelectionChange(word, selected, pageLanguage, index)
               }
               multiSelectionEnabled={multiSelectionEnabled}
             />
