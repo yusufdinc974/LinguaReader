@@ -6,18 +6,21 @@ import { useVocabulary } from '../../contexts/VocabularyContext';
 /**
  * DefinitionDisplay - Component to display word translations
  * Enhanced with VocabularyContext integration for word saving and list management
+ * Now supports multi-word phrase translations
  * 
  * @param {Object} props - Component props
- * @param {string} props.word - The word to translate
+ * @param {string|Object} props.word - The word to translate
  * @param {boolean} props.isVisible - Whether the panel is visible
  * @param {Function} props.onClose - Function to call when panel is closed
  * @param {Function} props.onSaved - Optional callback for when a word is saved
+ * @param {boolean} props.isMultiWord - Whether this is a multi-word phrase translation
  */
 const DefinitionDisplay = ({
   word = '',
   isVisible = false,
   onClose,
-  onSaved
+  onSaved,
+  isMultiWord = false
 }) => {
   const [familiarityRating, setFamiliarityRating] = useState(0);
   const previousWordRef = useRef('');
@@ -26,6 +29,41 @@ const DefinitionDisplay = ({
   const [showCreateList, setShowCreateList] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [newListDescription, setNewListDescription] = useState('');
+  
+  // Helper function to safely get word text
+  const getWordText = (wordObj) => {
+    if (!wordObj) return '';
+    if (typeof wordObj === 'string') return wordObj;
+    if (typeof wordObj.word === 'string') return wordObj.word;
+    return String(wordObj.word || '');
+  };
+  
+  // Get source language from word object or use default
+  const getWordSourceLang = (wordObj) => {
+    if (!wordObj) return 'en';
+    if (typeof wordObj === 'string') return null;
+    return wordObj.sourceLang || 'en';
+  };
+
+  // Check if this is a multi-word translation
+  const checkIsMultiWord = (wordObj) => {
+    if (!wordObj) return false;
+    if (typeof wordObj === 'object' && wordObj !== null) {
+      // Check explicit flag first
+      if (wordObj.isMultiWord) return true;
+      
+      // Also check if the word contains spaces (indicating multiple words)
+      const wordText = getWordText(wordObj);
+      return wordText.includes(' ');
+    }
+    
+    // For string input, check if it has spaces
+    if (typeof wordObj === 'string') {
+      return wordObj.includes(' ');
+    }
+    
+    return false;
+  };
   
   // Use vocabulary context with list functions
   const { 
@@ -36,7 +74,8 @@ const DefinitionDisplay = ({
     addWordToList,
     removeWordFromList,
     createList,
-    getSelectedList
+    getSelectedList,
+    clearSelectedWords
   } = useVocabulary();
   
   // Use the translation hook
@@ -60,13 +99,17 @@ const DefinitionDisplay = ({
   useEffect(() => {
     if (isVisible) {
       // Only perform translation if the word changed
-      if (word !== previousWordRef.current) {
+      const wordText = getWordText(word);
+      const currentSourceLang = getWordSourceLang(word) || sourceLang || 'en';
+      const wordIsMultiWord = checkIsMultiWord(word) || isMultiWord;
+      
+      if (wordText !== previousWordRef.current) {
         // Reset states
         resetSaveStatus();
         resetTranslation();
         
         // Check if word is already in vocabulary
-        const existingWord = getWordDetails(word, sourceLang || 'en');
+        const existingWord = getWordDetails(wordText, currentSourceLang);
         
         if (existingWord) {
           // Set the initial familiarity rating from saved word
@@ -78,10 +121,10 @@ const DefinitionDisplay = ({
             setTargetLang(existingWord.targetLang);
             
             // Translate using saved languages
-            translate(word, existingWord.sourceLang, existingWord.targetLang);
+            translate(wordText, existingWord.sourceLang, existingWord.targetLang);
           } else {
             // Fallback to auto detection
-            translateWithDetection(word);
+            translateWithDetection(wordText);
           }
           
           // Check which lists have this word and pre-select them
@@ -96,8 +139,14 @@ const DefinitionDisplay = ({
           // Reset familiarity for new words
           setFamiliarityRating(0);
           
-          // Automatically detect language and translate
-          translateWithDetection(word);
+          // If we have a sourceLang in the word object, use it
+          if (typeof word === 'object' && word !== null && word.sourceLang) {
+            setSourceLang(word.sourceLang);
+            translate(wordText, word.sourceLang, targetLang);
+          } else {
+            // Automatically detect language and translate
+            translateWithDetection(wordText);
+          }
           
           // Pre-select the current selected list if any
           const currentList = getSelectedList();
@@ -109,7 +158,7 @@ const DefinitionDisplay = ({
         }
         
         // Update the ref to track the current word
-        previousWordRef.current = word;
+        previousWordRef.current = wordText;
       }
     } else {
       // When panel is hidden, reset the word reference
@@ -117,7 +166,7 @@ const DefinitionDisplay = ({
       setSaveStatus({ status: 'idle', message: '' });
       setShowCreateList(false);
     }
-  }, [word, isVisible, resetTranslation, translateWithDetection, getWordDetails, translate, vocabularyLists, getSelectedList]);
+  }, [word, isVisible, resetTranslation, translateWithDetection, getWordDetails, translate, vocabularyLists, getSelectedList, isMultiWord]);
   
   // Reset save status
   const resetSaveStatus = () => {
@@ -126,9 +175,10 @@ const DefinitionDisplay = ({
   
   // Handle manual translation after language change
   const handleManualTranslate = () => {
-    if (word) {
+    const wordText = getWordText(word);
+    if (wordText) {
       resetTranslation();
-      translate(word, sourceLang, targetLang);
+      translate(wordText, sourceLang, targetLang);
     }
   };
   
@@ -165,25 +215,35 @@ const DefinitionDisplay = ({
   
   // Handle saving word
   const handleSaveWord = () => {
-    if (!word || familiarityRating === 0) return;
+    const wordText = getWordText(word);
+    if (!wordText || familiarityRating === 0) return;
     
     setSaveStatus({ status: 'saving', message: 'Saving word...' });
     
     // Check if word already exists
-    const existingWord = getWordDetails(word, sourceLang);
+    const existingWord = getWordDetails(wordText, sourceLang);
     const isUpdate = Boolean(existingWord);
+    
+    // Get target language from word object or use current target
+    const wordTargetLang = typeof word === 'object' && word !== null ? 
+      (word.targetLang || targetLang) : targetLang;
+    
+    // Check if this is a multi-word phrase
+    const wordIsMultiWord = checkIsMultiWord(word) || isMultiWord;
     
     // Prepare word data
     const wordData = {
-      word,
+      word: wordText,
       familiarityRating,
       translation: translatedText || null,
       sourceLang: sourceLang || 'en',
-      targetLang: targetLang || 'es',
+      targetLang: wordTargetLang || 'es',
       date: new Date().toISOString(),
       // Include metadata to make filtering and display easier
       sourceLanguageName: getLanguageName(sourceLang),
-      targetLanguageName: getLanguageName(targetLang)
+      targetLanguageName: getLanguageName(wordTargetLang),
+      // Add isPhrase flag for multi-word selections
+      isPhrase: wordIsMultiWord
     };
     
     try {
@@ -215,7 +275,9 @@ const DefinitionDisplay = ({
         
         setSaveStatus({ 
           status: 'success', 
-          message: isUpdate ? 'Word updated successfully!' : 'Word saved to vocabulary!' 
+          message: isUpdate ? 
+            (wordIsMultiWord ? 'Phrase updated successfully!' : 'Word updated successfully!') : 
+            (wordIsMultiWord ? 'Phrase saved to vocabulary!' : 'Word saved to vocabulary!') 
         });
         
         // Clear status after a delay
@@ -226,6 +288,11 @@ const DefinitionDisplay = ({
         // Call onSaved callback if provided
         if (onSaved) {
           onSaved(savedWord);
+        }
+        
+        // If this was a multi-word selection, clear the selection
+        if (wordIsMultiWord) {
+          clearSelectedWords();
         }
       } else {
         setSaveStatus({ status: 'error', message: 'Failed to save word' });
@@ -282,6 +349,11 @@ const DefinitionDisplay = ({
   // If not visible, don't render anything
   if (!isVisible) return null;
   
+  // Get the word text for display
+  const wordText = getWordText(word);
+  const wordSourceLang = getWordSourceLang(word) || sourceLang;
+  const wordIsMultiWord = checkIsMultiWord(word) || isMultiWord || wordText.includes(' ');
+  
   return (
     <AnimatePresence>
       <motion.div
@@ -312,7 +384,7 @@ const DefinitionDisplay = ({
           style={{
             padding: '15px 20px',
             borderBottom: '1px solid var(--border)',
-            backgroundColor: 'var(--secondary-color)',
+            backgroundColor: wordIsMultiWord ? 'var(--primary-color)' : 'var(--secondary-color)',
             color: 'white',
             display: 'flex',
             justifyContent: 'space-between',
@@ -321,13 +393,22 @@ const DefinitionDisplay = ({
         >
           <div>
             <h3 style={{ margin: 0, fontWeight: '600', fontSize: '1.2rem' }}>
-              {word}
+              {wordText}
             </h3>
-            {sourceLang && (
-              <div style={{ fontSize: '0.8rem', marginTop: '2px' }}>
-                {getLanguageName(sourceLang)}
-              </div>
-            )}
+            <div style={{ fontSize: '0.8rem', marginTop: '2px', display: 'flex', alignItems: 'center' }}>
+              {sourceLang && getLanguageName(sourceLang)}
+              {wordIsMultiWord && (
+                <span style={{ 
+                  marginLeft: '8px', 
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  padding: '2px 6px',
+                  borderRadius: '12px',
+                  fontSize: '0.7rem'
+                }}>
+                  Multi-word Phrase
+                </span>
+              )}
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -367,7 +448,7 @@ const DefinitionDisplay = ({
             variants={contentVariants}
           >
             {/* Word exists indicator */}
-            {hasWord(word, sourceLang) && (
+            {hasWord(wordText, wordSourceLang) && (
               <div
                 style={{
                   backgroundColor: 'var(--success-light)',
@@ -382,7 +463,7 @@ const DefinitionDisplay = ({
                 }}
               >
                 <span style={{ fontSize: '1.1rem' }}>✓</span>
-                <span>This word is already in your vocabulary list</span>
+                <span>{wordIsMultiWord ? 'This phrase is' : 'This word is'} already in your vocabulary list</span>
               </div>
             )}
           
@@ -483,7 +564,7 @@ const DefinitionDisplay = ({
                 marginBottom: '15px',
                 padding: '8px',
                 border: 'none',
-                backgroundColor: 'var(--secondary-light)',
+                backgroundColor: wordIsMultiWord ? 'var(--primary-light)' : 'var(--secondary-light)',
                 color: 'white',
                 borderRadius: 'var(--radius-md)',
                 cursor: 'pointer',
@@ -505,10 +586,12 @@ const DefinitionDisplay = ({
                   padding: '10px',
                   backgroundColor: 'var(--background)',
                   borderRadius: 'var(--radius-md)',
-                  fontSize: '1rem'
+                  fontSize: wordIsMultiWord ? '1.1rem' : '1rem',
+                  fontWeight: wordIsMultiWord ? '500' : 'normal',
+                  border: wordIsMultiWord ? '1px solid var(--primary-light)' : 'none'
                 }}
               >
-                {word}
+                {wordText}
               </div>
             </div>
             
@@ -545,7 +628,9 @@ const DefinitionDisplay = ({
                       padding: '10px',
                       backgroundColor: 'var(--background)',
                       borderRadius: 'var(--radius-md)',
-                      fontSize: '1rem'
+                      fontSize: wordIsMultiWord ? '1.1rem' : '1rem',
+                      fontWeight: wordIsMultiWord ? '500' : 'normal',
+                      border: wordIsMultiWord ? '1px solid var(--primary-light)' : 'none'
                     }}
                   >
                     {translatedText}
@@ -782,7 +867,7 @@ const DefinitionDisplay = ({
           {/* Familiarity rating */}
           <div>
             <div style={{ marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-              How familiar are you with this word?
+              How familiar are you with this {wordIsMultiWord ? 'phrase' : 'word'}?
             </div>
             <div
               style={{
@@ -837,7 +922,9 @@ const DefinitionDisplay = ({
               transition: 'all 0.2s'
             }}
           >
-            {hasWord(word, sourceLang) ? 'Update in Vocabulary' : 'Save to Vocabulary'}
+            {hasWord(wordText, wordSourceLang) 
+              ? `Update ${wordIsMultiWord ? 'Phrase' : 'Word'} in Vocabulary` 
+              : `Save ${wordIsMultiWord ? 'Phrase' : 'Word'} to Vocabulary`}
           </button>
         </div>
       </motion.div>

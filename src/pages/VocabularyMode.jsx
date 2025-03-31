@@ -8,10 +8,12 @@ import SettingsPopup from '../components/vocabulary-mode/SettingsPopup';
 import PDFUpload from '../components/pdf/PDFUpload';
 import Button from '../components/common/Button';
 import * as storageService from '../services/storageService';
+import { useVocabulary } from '../contexts/VocabularyContext';
 
 /**
  * VocabularyMode - Page component for vocabulary-focused PDF reading
  * Enhanced with PDF library and viewing capabilities
+ * Now with multi-word selection support
  * 
  * @param {Object} props - Component props
  * @param {Function} props.onNavigate - Function to navigate to other pages
@@ -28,6 +30,14 @@ const VocabularyMode = ({ onNavigate }) => {
     scale, // Get the scale from context
     loadPDF, // Add loadPDF function to load PDFs
   } = useContext(PDFContext);
+  
+  // Access vocabulary context
+  const {
+    selectedWords,
+    clearSelectedWords,
+    setSelectedWords,
+    addWord
+  } = useVocabulary();
   
   // Now using vocabModePage from context instead of local state
   const [selectedWord, setSelectedWord] = useState(null);
@@ -46,6 +56,11 @@ const VocabularyMode = ({ onNavigate }) => {
     colorPalette: 'standard' // 'standard', 'pastel', or 'vibrant'
   });
   
+  // Multi-word selection state
+  const [multiSelectionEnabled, setMultiSelectionEnabled] = useState(true);
+  const [selectionModeActive, setSelectionModeActive] = useState(false);
+  const [isMultiWordTranslation, setIsMultiWordTranslation] = useState(false);
+  
   // PDF Library state - added from Reader component
   const [showLibrary, setShowLibrary] = useState(false);
   const recentPDFs = storageService.getPDFList();
@@ -59,6 +74,33 @@ const VocabularyMode = ({ onNavigate }) => {
   // References for canvas elements
   const canvasRef = useRef(null);
   const pdfCanvasContainerRef = useRef(null);
+
+  // Add Ctrl key detection for selection mode
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        setSelectionModeActive(true);
+      }
+    };
+    
+    const handleKeyUp = (e) => {
+      if (!e.ctrlKey && !e.metaKey) {
+        setSelectionModeActive(false);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    
+    // Handle case where user switches to another window while holding the key
+    window.addEventListener('blur', () => setSelectionModeActive(false));
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', () => setSelectionModeActive(false));
+    };
+  }, []);
 
   // Format date for display in the library
   const formatDate = (dateString) => {
@@ -332,14 +374,61 @@ const VocabularyMode = ({ onNavigate }) => {
     loadVocabularyList();
   }, [loadVocabularyList]);
   
-  // Handle word click
+  // Handle word click for single word translation
   const handleWordClick = useCallback((word) => {
     if (!word) return;
     
     console.log('Word clicked:', word);
     setSelectedWord(word);
+    setIsMultiWordTranslation(false);
     setShowDefinition(true);
   }, []);
+  
+  // Handle multi-word translation
+  const handleMultiWordTranslate = useCallback((words) => {
+    if (!words || words.length === 0) return;
+    
+    console.log('Multi-word translation requested:', words);
+    
+    // Convert array of words to a single combined text
+    const combinedText = words.map(w => 
+      typeof w === 'string' ? w : w.word
+    ).join(' ');
+    
+    // Create a word object for the definition panel
+    const combinedWordObj = {
+      word: combinedText,
+      sourceLang: words[0].sourceLang || 'en',
+      targetLang: 'en',
+      isMultiWord: true
+    };
+    
+    setSelectedWord(combinedWordObj);
+    setIsMultiWordTranslation(true);
+    setShowDefinition(true);
+    
+    // Optionally, clear the selection after translating
+    // clearSelectedWords();
+  }, []);
+  
+  // Handle word selection for multi-select
+  const handleSelectionChange = useCallback((word, isSelected) => {
+    if (isSelected) {
+      // Add word to selection
+      setSelectedWords(prev => {
+        // Make sure we don't add duplicates
+        if (!prev.some(w => w.word === word.word)) {
+          return [...prev, word];
+        }
+        return prev;
+      });
+    } else {
+      // Remove word from selection
+      setSelectedWords(prev => 
+        prev.filter(w => w.word !== word.word)
+      );
+    }
+  }, [setSelectedWords]);
   
   // Handle saving word to vocabulary list
   const handleSaveWord = useCallback((wordData) => {
@@ -728,7 +817,7 @@ const VocabularyMode = ({ onNavigate }) => {
             overflow: 'auto',
             padding: '20px'
           }}>
-            {/* Text Mode - Original text-only view */}
+            {/* Text Mode - Original text-only view with enhanced multi-selection */}
             {viewMode === 'text' && (
               <AnimatePresence mode="wait">
                 <motion.div
@@ -745,6 +834,12 @@ const VocabularyMode = ({ onNavigate }) => {
                     vocabularyState={vocabularyList}
                     onWordClick={handleWordClick}
                     highlightSettings={highlightSettings}
+                    // Multi-selection props
+                    selectedWords={selectedWords}
+                    onSelectionChange={handleSelectionChange}
+                    multiSelectionEnabled={multiSelectionEnabled}
+                    selectionModeActive={selectionModeActive}
+                    onTranslateSelection={handleMultiWordTranslate}
                   />
                 </motion.div>
               </AnimatePresence>
@@ -844,7 +939,7 @@ const VocabularyMode = ({ onNavigate }) => {
                   </div>
                 </div>
                 
-                {/* Text View */}
+                {/* Text View with multi-selection */}
                 <div
                   style={{
                     flex: '1 1 300px',
@@ -858,6 +953,12 @@ const VocabularyMode = ({ onNavigate }) => {
                     vocabularyState={vocabularyList}
                     onWordClick={handleWordClick}
                     highlightSettings={highlightSettings}
+                    // Multi-selection props
+                    selectedWords={selectedWords}
+                    onSelectionChange={handleSelectionChange}
+                    multiSelectionEnabled={multiSelectionEnabled}
+                    selectionModeActive={selectionModeActive}
+                    onTranslateSelection={handleMultiWordTranslate}
                   />
                 </div>
               </div>
@@ -1035,13 +1136,14 @@ const VocabularyMode = ({ onNavigate }) => {
         currentViewMode={viewMode}
       />
       
-      {/* Definition Display */}
+      {/* Definition Display - Updated for multi-word translations */}
       <DefinitionDisplay
         word={selectedWord}
         isVisible={showDefinition}
         onClose={() => setShowDefinition(false)}
         onSaved={handleWordSaved}  
         onSaveWord={handleSaveWord}
+        isMultiWord={isMultiWordTranslation}
       />
       
       {/* Settings Popup - Added Settings button and component */}

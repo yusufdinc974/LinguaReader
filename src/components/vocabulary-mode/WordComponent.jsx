@@ -32,7 +32,7 @@ const colorPalettes = {
 
 /**
  * WordComponent - An interactive word display for vocabulary learning
- * Enhanced with language-specific handling for CJK languages
+ * Enhanced with language-specific handling for CJK languages and multi-word selection
  * 
  * @param {Object} props - Component props
  * @param {string} props.word - The word text to display
@@ -43,6 +43,9 @@ const colorPalettes = {
  * @param {string} props.colorPalette - Color palette to use ('standard', 'pastel', or 'vibrant')
  * @param {Object} props.style - Additional styles to apply
  * @param {Object} props.metadata - Additional metadata for CJK characters (strokes, radicals, etc.)
+ * @param {boolean} props.isSelected - Whether this word is currently selected
+ * @param {Function} props.onSelectionChange - Function to call when selection state changes
+ * @param {boolean} props.multiSelectionEnabled - Whether multi-selection mode is active
  */
 const WordComponent = ({
   word,
@@ -52,7 +55,10 @@ const WordComponent = ({
   onWordClick,
   colorPalette = 'standard',
   style = {},
-  metadata = null
+  metadata = null,
+  isSelected = false,
+  onSelectionChange = null,
+  multiSelectionEnabled = false
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [actualFamiliarityLevel, setActualFamiliarityLevel] = useState(0);
@@ -84,12 +90,22 @@ const WordComponent = ({
   const cleanedWord = cleanWord(word, sourceLang);
   const isValid = isValidWord(cleanedWord, sourceLang);
   
-  // Handle word click
-  const handleClick = useCallback(() => {
-    if (isValid && onWordClick) {
+  // Enhanced click handler to support Ctrl/Cmd+click for multi-selection
+  const handleClick = useCallback((e) => {
+    if (!isValid) return;
+    
+    // Check if multi-select key is pressed (Ctrl or Command)
+    const isMultiSelectKey = e.ctrlKey || e.metaKey;
+    
+    if (multiSelectionEnabled && isMultiSelectKey && onSelectionChange) {
+      // Toggle the selection state
+      onSelectionChange(cleanedWord, !isSelected);
+      e.preventDefault(); // Prevent default browser behavior
+    } else if (onWordClick) {
+      // Regular word click behavior (translation)
       onWordClick(cleanedWord);
     }
-  }, [cleanedWord, isValid, onWordClick]);
+  }, [cleanedWord, isValid, onWordClick, onSelectionChange, isSelected, multiSelectionEnabled]);
   
   // Handle detailed view toggle
   const handleDetailsToggle = useCallback((e) => {
@@ -97,9 +113,14 @@ const WordComponent = ({
     setShowDetails(prev => !prev);
   }, []);
   
-  // Get background color based on familiarity level
+  // Get background color based on familiarity level and selection state
   const getBackgroundColor = () => {
     if (!isValid) return 'transparent';
+    
+    // If the word is selected, use a distinct highlight color
+    if (isSelected) {
+      return 'rgba(75, 105, 255, 0.4)'; // Selection blue
+    }
     
     // Get the selected color palette
     const palette = colorPalettes[colorPalette] || colorPalettes.standard;
@@ -108,31 +129,38 @@ const WordComponent = ({
     return palette[actualFamiliarityLevel] || 'transparent';
   };
   
-  // Define the tooltip content based on familiarity level and language
+  // Define the tooltip content based on familiarity level, language, and selection state
   const getTooltipText = () => {
     if (!isValid) return '';
     
     let tooltipText = '';
     
-    // Add familiarity level description
-    switch (actualFamiliarityLevel) {
-      case 1:
-        tooltipText = 'Just learned';
-        break;
-      case 2:
-        tooltipText = 'Still learning';
-        break;
-      case 3:
-        tooltipText = 'Familiar';
-        break;
-      case 4:
-        tooltipText = 'Well known';
-        break;
-      case 5:
-        tooltipText = 'Mastered';
-        break;
-      default:
-        tooltipText = 'Click for translation';
+    // Add multi-select instruction if appropriate
+    if (multiSelectionEnabled && !isSelected) {
+      tooltipText = 'Ctrl+Click to select';
+    } else if (multiSelectionEnabled && isSelected) {
+      tooltipText = 'Ctrl+Click to deselect';
+    } else {
+      // Standard familiarity level description
+      switch (actualFamiliarityLevel) {
+        case 1:
+          tooltipText = 'Just learned';
+          break;
+        case 2:
+          tooltipText = 'Still learning';
+          break;
+        case 3:
+          tooltipText = 'Familiar';
+          break;
+        case 4:
+          tooltipText = 'Well known';
+          break;
+        case 5:
+          tooltipText = 'Mastered';
+          break;
+        default:
+          tooltipText = 'Click for translation';
+      }
     }
     
     // Add character type for CJK if available
@@ -146,11 +174,15 @@ const WordComponent = ({
   // Only make valid words interactive
   const isInteractive = isValid;
   
-  // Get background color based on familiarity level
+  // Get background color based on familiarity level and selection state
   const backgroundColor = getBackgroundColor();
   
   // Add a border color for better visibility
   const getBorderColor = () => {
+    if (isSelected) {
+      return 'rgba(65, 90, 255, 0.8)'; // Darker blue for selected words
+    }
+    
     if (actualFamiliarityLevel === 0) return 'transparent';
     return backgroundColor;
   };
@@ -176,15 +208,17 @@ const WordComponent = ({
   
   return (
     <motion.span
-      className={`vocabulary-word ${isCJK ? 'cjk-word' : ''}`}
+      className={`vocabulary-word ${isCJK ? 'cjk-word' : ''} ${isSelected ? 'selected-word' : ''}`}
       data-word={cleanedWord}
       data-familiarity={actualFamiliarityLevel}
       data-language={sourceLang}
+      data-selected={isSelected}
       initial={{ backgroundColor }}
       animate={{ 
         backgroundColor,
         scale: isHovered ? 1.05 : 1,
-        y: isHovered ? -1 : 0
+        y: isHovered ? -1 : 0,
+        boxShadow: isSelected ? '0 0 0 1px rgba(65, 90, 255, 0.8)' : 'none',
       }}
       transition={{ duration: 0.2 }}
       onClick={handleClick}
@@ -197,7 +231,7 @@ const WordComponent = ({
         display: 'inline-block',
         position: 'relative',
         backgroundColor, // Explicitly set background color in style
-        border: actualFamiliarityLevel > 0 ? `1px solid ${getBorderColor()}` : 'none',
+        border: (actualFamiliarityLevel > 0 || isSelected) ? `1px solid ${getBorderColor()}` : 'none',
         ...getCJKStyle(),
         ...style
       }}
@@ -229,6 +263,38 @@ const WordComponent = ({
           }}
         >
           i
+        </motion.div>
+      )}
+      
+      {/* Selection indicator */}
+      {isSelected && (
+        <motion.div
+          className="selection-indicator"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          style={{
+            position: 'absolute',
+            top: '-7px',
+            left: '-7px',
+            width: '14px',
+            height: '14px',
+            borderRadius: '50%',
+            backgroundColor: 'white',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            boxShadow: '0 0 3px rgba(0, 0, 0, 0.3)',
+            zIndex: 20
+          }}
+        >
+          <div 
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(65, 90, 255, 1)'
+            }}
+          />
         </motion.div>
       )}
       
@@ -275,8 +341,8 @@ const WordComponent = ({
         </motion.div>
       )}
       
-      {/* Familiarity indicator */}
-      {actualFamiliarityLevel > 0 && (
+      {/* Familiarity indicator (hide when selected to avoid confusion) */}
+      {actualFamiliarityLevel > 0 && !isSelected && (
         <motion.div
           className="familiarity-indicator"
           initial={{ opacity: 0 }}
