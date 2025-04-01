@@ -9,29 +9,39 @@ const UpdateChecker = () => {
   const [checking, setChecking] = useState(false);
   const [message, setMessage] = useState(null);
   const [appVersion, setAppVersion] = useState(null);
+  const [isElectron, setIsElectron] = useState(false);
 
-  // Get app version on component mount
+  // Check if running in Electron and get app version on component mount
   useEffect(() => {
-    const getVersion = async () => {
-      if (window.electron?.getAppVersion) {
+    const initialize = async () => {
+      if (window.electron) {
+        setIsElectron(true);
         try {
           const version = await window.electron.getAppVersion();
           setAppVersion(version);
         } catch (error) {
           console.error('Failed to get app version:', error);
+          setMessage({
+            type: 'error',
+            text: 'Failed to get application version'
+          });
         }
+      } else {
+        setMessage({
+          type: 'info',
+          text: 'Update checking is only available in the desktop application'
+        });
       }
     };
     
-    getVersion();
+    initialize();
   }, []);
 
   const checkForUpdates = async () => {
-    // Only proceed if the electron API is available
-    if (!window.electron?.checkForUpdates) {
+    if (!isElectron) {
       setMessage({ 
         type: 'error', 
-        text: 'Update checking is not available in this environment.' 
+        text: 'Update checking is only available in the desktop application' 
       });
       return;
     }
@@ -49,7 +59,7 @@ const UpdateChecker = () => {
       } else {
         setMessage({ 
           type: 'warning', 
-          text: `Update check failed: ${result.message || 'Unknown error'}` 
+          text: result.message || 'Failed to check for updates' 
         });
       }
     } catch (error) {
@@ -143,7 +153,7 @@ const UpdateChecker = () => {
         <button 
           style={styles.updateButton}
           onClick={checkForUpdates} 
-          disabled={checking}
+          disabled={checking || !isElectron}
         >
           {checking ? "Checking for updates..." : "Check for Updates"}
         </button>

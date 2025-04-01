@@ -105,9 +105,7 @@ app.whenReady().then(() => {
     return false;
   });
   
-  // DISABLED temporarily to avoid update errors
-  // Will be re-enabled once proper GitHub release is set up
-  /*
+  // Enable auto-updater for production builds
   if (app.isPackaged) {
     log.info('Checking for updates...');
     // Wait a bit before checking for updates to ensure app is fully loaded
@@ -115,7 +113,6 @@ app.whenReady().then(() => {
       autoUpdater.checkForUpdatesAndNotify();
     }, 3000);
   }
-  */
 });
 
 // Quit when all windows are closed, except on macOS

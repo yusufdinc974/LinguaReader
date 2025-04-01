@@ -299,25 +299,6 @@ const App = () => {
                           </button>
                         </div>
 
-                        {/* Theme Toggle */}
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: 'var(--space-sm)',
-                          marginBottom: 'var(--space-md)',
-                          borderBottom: '1px solid var(--border)',
-                          paddingBottom: 'var(--space-md)'
-                        }}>
-                          <span style={{
-                            color: 'var(--text-primary)',
-                            fontSize: '0.9rem'
-                          }}>
-                            Dark Mode
-                          </span>
-                          <ThemeToggle />
-                        </div>
-                        
                         {/* Update Checker */}
                         <UpdateChecker />
                       </motion.div>

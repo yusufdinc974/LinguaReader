@@ -7,6 +7,7 @@
 const { app } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const { autoUpdater } = require('electron');
 
 /**
  * Register all IPC handlers
@@ -44,6 +45,21 @@ module.exports = function registerIpcHandlers(ipcMain, mainWindow) {
       return mainWindow.isMaximized();
     }
     return false;
+  });
+
+  // Handle update checking
+  ipcMain.handle('check-for-updates', async () => {
+    if (!app.isPackaged) {
+      return { success: false, message: 'Updates are only available in production builds' };
+    }
+    
+    try {
+      await autoUpdater.checkForUpdates();
+      return { success: true };
+    } catch (error) {
+      console.error('Manual update check failed:', error);
+      return { success: false, message: error.toString() };
+    }
   });
 
   // Create user data directory if it doesn't exist
