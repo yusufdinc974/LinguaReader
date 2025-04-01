@@ -21,6 +21,8 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
+    frame: false, // Remove default window frame
+    titleBarStyle: 'hidden',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -76,6 +78,32 @@ function createWindow() {
 // Create window when Electron has finished initialization
 app.whenReady().then(() => {
   createWindow();
+  
+  // Set up IPC handlers for window controls
+  ipcMain.on('minimize-window', () => {
+    if (mainWindow) mainWindow.minimize();
+  });
+
+  ipcMain.on('maximize-window', () => {
+    if (mainWindow) {
+      if (mainWindow.isMaximized()) {
+        mainWindow.unmaximize();
+      } else {
+        mainWindow.maximize();
+      }
+    }
+  });
+
+  ipcMain.on('close-window', () => {
+    if (mainWindow) mainWindow.close();
+  });
+
+  ipcMain.handle('is-window-maximized', () => {
+    if (mainWindow) {
+      return mainWindow.isMaximized();
+    }
+    return false;
+  });
   
   // DISABLED temporarily to avoid update errors
   // Will be re-enabled once proper GitHub release is set up

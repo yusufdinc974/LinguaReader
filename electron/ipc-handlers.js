@@ -38,6 +38,14 @@ module.exports = function registerIpcHandlers(ipcMain, mainWindow) {
     if (mainWindow) mainWindow.close();
   });
 
+  // Check if window is maximized
+  ipcMain.handle('is-window-maximized', () => {
+    if (mainWindow) {
+      return mainWindow.isMaximized();
+    }
+    return false;
+  });
+
   // Create user data directory if it doesn't exist
   const userDataPath = app.getPath('userData');
   const vocabStoragePath = path.join(userDataPath, 'vocabulary');

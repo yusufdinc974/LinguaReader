@@ -77,15 +77,16 @@ const AppHeader = ({
     >
       {/* Logo and App Name */}
       <div style={{ display: 'flex', alignItems: 'center' }}>
-        <motion.div
+        <motion.img
           whileHover={{ rotate: 5 }}
+          src="assets/icon.png"
+          alt="LinguaReader"
           style={{
-            fontSize: '1.75rem',
+            width: '32px',
+            height: '32px',
             marginRight: '0.75rem',
           }}
-        >
-          📖
-        </motion.div>
+        />
         <h1
           style={{
             margin: 0,

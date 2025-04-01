@@ -5762,3 +5762,141 @@ textarea:focus:not(:focus-visible) {
   box-shadow: 0 2px 8px rgba(109, 140, 255, 0.15);
   padding: 12px 16px;
 }
+
+/* Custom Title Bar */
+.title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding: 0;
+  background: #f5f5f5; /* Simple light gray background */
+  -webkit-app-region: drag;
+  user-select: none;
+  color: #333;
+  position: relative;
+  z-index: 1000;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+}
+
+.title-bar .drag-region {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  flex: 1;
+  height: 100%;
+  -webkit-app-region: drag;
+}
+
+.title-bar .app-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.5px;
+  -webkit-app-region: drag;
+  color: #333;
+}
+
+/* Window Control Styles */
+.window-controls {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.window-control {
+  width: 36px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  -webkit-app-region: no-drag;
+}
+
+.window-control svg {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.window-control:hover svg {
+  opacity: 1;
+}
+
+.window-control.minimize:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.window-control.maximize:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.window-control.close:hover {
+  background-color: #e81123;
+  color: white;
+}
+
+.window-control.close:hover svg {
+  opacity: 1;
+}
+
+/* Dark mode adjustments */
+:root.dark-mode .title-bar {
+  background: #333;
+  color: #e0e0e0;
+}
+
+:root.dark-mode .title-bar .app-title {
+  color: #e0e0e0;
+}
+
+:root.dark-mode .window-control {
+  color: #e0e0e0;
+}
+
+/* Adjust main container when using custom titlebar */
+.frameless-window .app-container {
+  height: calc(100vh - 32px);
+  margin-top: 32px;
+}
+
+/* Make sure content scrolls properly with custom titlebar */
+.frameless-window .scroll-container {
+  height: 100%;
+  overflow: auto;
+}
+
+/* Platform specific adjustments */
+.platform-win .title-bar {
+  /* Windows specific style */
+}
+
+.platform-mac .title-bar {
+  /* macOS specific style */
+}
+
+.platform-linux .title-bar {
+  /* Linux specific style */
+}
+
+/* Electron app specific styles */
+.electron-app .app-header {
+  -webkit-app-region: drag;
+}
+
+.electron-app button,
+.electron-app a,
+.electron-app input,
+.electron-app .window-controls {
+  -webkit-app-region: no-drag;
+}

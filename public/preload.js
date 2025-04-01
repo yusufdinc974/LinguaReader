@@ -83,6 +83,7 @@ contextBridge.exposeInMainWorld(
     minimizeWindow: () => ipcRenderer.send('minimize-window'),
     maximizeWindow: () => ipcRenderer.send('maximize-window'),
     closeWindow: () => ipcRenderer.send('close-window'),
+    isWindowMaximized: () => ipcRenderer.invoke('is-window-maximized'),
     
     // Auto-update functionality
     checkForUpdates: () => ipcRenderer.invoke('check-for-updates')

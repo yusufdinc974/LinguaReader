@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './assets/styles/global.css';
 import { PDFProvider } from './contexts/PDFContext';
 import { VocabularyProvider } from './contexts/VocabularyContext';
@@ -12,18 +12,40 @@ import VocabularyMode from './pages/VocabularyMode';
 import Quiz from './pages/Quiz'; // Import Quiz page
 import QuizStats from './pages/QuizStats'; // Import QuizStats page
 import UpdateChecker from './components/common/UpdateChecker'; // Import UpdateChecker
+import WindowControls from './components/common/WindowControls'; // Import WindowControls
+import TitleBar from './components/layout/TitleBar'; // Import TitleBar
 import { motion, AnimatePresence } from 'framer-motion';
 import './assets/styles/cjk-styles.css';
 
 /**
+ * Helper function to get initial page
+ */
+const getInitialPage = () => {
+  // Default to home page
+  return 'home';
+};
+
+/**
  * Main application component
  */
-function App() {
-  // Simple routing - in Phase 3 we're using a simple approach instead of react-router
-  const [currentPage, setCurrentPage] = useState('home');
+const App = () => {
+  const [currentPage, setCurrentPage] = useState(getInitialPage());
   const [hoveredTab, setHoveredTab] = useState(null);
   // State for settings dropdown
   const [showSettings, setShowSettings] = useState(false);
+  const [isElectron, setIsElectron] = useState(false);
+
+  // Check if running in Electron
+  useEffect(() => {
+    if (window.electron) {
+      console.log('Running in Electron mode');
+      setIsElectron(true);
+      // Add classes for electron app styling
+      document.body.classList.add('electron-app');
+    } else {
+      console.log('Running in browser mode');
+    }
+  }, []);
 
   // Navigation tabs configuration - Added Quiz and Stats tabs
   const tabs = [
@@ -86,34 +108,43 @@ function App() {
             <div className="app-container" style={{
               display: 'flex',
               flexDirection: 'column',
-              height: '100vh',
+              height: isElectron ? 'calc(100vh - 32px)' : '100vh', // Adjust for TitleBar height
               overflow: 'hidden',
               backgroundColor: 'var(--background)'
             }}>
-              {/* Header with navigation tabs */}
-              <div style={{
-                display: 'flex',
-                backgroundColor: 'var(--surface)',
-                borderBottom: '1px solid var(--border)',
-                boxShadow: 'var(--shadow-sm)',
-                padding: '0 var(--space-md)',
-                position: 'relative',
-                zIndex: 5
-              }}>
+              {/* Add TitleBar when in Electron mode */}
+              {isElectron && <TitleBar />}
+
+              {/* Header with navigation tabs and window controls */}
+              <div 
+                style={{
+                  display: 'flex',
+                  backgroundColor: 'var(--surface)',
+                  borderBottom: '1px solid var(--border)',
+                  boxShadow: 'var(--shadow-sm)',
+                  padding: '0 var(--space-md)',
+                  position: 'relative',
+                  zIndex: 5,
+                  WebkitAppRegion: isElectron ? 'drag' : 'none' // Make draggable in Electron
+                }}
+                className="app-header"
+              >
                 <div style={{ 
                   display: 'flex', 
                   alignItems: 'center',
-                  padding: '0 var(--space-lg)'
+                  padding: '0 var(--space-lg)',
+                  WebkitAppRegion: 'drag' // Ensure this area is draggable
                 }}>
-                  <motion.div
+                  <motion.img
                     whileHover={{ rotate: 5 }}
+                    src="assets/icon.png"
+                    alt="LinguaReader"
                     style={{
-                      fontSize: '1.5rem',
+                      width: '28px',
+                      height: '28px',
                       marginRight: '0.75rem',
                     }}
-                  >
-                    📖
-                  </motion.div>
+                  />
                   <h1 style={{
                     margin: 0,
                     fontSize: '1.25rem',
@@ -126,7 +157,13 @@ function App() {
                   </h1>
                 </div>
 
-                <div style={{ display: 'flex', flex: 1 }}>
+                <div 
+                  style={{ 
+                    display: 'flex', 
+                    flex: 1,
+                    WebkitAppRegion: 'no-drag' // Make buttons clickable
+                  }}
+                >
                   {tabs.map(tab => (
                     <button
                       key={tab.id}
@@ -178,7 +215,8 @@ function App() {
                   alignItems: 'center',
                   padding: '0 var(--space-md)',
                   position: 'relative',
-                  gap: 'var(--space-sm)' // Add gap between buttons
+                  gap: 'var(--space-sm)',
+                  WebkitAppRegion: 'no-drag' // Make buttons clickable
                 }}>
                   {/* Theme Toggle Button */}
                   <motion.div
