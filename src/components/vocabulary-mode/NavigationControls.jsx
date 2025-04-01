@@ -179,9 +179,10 @@ const NavigationControls = ({
           margin: '0 16px',
           display: 'flex',
           alignItems: 'center',
-          backgroundColor: 'white',
+          backgroundColor: 'var(--surface)',
           padding: '0 8px',
-          borderRadius: 'var(--radius-md)'
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--border)'
         }}>
           <input
             type="number"
@@ -195,7 +196,8 @@ const NavigationControls = ({
               border: 'none',
               fontSize: '0.9rem',
               padding: '4px',
-              backgroundColor: 'transparent'
+              backgroundColor: 'transparent',
+              color: 'var(--text-primary)'
             }}
           />
           <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>

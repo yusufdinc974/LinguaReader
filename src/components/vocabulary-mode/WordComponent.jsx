@@ -217,7 +217,12 @@ const WordComponent = ({
   
   return (
     <motion.span
-      className={`vocabulary-word ${isCJK ? 'cjk-word' : ''} ${isSelected ? 'selected-word' : ''}`}
+      className={`
+        word-component
+        ${isSelected ? 'selected' : ''}
+        ${familiarityLevel > 0 ? `familiarity-level-${familiarityLevel}` : ''}
+        ${isCJK ? 'cjk-word' : ''}
+      `}
       data-word={cleanedWord}
       data-familiarity={actualFamiliarityLevel}
       data-language={sourceLang}

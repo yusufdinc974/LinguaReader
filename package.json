@@ -20,6 +20,7 @@
         "react-router-dom": "^6.18.0",
         "react-scripts": "5.0.1",
         "recharts": "^2.15.1",
+        "say.js": "^1.4.0",
         "tiny-segmenter": "^0.2.0",
         "wanakana": "^5.3.1"
     },

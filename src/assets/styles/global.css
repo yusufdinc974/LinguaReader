@@ -22,7 +22,7 @@
   --accent-teal: #00cec9;
   
   /* Neutral colors */
-  --background: #f8fafc; /* Lighter background for more contrast */
+  --background: #f8fafc;
   --surface: #ffffff;
   --border: #e0e6ed;
   
@@ -38,12 +38,12 @@
   --warning: #f39c12;
   --error: #e74c3c;
   
-  /* Highlighting colors for vocabulary ratings - More vibrant */
-  --highlight-level-1: rgba(255, 107, 107, 0.6); /* Beginner - Coral */
-  --highlight-level-2: rgba(254, 202, 87, 0.6);  /* Elementary - Yellow */
-  --highlight-level-3: rgba(72, 219, 251, 0.6);  /* Intermediate - Blue */
-  --highlight-level-4: rgba(29, 209, 161, 0.6);  /* Advanced - Teal */
-  --highlight-level-5: rgba(136, 84, 208, 0.3);  /* Mastered - Purple */
+  /* Highlighting colors for vocabulary ratings */
+  --highlight-level-1: rgba(255, 107, 107, 0.6);
+  --highlight-level-2: rgba(254, 202, 87, 0.6);
+  --highlight-level-3: rgba(72, 219, 251, 0.6);
+  --highlight-level-4: rgba(29, 209, 161, 0.6);
+  --highlight-level-5: rgba(136, 84, 208, 0.3);
   
   /* Animation durations */
   --animation-slow: 0.5s;
@@ -62,14 +62,14 @@
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
-  --radius-xl: 16px; /* Added larger radius */
+  --radius-xl: 16px;
   --radius-circle: 50%;
   
   /* Shadow */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.07), 0 5px 10px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.07), 0 10px 10px rgba(0, 0, 0, 0.04); /* Added larger shadow */
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.07), 0 10px 10px rgba(0, 0, 0, 0.04);
   --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.05);
   
   /* Gradients */
@@ -99,6 +99,470 @@
   --z-index-dropdown: 1000;
   --z-index-modal: 2000;
   --z-index-tooltip: 3000;
+  
+  /* Define rgba color variables for better reuse */
+  --primary-color-10: rgba(74, 105, 189, 0.05);
+  --surface-translucent: rgba(30, 30, 30, 0.7);
+  --surface-light: rgba(40, 40, 40, 1);
+  --bg-gradient-light: linear-gradient(to right, rgb(25, 25, 25) 0%, rgba(74, 105, 189, 0.1) 100%);
+  --neutral-light: rgba(50, 50, 50, 0.3);
+}
+
+/* Dark mode variables */
+:root.dark-mode {
+  /* Dark theme color palette - enhanced for better contrast and visual appeal */
+  --primary-color: #6d8cff;
+  --primary-dark: #4a69bd;
+  --primary-light: #8ba4ff;
+  
+  --secondary-color: #2ee9b6;
+  --secondary-dark: #1dd1a1;
+  --secondary-light: #4fffd0;
+  
+  /* Accent colors - brighter for dark mode visibility */
+  --accent-coral: #ff7b7b;
+  --accent-yellow: #ffda6a;
+  --accent-purple: #a46af8;
+  --accent-teal: #18eae6;
+  
+  /* Dark theme surfaces with subtle variations */
+  --background: #121212;
+  --surface: #1e1e1e;
+  --surface-elevated: #252525;
+  --surface-depressed: #191919;
+  --border: #333333;
+  --divider: rgba(255, 255, 255, 0.08);
+  
+  /* Text colors with better contrast ratios */
+  --text-primary: #ffffff;
+  --text-secondary: #c0c0c0;
+  --text-muted: #909090;
+  --text-light: #ffffff;
+  --text-on-primary: #ffffff;
+  
+  /* Status colors - adjusted for dark backgrounds */
+  --info: #4dabff;
+  --success: #3ee890;
+  --warning: #ffb74d;
+  --error: #ff6b6b;
+  
+  /* Highlighting colors - brighter for dark mode */
+  --highlight-level-1: rgba(255, 123, 123, 0.25);
+  --highlight-level-2: rgba(255, 218, 106, 0.25);
+  --highlight-level-3: rgba(77, 171, 255, 0.25);
+  --highlight-level-4: rgba(46, 233, 182, 0.25);
+  --highlight-level-5: rgba(164, 106, 248, 0.20);
+  
+  /* Shadows for dark mode - subtle glow effects */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3), 0 5px 10px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.3), 0 10px 10px rgba(0, 0, 0, 0.3);
+  --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  
+  /* Glow effects */
+  --glow-primary: 0 0 20px rgba(109, 140, 255, 0.15);
+  --glow-secondary: 0 0 20px rgba(46, 233, 182, 0.15);
+  
+  /* Dark mode gradients */
+  --gradient-primary: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  --gradient-secondary: linear-gradient(135deg, var(--secondary-color), var(--secondary-dark));
+  --gradient-surface: linear-gradient(135deg, var(--surface), var(--surface-depressed));
+  
+  /* Dark mode component styles - enhanced */
+  .card {
+    background-color: var(--surface);
+    border-color: var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .card-hover:hover {
+    background-color: var(--surface-elevated);
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow-md);
+  }
+
+  .btn-outline {
+    background-color: transparent;
+    border-color: var(--primary-color);
+    color: var(--primary-light);
+  }
+
+  .btn-outline:hover {
+    background-color: rgba(109, 140, 255, 0.15);
+    box-shadow: var(--glow-primary);
+  }
+
+  .library-toggle {
+    background-color: var(--surface);
+    border-color: var(--border);
+    color: var(--text-secondary);
+  }
+
+  .library-toggle:hover {
+    background-color: var(--surface-elevated);
+    color: var(--primary-light);
+    border-color: var(--primary-color);
+  }
+
+  .library-toggle.active {
+    background-color: rgba(109, 140, 255, 0.2);
+    border-color: var(--primary-color);
+    box-shadow: var(--glow-primary);
+  }
+
+  .quiz-setup-panel {
+    background-color: var(--surface);
+    border-color: var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .quiz-setup-panel:hover {
+    background-color: var(--surface-elevated);
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow-md);
+  }
+
+  .word-progress-card {
+    background-color: var(--surface);
+    border-color: var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .word-progress-card:hover {
+    background-color: var(--surface-elevated);
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow-md);
+  }
+
+  .session-stat {
+    background-color: var(--surface);
+    border-color: var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .session-stat:hover {
+    background-color: var(--surface-elevated);
+    box-shadow: var(--shadow-md);
+  }
+
+  .stats-filter-select {
+    background-color: var(--surface-depressed);
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+
+  .stats-filter-select:hover {
+    border-color: var(--primary-color);
+  }
+
+  .stats-filter-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(109, 140, 255, 0.25);
+  }
+
+  .stats-loading-overlay {
+    background-color: rgba(18, 18, 18, 0.85);
+    backdrop-filter: blur(4px);
+    border-color: var(--border);
+  }
+
+  .chart-tooltip {
+    background-color: var(--surface-elevated);
+    border-color: var(--border);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .calendar-day {
+    background-color: var(--surface);
+    border-color: var(--border);
+  }
+
+  .calendar-day:hover {
+    background-color: var(--surface-elevated);
+    border-color: var(--primary-color);
+  }
+
+  .calendar-day-level-0 {
+    background-color: var(--surface);
+    color: var(--text-secondary);
+  }
+
+  .calendar-day-level-1 {
+    background-color: var(--highlight-level-1);
+    color: var(--text-primary);
+  }
+
+  .calendar-day-level-2 {
+    background-color: var(--highlight-level-2);
+    color: var(--text-primary);
+  }
+
+  .calendar-day-level-3 {
+    background-color: var(--highlight-level-3);
+    color: var(--text-primary);
+  }
+
+  .calendar-day-level-4 {
+    background-color: var(--highlight-level-4);
+    color: var(--text-primary);
+  }
+
+  .calendar-day-today {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-light);
+    box-shadow: var(--glow-primary);
+  }
+
+  .empty-state-icon {
+    color: rgba(109, 140, 255, 0.3);
+  }
+
+  /* Scrollbar styles for dark mode */
+  ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(109, 140, 255, 0.25);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(109, 140, 255, 0.4);
+  }
+
+  /* Home page dark mode styles */
+  .hero-section {
+    background-color: var(--surface) !important;
+    border-color: var(--border);
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .hero-section .primary-cta {
+    background-color: transparent;
+  }
+  
+  .hero-section .upload-pdf-btn {
+    background: var(--gradient-primary);
+    color: var(--text-on-primary);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: var(--shadow-md), var(--glow-primary);
+  }
+  
+  .hero-section .upload-pdf-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg), var(--glow-primary);
+  }
+  
+  /* Feature cards dark mode */
+  .feature-card {
+    background-color: var(--surface) !important;
+    border-color: var(--border);
+    box-shadow: var(--shadow-sm);
+    color: var(--text-primary);
+  }
+  
+  .feature-card:hover {
+    background-color: var(--surface-elevated) !important;
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow-md), var(--glow-primary);
+    transform: translateY(-5px);
+  }
+  
+  .feature-card h3 {
+    color: var(--primary-light);
+  }
+  
+  .feature-card p {
+    color: var(--text-secondary);
+  }
+  
+  .feature-icon {
+    background-color: rgba(109, 140, 255, 0.2) !important;
+    box-shadow: var(--shadow-md);
+  }
+  
+  /* Fix for how-it-works section in dark mode */
+  .how-it-works {
+    background-color: var(--surface) !important;
+    border-color: var(--border);
+    box-shadow: var(--shadow-md);
+    color: var(--text-primary);
+  }
+  
+  .step-item {
+    background-color: var(--surface) !important;
+  }
+  
+  .step-item:hover {
+    background-color: var(--surface-elevated) !important;
+    transform: translateY(-3px);
+  }
+  
+  .step-item h3 {
+    color: var(--primary-light);
+  }
+  
+  .step-item p {
+    color: var(--text-secondary);
+  }
+  
+  /* PDF cards in dark mode */
+  .pdf-card {
+    background-color: var(--surface);
+    border-color: var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .pdf-card:hover {
+    background-color: var(--surface-elevated);
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow-md), var(--glow-primary);
+  }
+  
+  .pdf-card .pdf-info {
+    border-bottom-color: var(--divider);
+  }
+  
+  .pdf-card .pdf-icon {
+    color: var(--primary-color);
+    background-color: rgba(109, 140, 255, 0.1);
+  }
+  
+  .pdf-card:hover .pdf-icon {
+    transform: scale(1.1);
+    background-color: rgba(109, 140, 255, 0.2);
+  }
+  
+  .pdf-card .corner-decoration {
+    background: linear-gradient(135deg, transparent 50%, rgba(109, 140, 255, 0.1) 50%);
+  }
+  
+  .pdf-card:hover .corner-decoration {
+    background: linear-gradient(135deg, transparent 50%, rgba(109, 140, 255, 0.2) 50%);
+  }
+  
+  /* Enhanced text gradient */
+  .gradient-text {
+    background-image: linear-gradient(135deg, var(--primary-light), var(--secondary-light));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Improved buttons for dark mode */
+  .btn-primary {
+    background: var(--gradient-primary);
+    color: var(--text-on-primary);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: var(--shadow-md);
+  }
+  
+  .btn-primary:hover {
+    box-shadow: var(--shadow-md), var(--glow-primary);
+    transform: translateY(-2px);
+  }
+  
+  .btn-secondary {
+    background: var(--gradient-secondary);
+    color: var(--text-on-primary);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: var(--shadow-md);
+  }
+  
+  .btn-secondary:hover {
+    box-shadow: var(--shadow-md), var(--glow-secondary);
+    transform: translateY(-2px);
+  }
+  
+  /* Form elements in dark mode */
+  input, textarea, select {
+    background-color: var(--surface-depressed);
+    border-color: var(--border);
+    color: var(--text-primary);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(109, 140, 255, 0.2);
+  }
+  
+  /* Dark mode app container styles */
+  .app-container, 
+  .page-container, 
+  .main-content, 
+  .scroll-container {
+    background-color: var(--background);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease;
+  }
+  
+  /* Recharts dark mode */
+  .recharts-default-tooltip {
+    background-color: var(--surface-elevated) !important;
+    border-color: var(--border) !important;
+    box-shadow: var(--shadow-lg) !important;
+  }
+  
+  .recharts-tooltip-item-name,
+  .recharts-tooltip-item-value {
+    color: var(--text-primary) !important;
+  }
+  
+  .recharts-cartesian-axis-tick-value {
+    fill: var(--text-secondary) !important;
+  }
+  
+  .recharts-text {
+    fill: var(--text-secondary) !important;
+  }
+  
+  .recharts-cartesian-grid line {
+    stroke: var(--border) !important;
+  }
+  
+  /* Home container with subtle pattern */
+  .home-container {
+    background-color: var(--background) !important;
+    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%236d8cff' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E") !important;
+  }
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  color: var(--text-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-toggle:hover {
+  background-color: rgba(74, 105, 189, 0.1);
+  transform: translateY(-2px);
+}
+
+.theme-toggle:active {
+  transform: translateY(1px);
+}
+
+.theme-toggle svg {
+  transition: transform 0.3s ease;
+}
+
+.theme-toggle:hover svg {
+  transform: rotate(15deg);
 }
 
 /* Base styles */
@@ -817,8 +1281,8 @@ a:hover {
   position: absolute;
   top: 0;
   right: 0;
-  width: 80px;
-  height: 80px;
+  width: 80px; /* Reduced from 150px */
+  height: 80px; /* Reduced from 150px */
   background: linear-gradient(135deg, transparent 50%, rgba(74, 105, 189, 0.1) 50%);
   z-index: 0;
 }
@@ -2041,13 +2505,14 @@ textarea:focus:not(:focus-visible) {
 
 .quiz-list-stat {
   background-color: white;
-  padding: 4px 8px; /* Reduced from 5px 10px */
+  padding: 4px 8px;
   border-radius: var(--radius-sm);
   display: flex;
   flex-direction: column;
   align-items: center;
   box-shadow: var(--shadow-sm);
   transition: all 0.2s ease;
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .quiz-list-stat:hover {
@@ -2160,7 +2625,7 @@ textarea:focus:not(:focus-visible) {
   padding: 12px 15px;
   cursor: pointer;
   position: relative;
-  transition: all 0.2s ease; /* Simplified from cubic-bezier */
+  transition: all 0.2s ease;
 }
 
 .quiz-direction-option:hover {
@@ -3929,4 +4394,1371 @@ textarea:focus:not(:focus-visible) {
     max-height: 300px;
     transform: scaleY(1); 
   }
+}
+
+/* Dark mode comprehensive fixes */
+:root.dark-mode {
+  /* Keep existing dark mode variables */
+  
+  /* Fix for all components with potential white backgrounds */
+  /* General fixes */
+  .app-container, 
+  .page-container, 
+  .main-content, 
+  .scroll-container,
+  .container,
+  .container-fluid,
+  .container-responsive {
+    background-color: var(--background);
+    color: var(--text-primary);
+  }
+  
+  /* Fix white cards and containers */
+  .card, 
+  .quiz-card,
+  .pdf-card,
+  .feature-card,
+  .stat-card,
+  .word-progress-card,
+  .session-stat,
+  .quiz-stat,
+  .quick-stat,
+  .learning-stat,
+  .forecast-day,
+  .calendar-day,
+  .stats-loading-overlay,
+  .quiz-setup-panel,
+  .quiz-empty-state,
+  .chart-container,
+  .quiz-selection-summary,
+  .quiz-answer-section,
+  .quiz-stats-bar,
+  .progress-stats,
+  .chart-tooltip,
+  .retention-tooltip,
+  .quiz-empty-lists,
+  .quiz-list-item,
+  .quiz-direction-option,
+  .quiz-style-option,
+  .step-item {
+    background-color: var(--surface);
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+  
+  /* Fix hover states */
+  .card:hover, 
+  .quiz-card:hover,
+  .pdf-card:hover,
+  .feature-card:hover,
+  .stat-card:hover,
+  .word-progress-card:hover,
+  .session-stat:hover,
+  .quiz-stat:hover,
+  .quick-stat:hover,
+  .learning-stat:hover,
+  .forecast-day:hover,
+  .calendar-day:hover,
+  .quiz-setup-panel:hover,
+  .quiz-list-item:hover,
+  .quiz-direction-option:hover,
+  .quiz-style-option:hover,
+  .step-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--primary-color);
+  }
+  
+  /* Fix selected states */
+  .quiz-list-item.selected,
+  .quiz-direction-option.selected,
+  .quiz-style-option.selected,
+  .calendar-day-today {
+    background-color: rgba(74, 105, 189, 0.15);
+    border-color: var(--primary-color);
+  }
+  
+  /* Fix inputs, selects and form elements */
+  input, textarea, select,
+  .stats-filter-select {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+  
+  input:focus, textarea:focus, select:focus,
+  .stats-filter-select:focus {
+    border-color: var(--primary-color);
+    outline-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(74, 105, 189, 0.2);
+  }
+  
+  /* Fix button states */
+  button,
+  .btn,
+  .app-button,
+  .btn-primary,
+  .btn-secondary,
+  .quiz-cancel-button,
+  .quiz-show-answer-btn,
+  .difficulty-btn,
+  .quiz-control-btn,
+  .quiz-select-all-btn,
+  .quiz-clear-btn,
+  .continue-btn,
+  .start-quiz-btn,
+  .refresh-btn,
+  .action-btn {
+    color: var(--text-primary);
+  }
+  
+  /* Fix transparent or light backgrounds */
+  [style*="background-color: white"],
+  [style*="background-color: #fff"],
+  [style*="background-color: #ffffff"],
+  [style*="background: white"],
+  [style*="background: #fff"],
+  [style*="background: #ffffff"] {
+    background-color: var(--surface) !important;
+  }
+  
+  [style*="color: black"],
+  [style*="color: #000"],
+  [style*="color: #000000"] {
+    color: var(--text-primary) !important;
+  }
+  
+  /* Fix modals and overlays */
+  .modal,
+  .overlay,
+  .dropdown-menu,
+  .tooltip,
+  .popover {
+    background-color: var(--surface);
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+  
+  /* Fix headers and sections */
+  header,
+  footer,
+  nav,
+  .page-header,
+  .section-header,
+  .quiz-panel-title,
+  .progress-stats-header,
+  .chart-title {
+    color: var(--text-primary);
+  }
+  
+  /* Fix tables */
+  table,
+  th,
+  td {
+    border-color: var(--border);
+  }
+  
+  tr:nth-child(even) {
+    background-color: rgba(255, 255, 255, 0.02);
+  }
+  
+  /* Fix scrollbars for all components */
+  *::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  
+  *::-webkit-scrollbar-thumb {
+    background: rgba(74, 105, 189, 0.3);
+  }
+  
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(74, 105, 189, 0.5);
+  }
+  
+  /* Fix specific elements known to have white backgrounds */
+  .hero-section,
+  .features-section,
+  .steps-container,
+  .pdf-grid {
+    background-color: var(--background) !important;
+  }
+  
+  .quiz-session,
+  .home-container,
+  .home-content {
+    background-color: var(--background) !important;
+  }
+  
+  /* Fix recharts */
+  .recharts-default-tooltip {
+    background-color: var(--surface) !important;
+    border-color: var(--border) !important;
+  }
+  
+  .recharts-tooltip-item-name,
+  .recharts-tooltip-item-value {
+    color: var(--text-primary) !important;
+  }
+  
+  .recharts-cartesian-axis-tick-value {
+    fill: var(--text-secondary) !important;
+  }
+  
+  .recharts-text {
+    fill: var(--text-secondary) !important;
+  }
+  
+  .recharts-cartesian-grid line {
+    stroke: var(--border) !important;
+  }
+  
+  /* Fix any document.body styles */
+  body {
+    background-color: var(--background) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  /* Fix any status indicators */
+  .badge,
+  .tag,
+  .chip {
+    border-color: var(--border);
+  }
+  
+  /* Keep existing component-specific styles */
+}
+
+/* Fix for feature cards and how-it-works section in dark mode */
+:root.dark-mode .feature-card {
+  background-color: var(--surface) !important;
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-primary);
+}
+
+:root.dark-mode .feature-card:hover {
+  background-color: var(--surface-elevated) !important;
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-md), var(--glow-primary);
+}
+
+:root.dark-mode .feature-card h3 {
+  color: var(--primary-light);
+}
+
+:root.dark-mode .feature-card p {
+  color: var(--text-secondary);
+}
+
+:root.dark-mode .feature-icon {
+  background-color: rgba(109, 140, 255, 0.2) !important;
+  box-shadow: var(--shadow-md);
+}
+
+:root.dark-mode .how-it-works {
+  background-color: var(--surface) !important;
+  border-color: var(--border);
+  box-shadow: var(--shadow-md);
+  color: var(--text-primary);
+}
+
+:root.dark-mode .step-item {
+  background-color: var(--surface) !important;
+}
+
+:root.dark-mode .step-item:hover {
+  background-color: var(--surface-elevated) !important;
+  transform: translateY(-3px);
+}
+
+:root.dark-mode .step-item h3 {
+  color: var(--primary-light);
+}
+
+:root.dark-mode .step-item p {
+  color: var(--text-secondary);
+}
+
+:root.dark-mode .recent-pdfs {
+  background-color: var(--surface) !important;
+  border-color: var(--border);
+  box-shadow: var(--shadow-md);
+  color: var(--text-primary);
+}
+
+:root.dark-mode .pdf-grid {
+  background-color: transparent !important;
+}
+
+:root.dark-mode .recent-pdfs h2 {
+  color: var(--text-primary);
+}
+
+:root.dark-mode .recent-pdfs .gradient-text {
+  background-image: linear-gradient(135deg, var(--primary-light), var(--secondary-light));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+:root.dark-mode .page-content {
+  background-color: var(--surface) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-md) !important;
+  border: 1px solid var(--border);
+}
+
+:root.dark-mode .vocabulary-mode-header {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+
+:root.dark-mode .vocabulary-button {
+  background-color: var(--surface-elevated) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: all 0.2s ease;
+}
+
+:root.dark-mode .vocabulary-button:hover {
+  background-color: var(--surface-elevated) !important;
+  border-color: var(--primary-color) !important;
+  box-shadow: var(--shadow-md), var(--glow-primary) !important;
+  transform: translateY(-2px);
+}
+
+:root.dark-mode .vocabulary-button.primary {
+  background: var(--gradient-primary) !important;
+  color: var(--text-on-primary) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+:root.dark-mode .pdf-canvas-container {
+  background-color: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+}
+
+:root.dark-mode .pdf-canvas-container canvas {
+  filter: invert(0.85) hue-rotate(180deg) !important;
+}
+
+:root.dark-mode .view-mode-button {
+  background-color: var(--surface) !important;
+  color: var(--text-secondary) !important;
+  border: 1px solid var(--border) !important;
+}
+
+:root.dark-mode .view-mode-button.active {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+}
+
+:root.dark-mode .view-mode-selector {
+  background-color: var(--surface-elevated) !important;
+  border: 1px solid var(--border) !important;
+}
+
+/* Fix for word components in dark mode */
+:root.dark-mode .word-component {
+  color: var(--text-primary);
+}
+
+:root.dark-mode .word-component.selected {
+  background-color: rgba(109, 140, 255, 0.3) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Improve PDF rendering area in dark mode */
+:root.dark-mode canvas {
+  filter: invert(0.9) hue-rotate(180deg);
+}
+
+/* Fix PDF viewer containers */
+:root.dark-mode .pdf-canvas-container,
+:root.dark-mode [style*="background-color: white"] {
+  background-color: var(--surface) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Fix for input type=number in dark mode */
+:root.dark-mode input[type="number"] {
+  color: var(--text-primary);
+  background-color: var(--surface);
+  border-color: var(--border);
+}
+
+:root.dark-mode input[type="number"]:focus {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-sm), var(--glow-primary);
+}
+
+/* Fix for navigation controls input container in dark mode */
+:root.dark-mode [style*="backgroundColor: white"] {
+  background-color: var(--surface) !important;
+}
+
+/* Fix double scrollbar issue */
+:root.dark-mode .vocabulary-mode-content,
+.vocabulary-mode-content {
+  overflow: hidden !important;
+  height: 100%;
+}
+
+:root.dark-mode .split-view-container,
+.split-view-container {
+  overflow: hidden !important;
+  height: 100%;
+  display: flex;
+}
+
+:root.dark-mode .page-content-container,
+.page-content-container {
+  overflow: auto !important;
+  height: 100%;
+  flex: 1;
+}
+
+/* Tab navigation component */
+.vocabulary-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-md);
+  background-color: var(--surface-translucent);
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.vocabulary-tab {
+  padding: var(--space-md) var(--space-lg);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-weight: normal;
+  cursor: pointer;
+  font-size: var(--font-size-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.vocabulary-tab.active {
+  border-bottom: 3px solid var(--primary-color);
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.vocabulary-tab:hover:not(.active) {
+  color: var(--text-primary);
+  background-color: var(--surface-elevated);
+}
+
+/* Return link - Improved */
+.return-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--surface);
+  color: var(--primary-color);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: var(--space-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.return-link:hover {
+  background-color: var(--primary-light);
+  color: var(--text-on-primary);
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.return-link svg,
+.return-link span {
+  display: inline-block;
+}
+
+.return-link .icon {
+  font-size: 1.2rem;
+  margin-right: var(--space-xs);
+}
+
+/* Vocabulary tab navigation - Fixed for dark mode */
+.vocabulary-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-md);
+  background-color: var(--surface-translucent);
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.vocabulary-tab {
+  padding: var(--space-md) var(--space-lg);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-weight: normal;
+  cursor: pointer;
+  font-size: var(--font-size-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.vocabulary-tab.active {
+  border-bottom: 3px solid var(--primary-color);
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.vocabulary-tab:hover:not(.active) {
+  color: var(--text-primary);
+  background-color: var(--surface-elevated);
+}
+
+/* Filter buttons container */
+.filter-buttons-container {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  background: var(--surface-light);
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+}
+
+.filter-button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  transition: all 0.2s ease;
+}
+
+.filter-button.active {
+  background: var(--primary-color);
+  color: white;
+  box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 5px;
+}
+
+.filter-button:not(.active) {
+  background: var(--neutral-light);
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+
+.filter-button:hover:not(.active) {
+  background: var(--primary-light);
+  color: var(--text-on-primary);
+  transform: translateY(-1px);
+}
+
+.filter-button:active {
+  transform: translateY(1px);
+}
+
+.filter-button .icon {
+  font-size: 1rem;
+}
+
+/* Dark mode overrides and improvements */
+:root.dark-mode {
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.4), 0 6px 10px rgba(0, 0, 0, 0.3);
+  --glow-primary: 0 0 10px rgba(109, 140, 255, 0.6);
+  
+  /* Background color variables for dark mode */
+  --surface-translucent: rgba(33, 39, 55, 0.7);
+  --surface-light: var(--surface);
+  --primary-color-10: rgba(109, 140, 255, 0.1);
+  --bg-gradient-light: linear-gradient(to right, var(--surface) 0%, rgba(109, 140, 255, 0.1) 100%);
+  --neutral-light: rgba(255, 255, 255, 0.05);
+}
+
+:root.dark-mode .vocabulary-tabs {
+  background-color: var(--surface);
+  border-bottom-color: var(--border);
+}
+
+:root.dark-mode .vocabulary-tab:hover:not(.active) {
+  background-color: var(--surface-elevated);
+}
+
+:root.dark-mode .vocabulary-tab.active {
+  color: var(--primary-light);
+}
+
+:root.dark-mode .filter-buttons-container {
+  background-color: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+:root.dark-mode .filter-button:not(.active) {
+  background-color: var(--surface-elevated);
+  color: var(--text-secondary);
+}
+
+:root.dark-mode .filter-button.active {
+  background-color: var(--primary-color);
+  color: white;
+  box-shadow: var(--shadow-sm), var(--glow-primary);
+}
+
+:root.dark-mode .filter-button:hover:not(.active) {
+  background-color: rgba(109, 140, 255, 0.2);
+  color: var(--primary-light);
+}
+
+:root.dark-mode .return-link {
+  background-color: var(--surface-elevated);
+  color: var(--primary-light);
+  border-color: var(--border);
+}
+
+:root.dark-mode .return-link:hover {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-light);
+  box-shadow: var(--shadow-md), var(--glow-primary);
+}
+
+/* Modals in dark mode */
+:root.dark-mode .modal-overlay {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+:root.dark-mode .modal-content {
+  background-color: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Lists in dark mode */
+:root.dark-mode .list-item {
+  background-color: var(--surface);
+  border-color: var(--border);
+}
+
+:root.dark-mode .list-item.selected {
+  background-color: rgba(109, 140, 255, 0.3);
+  border-color: var(--primary-color);
+}
+
+/* Return button enhancement */
+.return-button {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--surface);
+  color: var(--primary-color);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: var(--space-md);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  z-index: 1;
+}
+
+.return-button:hover {
+  background-color: var(--primary-light);
+  color: var(--text-on-primary);
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.return-button .icon {
+  font-size: 1.2rem;
+}
+
+/* Search area container */
+.search-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+  align-items: center;
+  background: var(--bg-gradient-light);
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+}
+
+.search-input-container {
+  flex: 1 1 300px;
+  position: relative;
+}
+
+.search-input-wrapper {
+  position: relative;
+  transition: all 0.3s ease;
+  transform: scale(1);
+  transform-origin: left center;
+}
+
+.search-input {
+  width: 100%;
+  padding-left: var(--space-xl);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border);
+  font-size: var(--font-size-md);
+  outline: none;
+  transition: all 0.2s ease;
+  background-color: var(--surface);
+  box-shadow: var(--shadow-inner);
+  color: var(--text-primary);
+  padding-top: var(--space-sm);
+  padding-bottom: var(--space-sm);
+  padding-right: var(--space-sm);
+}
+
+.search-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-inner), 0 0 0 1px var(--primary-color);
+}
+
+.search-icon {
+  position: absolute;
+  left: var(--space-sm);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+  font-size: 1.1rem;
+}
+
+.search-input:focus + .search-icon {
+  color: var(--primary-color);
+}
+
+/* Dark mode overrides */
+:root.dark-mode .return-button {
+  background-color: var(--surface-elevated);
+  color: var(--primary-light);
+  border-color: var(--border);
+}
+
+:root.dark-mode .return-button:hover {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-light);
+  box-shadow: var(--shadow-md), var(--glow-primary);
+}
+
+:root.dark-mode .search-container {
+  background: linear-gradient(to right, var(--surface) 0%, rgba(109, 140, 255, 0.1) 100%);
+  border-color: var(--border);
+}
+
+:root.dark-mode .search-input {
+  background-color: var(--surface-elevated);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+:root.dark-mode .search-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-inner), var(--glow-primary);
+}
+
+/* Define rgba color variables for better reuse */
+:root {
+  --primary-color-10: rgba(74, 105, 189, 0.05);
+}
+
+/* Dark mode styles for the quiz list stat */
+:root.dark-mode .quiz-list-stat {
+  background-color: var(--surface-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+:root.dark-mode .quiz-list-stat:hover {
+  background-color: var(--surface-elevated-hover);
+  box-shadow: var(--shadow-md);
+}
+
+:root.dark-mode .quiz-list-stat-label {
+  color: var(--text-secondary);
+}
+
+:root.dark-mode .quiz-list-stat-value {
+  color: var(--text-primary);
+}
+
+:root.dark-mode .quiz-list-stat.overdue {
+  background-color: rgba(255, 99, 71, 0.15);
+  border-color: rgba(255, 99, 71, 0.3);
+}
+
+:root.dark-mode .quiz-list-stat.overdue .quiz-list-stat-label {
+  color: rgba(255, 120, 100, 0.9);
+}
+
+/* Update dark mode overrides for quiz components */
+:root.dark-mode .quiz-setup-panel {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+}
+
+:root.dark-mode .start-quiz-btn {
+  background: linear-gradient(to right, var(--primary-color) 0%, var(--accent-color) 100%);
+  color: white;
+}
+
+:root.dark-mode .quiz-setup-container {
+  background-color: var(--background);
+}
+
+:root.dark-mode .stat-card {
+  background-color: var(--surface-elevated);
+  border: 1px solid var(--border);
+}
+
+:root.dark-mode .stat-card-value {
+  color: var(--text-primary);
+}
+
+:root.dark-mode .stat-card-label {
+  color: var(--text-secondary);
+}
+
+/* Improve dark mode chart and stat visuals */
+:root.dark-mode .chart-container {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+}
+
+:root.dark-mode .chart-title {
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+}
+
+:root.dark-mode .chart-placeholder {
+  background-color: var(--surface-elevated);
+  color: var(--text-secondary);
+}
+
+:root.dark-mode .recharts-cartesian-axis-tick-value,
+:root.dark-mode .recharts-legend-item-text {
+  fill: var(--text-secondary);
+}
+
+:root.dark-mode .recharts-cartesian-grid line {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+:root.dark-mode .recharts-tooltip-cursor {
+  stroke: var(--primary-color);
+}
+
+:root.dark-mode .recharts-active-dot circle {
+  fill: var(--primary-color);
+  stroke: var(--background);
+}
+
+/* Improve hover effects in dark mode */
+:root.dark-mode .quick-stat:hover,
+:root.dark-mode .learning-stat:hover,
+:root.dark-mode .session-stat:hover,
+:root.dark-mode .forecast-day:hover,
+:root.dark-mode .word-progress-card:hover {
+  background-color: var(--surface-elevated-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Fix background colors for containers in dark mode */
+:root.dark-mode .quick-stats,
+:root.dark-mode .charts-grid,
+:root.dark-mode .learning-stats,
+:root.dark-mode .word-progress-container,
+:root.dark-mode .forecast-container,
+:root.dark-mode .history-container {
+  background-color: var(--background);
+}
+
+:root.dark-mode .word-progress-grid,
+:root.dark-mode .forecast-grid {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+}
+
+/* Fix calendar and forecast elements in dark mode */
+:root.dark-mode .forecast-day {
+  background-color: var(--surface-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+:root.dark-mode .forecast-day.today {
+  background-color: var(--primary-color-10);
+  border: 2px solid var(--primary-color);
+}
+
+:root.dark-mode .calendar-day-level-0 {
+  background-color: var(--surface);
+}
+
+:root.dark-mode .calendar-day-level-1 {
+  background-color: rgba(74, 105, 189, 0.15);
+}
+
+:root.dark-mode .calendar-day-level-2 {
+  background-color: rgba(74, 105, 189, 0.3);
+}
+
+:root.dark-mode .calendar-day-level-3 {
+  background-color: rgba(74, 105, 189, 0.45);
+}
+
+:root.dark-mode .calendar-day-level-4 {
+  background-color: rgba(74, 105, 189, 0.6);
+}
+
+/* Improve quick stats in dark mode */
+:root.dark-mode .quick-stat {
+  background-color: var(--surface-elevated);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+:root.dark-mode .quick-stat-label {
+  color: var(--text-secondary);
+}
+
+:root.dark-mode .quick-stat-value {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+:root.dark-mode .quick-stat-streak {
+  border-left: 3px solid var(--success);
+}
+
+:root.dark-mode .quick-stat-accuracy {
+  border-left: 3px solid var(--primary-color);
+}
+
+:root.dark-mode .quick-stat-studied {
+  border-left: 3px solid var(--accent-color);
+}
+
+:root.dark-mode .quick-stat-time {
+  border-left: 3px solid var(--warning);
+}
+
+/* Dark mode styles for the stats filters and tabs */
+:root.dark-mode .stats-filter-select {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+:root.dark-mode .stats-filter-select:hover {
+  border-color: var(--primary-color);
+}
+
+:root.dark-mode .stats-filter-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(109, 140, 255, 0.2);
+}
+
+:root.dark-mode .refresh-btn {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+:root.dark-mode .refresh-btn:hover {
+  background-color: var(--surface-elevated-hover);
+  border-color: var(--primary-color);
+}
+
+:root.dark-mode .tab-button {
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border);
+}
+
+:root.dark-mode .tab-button:hover {
+  color: var(--text-primary);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+:root.dark-mode .tab-button.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+/* Session history in dark mode */
+:root.dark-mode .history-session {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+:root.dark-mode .session-title {
+  color: var(--text-primary);
+}
+
+:root.dark-mode .session-lists {
+  color: var(--text-secondary);
+}
+
+:root.dark-mode .session-duration {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Dark mode styles for word progress cards */
+:root.dark-mode .word-progress-card {
+  background-color: var(--surface-elevated);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+:root.dark-mode .word-term {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+:root.dark-mode .word-translation {
+  color: var(--text-secondary);
+}
+
+:root.dark-mode .word-progress-stats {
+  color: var(--text-secondary);
+  background-color: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+/* Progress stats in dark mode */
+:root.dark-mode .stat-card {
+  background-color: var(--surface-elevated);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+:root.dark-mode .stat-card-value {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+:root.dark-mode .stat-card-label {
+  color: var(--text-secondary);
+}
+
+:root.dark-mode .learning-stat {
+  background-color: var(--surface-elevated);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+:root.dark-mode .learning-stat-total {
+  border-left: 3px solid var(--primary-color);
+}
+
+:root.dark-mode .learning-stat-new {
+  border-left: 3px solid var(--warning);
+}
+
+:root.dark-mode .learning-stat-learning {
+  border-left: 3px solid var(--accent-color);
+}
+
+:root.dark-mode .learning-stat-young {
+  border-left: 3px solid var(--info);
+}
+
+:root.dark-mode .learning-stat-mature {
+  border-left: 3px solid var(--success);
+}
+
+/* Empty states in dark mode */
+:root.dark-mode .empty-state {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+}
+
+:root.dark-mode .empty-state-title {
+  color: var(--text-primary);
+}
+
+:root.dark-mode .action-btn {
+  background: linear-gradient(to right, var(--primary-color), var(--accent-color));
+  color: white;
+  border: none;
+  box-shadow: var(--shadow-md);
+}
+
+:root.dark-mode .action-btn:hover {
+  box-shadow: var(--shadow-lg), var(--glow-primary);
+  transform: translateY(-2px);
+}
+
+/* Fix white backgrounds in dark mode */
+:root.dark-mode .retention-graph {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+:root.dark-mode .stats-content {
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Fix study-calendar background and add neon colors for charts in dark mode */
+:root.dark-mode .study-calendar {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+:root.dark-mode .calendar-day {
+  background-color: var(--surface-elevated);
+  border: 1px solid var(--border);
+}
+
+:root.dark-mode .calendar-day:hover {
+  background-color: var(--surface-elevated-hover);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+:root.dark-mode .calendar-day-tooltip {
+  background-color: var(--surface-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--primary-color);
+  box-shadow: var(--shadow-md), var(--glow-primary);
+}
+
+/* Enhanced neon colors for charts in dark mode */
+:root.dark-mode .recharts-pie-sector {
+  stroke: var(--background) !important;
+  stroke-width: 2;
+}
+
+:root.dark-mode .recharts-pie-label-text {
+  fill: var(--text-primary) !important;
+  font-weight: 600;
+  text-shadow: 0 0 10px currentColor;
+}
+
+/* Neon color overrides for dark mode charts */
+:root.dark-mode .recharts-sector[color="#FECA57"] {
+  fill: #FFD700 !important; /* Neon gold */
+}
+
+:root.dark-mode .recharts-sector[color="#48DBFB"] {
+  fill: #00FFFF !important; /* Neon cyan */
+}
+
+:root.dark-mode .recharts-sector[color="#1DD1A1"] {
+  fill: #39FF14 !important; /* Neon green */
+}
+
+:root.dark-mode .recharts-text[color="#FECA57"] {
+  fill: #FFD700 !important;
+}
+
+:root.dark-mode .recharts-text[color="#48DBFB"] {
+  fill: #00FFFF !important;
+}
+
+:root.dark-mode .recharts-text[color="#1DD1A1"] {
+  fill: #39FF14 !important;
+}
+
+:root.dark-mode .chart-legend-dot[style*="rgb(254, 202, 87)"] {
+  background-color: #FFD700 !important;
+  box-shadow: 0 0 10px #FFD700;
+}
+
+:root.dark-mode .chart-legend-dot[style*="rgb(72, 219, 251)"] {
+  background-color: #00FFFF !important;
+  box-shadow: 0 0 10px #00FFFF;
+}
+
+:root.dark-mode .chart-legend-dot[style*="rgb(29, 209, 161)"] {
+  background-color: #39FF14 !important;
+  box-shadow: 0 0 10px #39FF14;
+}
+
+/* Enhanced hover effects for all dark mode elements */
+:root.dark-mode .quick-stat:hover,
+:root.dark-mode .learning-stat:hover,
+:root.dark-mode .session-stat:hover,
+:root.dark-mode .word-progress-card:hover,
+:root.dark-mode .forecast-day:hover,
+:root.dark-mode .stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg), 0 0 15px rgba(109, 140, 255, 0.3);
+  border-color: var(--primary-color);
+}
+
+/* Improve tab and button hover effects in dark mode */
+:root.dark-mode .tab-button:hover {
+  color: var(--primary-color);
+  background-color: rgba(109, 140, 255, 0.1);
+  border-bottom-color: var(--primary-color);
+}
+
+:root.dark-mode .refresh-btn:hover {
+  background-color: var(--primary-color-10);
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-md), var(--glow-primary);
+}
+
+/* Fix white backgrounds for quiz components in dark mode */
+:root.dark-mode .quiz-card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+}
+
+:root.dark-mode .quiz-card:hover {
+  background-color: var(--surface-elevated);
+  box-shadow: var(--shadow-lg), var(--glow-primary);
+}
+
+:root.dark-mode .quiz-status {
+  background-color: var(--surface-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+:root.dark-mode .quiz-controls {
+  background-color: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+/* Fix more quiz components in dark mode */
+:root.dark-mode .quiz-prompt-section {
+  background-color: var(--surface-elevated);
+  border-bottom: 1px solid var(--border);
+}
+
+:root.dark-mode .quiz-answer-section {
+  background-color: var(--surface);
+}
+
+:root.dark-mode .quiz-prompt,
+:root.dark-mode .quiz-answer {
+  color: var(--text-primary);
+}
+
+/* Improve quiz buttons and difficulty buttons in dark mode */
+:root.dark-mode .quiz-show-answer-btn {
+  background: linear-gradient(to right, var(--primary-color), var(--accent-color));
+  border: none;
+  color: white;
+  box-shadow: var(--shadow-md);
+}
+
+:root.dark-mode .quiz-show-answer-btn:hover {
+  box-shadow: var(--shadow-lg), var(--glow-primary);
+  transform: translateY(-2px);
+}
+
+:root.dark-mode .difficulty-btn {
+  background-color: var(--surface-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+:root.dark-mode .difficulty-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md), 0 0 10px rgba(109, 140, 255, 0.2);
+}
+
+:root.dark-mode .difficulty-btn-again {
+  border-left: 3px solid #ff5252;
+}
+
+:root.dark-mode .difficulty-btn-hard {
+  border-left: 3px solid #ffa726;
+}
+
+:root.dark-mode .difficulty-btn-good {
+  border-left: 3px solid #29b6f6;
+}
+
+:root.dark-mode .difficulty-btn-easy {
+  border-left: 3px solid #66bb6a;
+}
+
+:root.dark-mode .quiz-card-meta {
+  background-color: var(--surface-elevated);
+  border-bottom: 1px solid var(--border);
+}
+
+:root.dark-mode .quiz-language-bar {
+  background-color: var(--surface-elevated);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Fix quiz-card gradient background in dark mode */
+:root.dark-mode .quiz-card {
+  background: linear-gradient(135deg, var(--surface), var(--surface-elevated));
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+}
+
+/* Fix quiz-cancel-button white background in dark mode */
+:root.dark-mode .quiz-cancel-button {
+  background-color: var(--surface-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+:root.dark-mode .quiz-cancel-button:hover {
+  background-color: var(--surface-elevated-hover);
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-md);
+}
+
+/* Enhanced quiz-language-bar styling for dark mode */
+:root.dark-mode .quiz-language-bar {
+  background: linear-gradient(to right, var(--surface), var(--primary-color-10));
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  box-shadow: inset 0 -1px 0 rgba(109, 140, 255, 0.2);
+  padding: 12px 16px;
+}
+
+/* Colorful quiz-language-bar for dark mode */
+:root.dark-mode .quiz-language-bar {
+  background: linear-gradient(to right, rgba(109, 140, 255, 0.2), rgba(120, 88, 255, 0.2));
+  border-bottom: 1px solid rgba(109, 140, 255, 0.4);
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px rgba(109, 140, 255, 0.15);
+  padding: 12px 16px;
 }

@@ -365,19 +365,18 @@ const PageView = ({
         className="page-content"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
+        exit={{ opacity: 0 }}
         style={{
-          padding: '20px',
-          backgroundColor: 'white',
-          borderRadius: '8px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.08)',
-          maxWidth: '800px',
-          margin: '0 auto',
-          lineHeight: 1.6,
-          fontSize: '1.1rem',
-          // For vertical text in CJK languages if needed
-          writingMode: ['ja', 'zh'].includes(pageLanguage) && highlightSettings?.verticalText ? 
-            'vertical-rl' : 'horizontal-tb'
+          padding: '15px 20px',
+          backgroundColor: 'var(--surface-secondary)',
+          borderRadius: '5px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          height: '100%',
+          // Remove maxHeight and overflowY to prevent double scrollbars
+          // maxHeight: '80vh',
+          // overflowY: 'auto',
+          // Apply different writing modes based on language
+          writingMode: (pageLanguage === 'ja' || pageLanguage === 'zh' || pageLanguage === 'ko') && highlightSettings.verticalText ? 'vertical-rl' : 'horizontal-tb',
         }}
       >
         {displaySegments.map((segment, index) => {
@@ -462,16 +461,18 @@ const PageView = ({
         className="page-content"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
+        exit={{ opacity: 0 }}
         style={{
-          padding: '20px',
-          backgroundColor: 'white',
-          borderRadius: '8px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.08)',
-          maxWidth: '800px',
-          margin: '0 auto',
-          lineHeight: 1.6,
-          fontSize: '1.1rem'
+          padding: '15px 20px',
+          backgroundColor: 'var(--surface-secondary)',
+          borderRadius: '5px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          height: '100%',
+          // Remove maxHeight and overflowY to prevent double scrollbars
+          // maxHeight: '80vh',
+          // overflowY: 'auto',
+          // Apply different writing modes based on language
+          writingMode: (pageLanguage === 'ja' || pageLanguage === 'zh' || pageLanguage === 'ko') && highlightSettings.verticalText ? 'vertical-rl' : 'horizontal-tb',
         }}
       >
         {paragraphs.map((paragraph, paragraphIndex) => {
@@ -573,16 +574,18 @@ const PageView = ({
       className="page-content"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
+      exit={{ opacity: 0 }}
       style={{
-        padding: '20px',
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.08)',
-        maxWidth: '800px',
-        margin: '0 auto',
-        lineHeight: 1.6,
-        fontSize: '1.1rem'
+        padding: '15px 20px',
+        backgroundColor: 'var(--surface-secondary)',
+        borderRadius: '5px',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+        height: '100%',
+        // Remove maxHeight and overflowY to prevent double scrollbars
+        // maxHeight: '80vh',
+        // overflowY: 'auto',
+        // Apply different writing modes based on language
+        writingMode: (pageLanguage === 'ja' || pageLanguage === 'zh' || pageLanguage === 'ko') && highlightSettings.verticalText ? 'vertical-rl' : 'horizontal-tb',
       }}
     >
       {words.map((word, index) => {

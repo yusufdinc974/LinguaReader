@@ -352,19 +352,7 @@ const VocabularyManager = ({ onNavigate }) => {
         </p>
 
         {/* Action buttons */}
-        <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
-          <Button
-            onClick={() => onNavigate('vocabulary-mode')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-xs)',
-            }}
-          >
-            <span>📚</span>
-            <span>Return to Vocabulary Mode</span>
-          </Button>
-        </div>
+        
       </motion.div>
       
       {/* Tab navigation */}
@@ -374,10 +362,11 @@ const VocabularyManager = ({ onNavigate }) => {
           display: 'flex',
           borderBottom: '1px solid var(--border)',
           marginBottom: 'var(--space-md)',
-          backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          backgroundColor: 'var(--surface)',
           padding: '0 var(--space-md)',
           borderRadius: 'var(--radius-md) var(--radius-md) 0 0',
         }}
+        className="vocabulary-tabs"
       >
         <button
           className={activeTab === 'words' ? 'active' : ''}
@@ -455,12 +444,12 @@ const VocabularyManager = ({ onNavigate }) => {
                 gap: 'var(--space-md)',
                 marginBottom: 'var(--space-lg)',
                 alignItems: 'center',
-                backgroundColor: 'white',
+                backgroundColor: 'var(--surface)',
                 padding: 'var(--space-lg)',
                 borderRadius: 'var(--radius-lg)',
                 boxShadow: 'var(--shadow-sm)',
                 border: '1px solid var(--border)',
-                background: 'linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(74,105,189,0.05) 100%)',
+                background: 'linear-gradient(to right, var(--surface) 0%, rgba(74,105,189,0.05) 100%)',
               }}
             >
               {/* Search input */}
@@ -495,6 +484,7 @@ const VocabularyManager = ({ onNavigate }) => {
                       outline: 'none',
                       transition: 'all 0.2s ease',
                       backgroundColor: 'var(--surface)',
+                      color: 'var(--text-primary)',
                       boxShadow: focusedInput 
                         ? '0 0 0 4px rgba(74, 105, 189, 0.15)' 
                         : 'var(--shadow-inner)',
@@ -542,7 +532,7 @@ const VocabularyManager = ({ onNavigate }) => {
                 display: 'flex',
                 gap: 'var(--space-sm)',
                 flexWrap: 'wrap',
-                background: 'white',
+                background: 'var(--surface-elevated)',
                 padding: 'var(--space-sm)',
                 borderRadius: 'var(--radius-md)',
                 boxShadow: 'var(--shadow-sm)',
@@ -598,7 +588,7 @@ const VocabularyManager = ({ onNavigate }) => {
                   borderRadius: 'var(--radius-md)',
                   fontSize: 'var(--font-size-sm)',
                   color: 'var(--text-secondary)',
-                  backgroundColor: 'rgba(255,255,255,0.7)',
+                  backgroundColor: 'var(--surface-elevated)',
                 }}>
                   <span>Active filters:</span>
                   <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
