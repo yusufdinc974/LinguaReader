@@ -1,0 +1,95 @@
+/* Splash screen styles */
+.splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  background-color: #121212;
+  color: white;
+}
+
+/* Logo pulse animation */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 rgba(74, 111, 255, 0.7));
+  }
+  50% {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 10px rgba(74, 111, 255, 0.8));
+  }
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 rgba(74, 111, 255, 0.7));
+  }
+}
+
+.splash-logo {
+  animation: pulse 2s infinite ease-in-out;
+}
+
+/* Shine effect animations */
+@keyframes shine {
+  0% {
+    transform: translateX(-100%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-20deg);
+  }
+}
+
+.shine-effect {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transform: skewX(-20deg);
+  z-index: 2;
+  animation: shine 2s infinite;
+}
+
+/* Text gradient animation */
+@keyframes gradientFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, #4A6FFF, #9D4EDD, #4A6FFF);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientFlow 3s ease infinite;
+}
+
+/* Progress bar animation */
+@keyframes progress {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4A6FFF, #9D4EDD);
+  border-radius: 2px;
+  animation: progress 2.5s ease-in-out;
+} 

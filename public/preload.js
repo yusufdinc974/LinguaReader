@@ -86,7 +86,24 @@ contextBridge.exposeInMainWorld(
     isWindowMaximized: () => ipcRenderer.invoke('is-window-maximized'),
     
     // Auto-update functionality
-    checkForUpdates: () => ipcRenderer.invoke('check-for-updates')
+    checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+    
+    // IPC Renderer access
+    ipcRenderer: {
+      // Expose a limited set of ipcRenderer functionality
+      send: (channel, ...args) => {
+        // Whitelist channels that are allowed
+        const validChannels = [
+          'splash-screen-complete',
+          'minimize-window',
+          'maximize-window',
+          'close-window'
+        ];
+        if (validChannels.includes(channel)) {
+          ipcRenderer.send(channel, ...args);
+        }
+      }
+    }
   }
 );
 
