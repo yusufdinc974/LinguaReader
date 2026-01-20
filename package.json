@@ -76,7 +76,10 @@
       "category": "Education",
       "icon": "build/icons",
       "executableName": "LinguaReader",
-      "maintainer": "Yusuf Dinc <yusufdinc974@github.com>"
+      "maintainer": "Yusuf Dinc <yusufdinc974@github.com>",
+      "executableArgs": [
+        "--no-sandbox"
+      ]
     },
     "win": {
       "target": [
