@@ -6,7 +6,7 @@
 > *Read native content, translate instantly context-aware, and build your vocabulary seamlessly using Spaced Repetition.*
 
 [![Release](https://img.shields.io/github/v/release/yusufdinc974/LinguaReader?style=for-the-badge&color=38bdf8)](https://github.com/yusufdinc974/LinguaReader/releases)
-[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-gray?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/yusufdinc974/LinguaReader/releases)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-gray?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/yusufdinc974/LinguaReader/releases)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 ---
@@ -50,12 +50,10 @@
 ## 🚀 Installation
 
 ### 🐧 Linux (Debian/Ubuntu/Mint)
-The recommended way for productivity.
-
 1.  **Download** the latest `.deb` file from the [Releases Page](https://github.com/yusufdinc974/LinguaReader/releases).
 2.  **Install**:
     ```bash
-    sudo dpkg -i linguareader_1.0.4_amd64.deb
+    sudo dpkg -i linguareader_1.0.5_amd64.deb
     ```
 3.  Launch **LinguaReader** from your applications menu.
 
@@ -64,7 +62,12 @@ The recommended way for productivity.
 ### 🪟 Windows
 1.  **Download** the `.exe` installer from [Releases](https://github.com/yusufdinc974/LinguaReader/releases).
 2.  Run the installer.
-3.  *(If prompted by SmartScreen, click "More info" > "Run anyway" - this is normal for open source apps not signed with an enterprise certificate).*
+3.  *(If prompted by SmartScreen, click "More info" > "Run anyway" - this is normal for unsigned apps).*
+
+### 🍎 macOS
+1.  **Download** the `.dmg` file from [Releases](https://github.com/yusufdinc974/LinguaReader/releases).
+2.  Open the `.dmg` and drag **LinguaReader** to your Applications folder.
+3.  *(If blocked by Gatekeeper, right-click the app and select "Open", then confirm).*
 
 ---
 
@@ -98,6 +101,9 @@ npm run build:linux
 
 # Build for Windows
 npm run build:win
+
+# Build for macOS
+npm run build:mac
 ```
 
 ---
