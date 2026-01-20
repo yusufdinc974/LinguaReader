@@ -58,7 +58,9 @@
     },
     "files": [
       "dist/**/*",
-      "dist-electron/**/*"
+      "dist-electron/**/*",
+      "!**/*chrome-sandbox",
+      "!**/*chrome_sandbox"
     ],
     "extraResources": [
       {
