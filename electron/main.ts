@@ -8,6 +8,10 @@ let db: Database.Database | null = null;
 
 const isDev = !app.isPackaged;
 
+// Disable sandbox to fix crash on some Linux systems
+// (Required because default AppImage/Debian run doesn't include --no-sandbox)
+app.commandLine.appendSwitch('no-sandbox');
+
 function getDbPath(): string {
     const userDataPath = app.getPath('userData');
     return path.join(userDataPath, 'linguareader.db');
