@@ -1,6 +1,6 @@
 # 📚 LinguaReader
 
-![Banner Placeholder](https://via.placeholder.com/1200x400/0f172a/38bdf8?text=LinguaReader+Preview)
+![LinguaReader Banner](assets/images/banner.png)
 
 > **A powerful, modern PDF reader designed for language learners.**  
 > *Read native content, translate instantly context-aware, and build your vocabulary seamlessly using Spaced Repetition.*
@@ -39,11 +39,11 @@
 
 | Reading Mode | Translation & Vocab |
 |:---:|:---:|
-| ![Reading Mode](https://via.placeholder.com/600x400/1e293b/94a3b8?text=Reading+Interface) | ![Translation](https://via.placeholder.com/600x400/1e293b/94a3b8?text=Translation+Popup) |
+| ![Reading Mode](assets/images/readingmode.png) | ![Translation](assets/images/translation.png) |
 
 | Vocabulary Dashboard | Flashcard Quiz |
 |:---:|:---:|
-| ![Dashboard](https://via.placeholder.com/600x400/1e293b/94a3b8?text=Vocab+Dashboard) | ![Quiz](https://via.placeholder.com/600x400/1e293b/94a3b8?text=SRS+Quiz) |
+| ![Dashboard](assets/images/vocabulary.png) | ![Quiz](assets/images/quiz.png) |
 
 ---
 
