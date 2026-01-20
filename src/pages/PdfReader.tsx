@@ -598,8 +598,8 @@ function PdfReader() {
                 {/* Main PDF Area */}
                 <div className="flex-1 flex flex-col">
                     {/* Toolbar */}
-                    <div className="p-4 flex items-center justify-between relative z-10" style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border-color)' }}>
-                        <div className="flex items-center gap-4">
+                    <div className="p-4 flex flex-wrap items-center justify-between gap-4 relative z-10" style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border-color)' }}>
+                        <div className="flex flex-wrap items-center gap-4 shrink-0">
                             <button onClick={handleUpload} className="btn-primary flex items-center gap-2">
                                 <Upload size={18} />
                                 Upload PDF
@@ -629,7 +629,7 @@ function PdfReader() {
                                         style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
                                     >
                                         <span>Filter Lists</span>
-                                        {selectedListIds.length > 0 && (
+                                        {selectedListIds.length > 0 && selectedListIds[0] !== -1 && (
                                             <span style={{ background: 'var(--accent)', color: 'white' }} className="text-xs px-1.5 py-0.5 rounded-full">
                                                 {selectedListIds.length}
                                             </span>
@@ -639,42 +639,79 @@ function PdfReader() {
                                         <div className="absolute top-full left-0 mt-2 w-64 rounded-lg p-3 z-[9999] shadow-xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
                                             <p className="text-xs uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>Highlight Lists</p>
                                             <div className="space-y-2 max-h-48 overflow-y-auto">
-                                                {wordLists.map(list => (
-                                                    <label key={list.id} className="flex items-center gap-2 cursor-pointer rounded p-1 -m-1" style={{ background: 'transparent' }}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedListIds.length === 0 || selectedListIds.includes(list.id)}
-                                                            onChange={(e) => {
-                                                                if (e.target.checked) {
-                                                                    if (selectedListIds.length > 0) {
-                                                                        const newIds = [...selectedListIds, list.id];
-                                                                        setSelectedListIds(newIds);
-                                                                        loadWordColors(newIds);
-                                                                    }
-                                                                } else {
-                                                                    if (selectedListIds.length === 0) {
-                                                                        const newIds = wordLists.filter(l => l.id !== list.id).map(l => l.id);
-                                                                        setSelectedListIds(newIds);
-                                                                        loadWordColors(newIds);
+                                                {wordLists.map(list => {
+                                                    // Determine if this list is "checked"
+                                                    // Empty array = all shown, [-1] = none shown, otherwise check if included
+                                                    const isChecked = selectedListIds.length === 0
+                                                        ? true
+                                                        : (selectedListIds[0] === -1 ? false : selectedListIds.includes(list.id));
+
+                                                    return (
+                                                        <label key={list.id} className="flex items-center gap-2 cursor-pointer rounded p-1 -m-1" style={{ background: 'transparent' }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isChecked}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) {
+                                                                        // Adding a list
+                                                                        if (selectedListIds.length === 0) {
+                                                                            // Already showing all, no change needed
+                                                                        } else if (selectedListIds[0] === -1) {
+                                                                            // Was showing none, now show just this one
+                                                                            setSelectedListIds([list.id]);
+                                                                            loadWordColors([list.id]);
+                                                                        } else {
+                                                                            // Add to existing selection
+                                                                            const newIds = [...selectedListIds, list.id];
+                                                                            // If all lists are now selected, switch to "all" mode
+                                                                            if (newIds.length === wordLists.length) {
+                                                                                setSelectedListIds([]);
+                                                                                loadWordColors([]);
+                                                                            } else {
+                                                                                setSelectedListIds(newIds);
+                                                                                loadWordColors(newIds);
+                                                                            }
+                                                                        }
                                                                     } else {
-                                                                        const newIds = selectedListIds.filter(id => id !== list.id);
-                                                                        setSelectedListIds(newIds);
-                                                                        loadWordColors(newIds.length > 0 ? newIds : [-1]);
+                                                                        // Removing a list
+                                                                        if (selectedListIds.length === 0) {
+                                                                            // Currently showing all, uncheck means show all except this one
+                                                                            const newIds = wordLists.filter(l => l.id !== list.id).map(l => l.id);
+                                                                            if (newIds.length === 0) {
+                                                                                // Only one list existed, now showing none
+                                                                                setSelectedListIds([-1]);
+                                                                                loadWordColors([-1]);
+                                                                            } else {
+                                                                                setSelectedListIds(newIds);
+                                                                                loadWordColors(newIds);
+                                                                            }
+                                                                        } else {
+                                                                            // Remove from existing selection
+                                                                            const newIds = selectedListIds.filter(id => id !== list.id);
+                                                                            if (newIds.length === 0) {
+                                                                                // No lists selected, show none
+                                                                                setSelectedListIds([-1]);
+                                                                                loadWordColors([-1]);
+                                                                            } else {
+                                                                                setSelectedListIds(newIds);
+                                                                                loadWordColors(newIds);
+                                                                            }
+                                                                        }
                                                                     }
-                                                                }
-                                                            }}
-                                                            className="w-4 h-4 rounded"
-                                                            style={{ accentColor: 'var(--accent)' }}
-                                                        />
-                                                        <div
-                                                            className="w-3 h-3 rounded-full shrink-0"
-                                                            style={{ backgroundColor: list.color || '#eab308' }}
-                                                        />
-                                                        <span className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{list.name}</span>
-                                                    </label>
-                                                ))}
+                                                                }}
+                                                                className="w-4 h-4 rounded"
+                                                                style={{ accentColor: 'var(--accent)' }}
+                                                            />
+                                                            <div
+                                                                className="w-3 h-3 rounded-full shrink-0"
+                                                                style={{ backgroundColor: list.color || '#eab308' }}
+                                                            />
+                                                            <span className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{list.name}</span>
+                                                        </label>
+                                                    );
+                                                })}
                                             </div>
-                                            {selectedListIds.length > 0 && (
+                                            {(selectedListIds.length > 0 && selectedListIds[0] !== -1) && (
                                                 <button
                                                     onClick={() => {
                                                         setSelectedListIds([]);
@@ -751,125 +788,125 @@ function PdfReader() {
                         )}
                     </div>
                 </div>
+            </div>
 
-                {/* Right Side Panel */}
-                <div className={`w-80 glass border-l border-white/10 flex flex-col transition-all duration-300 ${panel.show ? 'translate-x-0' : 'translate-x-full w-0 overflow-hidden'}`}>
-                    {panel.show && (
-                        <>
-                            <div className="p-4 border-b border-white/10 flex items-center justify-between">
-                                <h3 className="font-semibold">Add to Word List</h3>
-                                <button onClick={() => setPanel(prev => ({ ...prev, show: false }))} className="p-1 hover:bg-white/10 rounded">
-                                    <X size={18} />
+            {/* Floating Word Panel Drawer */}
+            <div
+                className={`fixed top-0 right-0 h-full w-80 max-w-[85vw] z-[9999] shadow-2xl flex flex-col transition-transform duration-300 ${panel.show ? 'translate-x-0' : 'translate-x-full'}`}
+                style={{ background: 'var(--bg-card)', borderLeft: '1px solid var(--border-color)' }}
+            >
+                <div className="p-4 flex items-center justify-between shrink-0" style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Add to Word List</h3>
+                    <button onClick={() => setPanel(prev => ({ ...prev, show: false }))} className="p-1 rounded hover:bg-white/10" style={{ color: 'var(--text-muted)' }}>
+                        <X size={18} />
+                    </button>
+                </div>
+
+                <div className="flex-1 p-4 overflow-auto">
+                    {/* Original Word */}
+                    <div className="mb-4">
+                        <label className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Original</label>
+                        <p className="text-lg font-medium mt-1 break-words" style={{ color: 'var(--text-primary)' }}>{panel.text}</p>
+                    </div>
+
+                    {/* Translation */}
+                    <div className="mb-6">
+                        <label className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Translation</label>
+                        {panel.isLoading ? (
+                            <div className="flex items-center gap-2 mt-2">
+                                <Loader2 size={16} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
+                                <span style={{ color: 'var(--text-muted)' }}>Translating...</span>
+                            </div>
+                        ) : (
+                            <p className="text-lg font-medium mt-1 break-words" style={{ color: 'var(--accent)' }}>{panel.translation}</p>
+                        )}
+                    </div>
+
+                    {/* Familiarity Level */}
+                    <div className="mb-6">
+                        <label className="text-xs uppercase tracking-wide mb-2 block" style={{ color: 'var(--text-muted)' }}>
+                            Familiarity
+                        </label>
+                        <div className="flex flex-wrap gap-1.5">
+                            {[1, 2, 3, 4, 5].map((level) => (
+                                <button
+                                    key={level}
+                                    onClick={() => setSelectedLevel(level)}
+                                    className={`w-8 h-8 rounded-lg font-bold transition-all text-white text-xs ${selectedLevel === level
+                                        ? 'ring-2 ring-offset-1 scale-110'
+                                        : 'opacity-60 hover:opacity-100'
+                                        }`}
+                                    style={{ backgroundColor: LEVEL_COLORS[level] }}
+                                >
+                                    {level}
                                 </button>
-                            </div>
+                            ))}
+                        </div>
+                        <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+                            {selectedLevel === 1 && 'Unknown'}
+                            {selectedLevel === 2 && 'Seen'}
+                            {selectedLevel === 3 && 'Learning'}
+                            {selectedLevel === 4 && 'Familiar'}
+                            {selectedLevel === 5 && 'Mastered'}
+                        </p>
+                    </div>
 
-                            <div className="flex-1 p-4 overflow-auto">
-                                {/* Original Word */}
-                                <div className="mb-4">
-                                    <label className="text-xs text-dark-400 uppercase tracking-wide">Original</label>
-                                    <p className="text-lg font-medium mt-1">{panel.text}</p>
-                                </div>
+                    {/* Select or Create List */}
+                    <div className="mb-4">
+                        <label className="text-xs uppercase tracking-wide mb-2 block" style={{ color: 'var(--text-muted)' }}>
+                            Add to List
+                        </label>
 
-                                {/* Translation */}
-                                <div className="mb-6">
-                                    <label className="text-xs text-dark-400 uppercase tracking-wide">Translation</label>
-                                    {panel.isLoading ? (
-                                        <div className="flex items-center gap-2 mt-2">
-                                            <Loader2 size={16} className="animate-spin" />
-                                            <span className="text-dark-400">Translating...</span>
-                                        </div>
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowListDropdown(!showListDropdown)}
+                                className="w-full btn-primary flex items-center justify-center gap-2"
+                                disabled={panel.isLoading}
+                            >
+                                <Plus size={16} />
+                                <span>Select</span>
+                            </button>
+
+                            {showListDropdown && (
+                                <div className="absolute top-full left-0 right-0 mt-2 rounded-lg p-2 z-10 max-h-40 overflow-auto shadow-xl" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+                                    {wordLists.length === 0 ? (
+                                        <p className="text-sm p-2" style={{ color: 'var(--text-muted)' }}>No lists yet.</p>
                                     ) : (
-                                        <p className="text-lg font-medium mt-1 text-primary-400">{panel.translation}</p>
-                                    )}
-                                </div>
-
-                                {/* Familiarity Level */}
-                                <div className="mb-6">
-                                    <label className="text-xs text-dark-400 uppercase tracking-wide mb-2 block">
-                                        Familiarity Level
-                                    </label>
-                                    <div className="flex gap-2">
-                                        {[1, 2, 3, 4, 5].map((level) => (
+                                        wordLists.map((list) => (
                                             <button
-                                                key={level}
-                                                onClick={() => setSelectedLevel(level)}
-                                                className={`w-10 h-10 rounded-lg font-bold transition-all text-white ${selectedLevel === level
-                                                    ? 'ring-2 ring-white ring-offset-2 ring-offset-dark-900 scale-110'
-                                                    : 'opacity-60 hover:opacity-100'
-                                                    }`}
-                                                style={{ backgroundColor: LEVEL_COLORS[level] }}
+                                                key={list.id}
+                                                onClick={() => handleAddToList(list.id)}
+                                                className="w-full text-left px-3 py-2 rounded-lg text-sm hover:opacity-80"
+                                                style={{ color: 'var(--text-primary)' }}
                                             >
-                                                {level}
+                                                {list.name}
                                             </button>
-                                        ))}
-                                    </div>
-                                    <p className="text-xs text-dark-400 mt-2">
-                                        {selectedLevel === 1 && '1 - Unknown: Never seen before'}
-                                        {selectedLevel === 2 && '2 - Seen: Recognize it'}
-                                        {selectedLevel === 3 && '3 - Learning: Working on it'}
-                                        {selectedLevel === 4 && '4 - Familiar: Know it well'}
-                                        {selectedLevel === 5 && '5 - Mastered: Fully learned'}
-                                    </p>
-                                </div>
-
-                                {/* Select or Create List */}
-                                <div className="mb-4">
-                                    <label className="text-xs text-dark-400 uppercase tracking-wide mb-2 block">
-                                        Add to Word List
-                                    </label>
-
-                                    <div className="relative">
-                                        <button
-                                            onClick={() => setShowListDropdown(!showListDropdown)}
-                                            className="w-full btn-primary flex items-center justify-center gap-2"
-                                            disabled={panel.isLoading}
-                                        >
-                                            <Plus size={18} />
-                                            Select List
-                                        </button>
-
-                                        {showListDropdown && (
-                                            <div className="absolute top-full left-0 right-0 mt-2 glass rounded-lg p-2 z-10 max-h-48 overflow-auto">
-                                                {wordLists.length === 0 ? (
-                                                    <p className="text-sm text-dark-400 p-2">No lists yet. Create one below.</p>
-                                                ) : (
-                                                    wordLists.map((list) => (
-                                                        <button
-                                                            key={list.id}
-                                                            onClick={() => handleAddToList(list.id)}
-                                                            className="w-full text-left px-3 py-2 hover:bg-white/10 rounded-lg text-sm flex items-center justify-between"
-                                                        >
-                                                            {list.name}
-                                                            <span className="text-xs text-dark-400">Add</span>
-                                                        </button>
-                                                    ))
-                                                )}
-                                                <div className="border-t border-white/10 mt-2 pt-2">
-                                                    <div className="flex gap-2">
-                                                        <input
-                                                            type="text"
-                                                            value={newListName}
-                                                            onChange={(e) => setNewListName(e.target.value)}
-                                                            onKeyDown={(e) => e.key === 'Enter' && handleCreateList()}
-                                                            placeholder="New list name..."
-                                                            className="flex-1 px-3 py-2 bg-dark-800/50 border border-dark-700 rounded-lg text-sm"
-                                                        />
-                                                        <button
-                                                            onClick={handleCreateList}
-                                                            className="btn-secondary px-3"
-                                                            disabled={!newListName.trim()}
-                                                        >
-                                                            <Plus size={16} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
+                                        ))
+                                    )}
+                                    <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
+                                        <div className="flex gap-1">
+                                            <input
+                                                type="text"
+                                                value={newListName}
+                                                onChange={(e) => setNewListName(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleCreateList()}
+                                                placeholder="New list..."
+                                                className="flex-1 min-w-0 px-2 py-1.5 rounded-lg text-sm"
+                                                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+                                            />
+                                            <button
+                                                onClick={handleCreateList}
+                                                className="btn-secondary px-2"
+                                                disabled={!newListName.trim()}
+                                            >
+                                                <Plus size={14} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </>
-                    )}
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 

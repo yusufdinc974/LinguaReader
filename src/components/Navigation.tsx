@@ -44,7 +44,7 @@ function Navigation() {
             </div>
 
             {/* Navigation Links */}
-            <div className="flex-1 py-4 px-3 space-y-1 overflow-auto">
+            <div className="flex-1 py-4 px-3 space-y-1 overflow-auto min-h-0">
                 {navItems.map(({ path, label, icon: Icon }) => (
                     <NavLink
                         key={path}
