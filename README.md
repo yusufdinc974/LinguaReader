@@ -5,6 +5,12 @@
 > **A powerful, modern PDF reader designed for language learners.**  
 > *Read native content, translate instantly context-aware, and build your vocabulary seamlessly using Spaced Repetition.*
 
+<div align="center">
+  <h3>
+    <a href="https://lingua-reader-web.vercel.app/">🌐 Visit Official Website</a>
+  </h3>
+</div>
+
 [![Release](https://img.shields.io/github/v/release/yusufdinc974/LinguaReader?style=for-the-badge&color=38bdf8)](https://github.com/yusufdinc974/LinguaReader/releases)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-gray?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/yusufdinc974/LinguaReader/releases)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
