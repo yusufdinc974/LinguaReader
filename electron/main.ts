@@ -1,7 +1,8 @@
-import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, Menu, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import Database from 'better-sqlite3';
+import { autoUpdater } from 'electron-updater';
 
 let mainWindow: BrowserWindow | null = null;
 let db: Database.Database | null = null;
@@ -1056,11 +1057,125 @@ app.whenReady().then(() => {
     setupIpcHandlers();
     createWindow();
 
+    // Setup auto-updater (only for Windows and Linux)
+    if (process.platform !== 'darwin' && !isDev) {
+        setupAutoUpdater();
+    }
+
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
             createWindow();
         }
     });
+});
+
+// Auto-updater setup
+function setupAutoUpdater() {
+    // Disable auto-download, we'll do it on user request
+    autoUpdater.autoDownload = false;
+    autoUpdater.autoInstallOnAppQuit = true;
+
+    // Check for updates after a short delay
+    setTimeout(() => {
+        autoUpdater.checkForUpdates().catch(err => {
+            console.error('Auto-update check failed:', err);
+        });
+    }, 5000);
+
+    // Send update status to renderer
+    autoUpdater.on('checking-for-update', () => {
+        mainWindow?.webContents.send('update-status', { status: 'checking' });
+    });
+
+    autoUpdater.on('update-available', (info) => {
+        mainWindow?.webContents.send('update-status', {
+            status: 'available',
+            version: info.version,
+            releaseDate: info.releaseDate,
+            releaseNotes: info.releaseNotes
+        });
+    });
+
+    autoUpdater.on('update-not-available', () => {
+        mainWindow?.webContents.send('update-status', { status: 'not-available' });
+    });
+
+    autoUpdater.on('download-progress', (progress) => {
+        mainWindow?.webContents.send('update-status', {
+            status: 'downloading',
+            percent: progress.percent,
+            bytesPerSecond: progress.bytesPerSecond,
+            transferred: progress.transferred,
+            total: progress.total
+        });
+    });
+
+    autoUpdater.on('update-downloaded', () => {
+        mainWindow?.webContents.send('update-status', { status: 'downloaded' });
+    });
+
+    autoUpdater.on('error', (err) => {
+        mainWindow?.webContents.send('update-status', { status: 'error', message: err.message });
+    });
+}
+
+// IPC handlers for auto-update
+ipcMain.handle('check-for-updates', async () => {
+    if (process.platform === 'darwin') {
+        // macOS: Check GitHub API directly
+        try {
+            const response = await fetch('https://api.github.com/repos/yusufdinc974/LinguaReader/releases/latest');
+            const release = await response.json() as { tag_name: string; html_url: string; published_at: string };
+            const latestVersion = release.tag_name.replace('v', '');
+            const currentVersion = app.getVersion();
+
+            if (latestVersion > currentVersion) {
+                return {
+                    hasUpdate: true,
+                    version: latestVersion,
+                    downloadUrl: release.html_url,
+                    releaseDate: release.published_at
+                };
+            }
+            return { hasUpdate: false };
+        } catch (error) {
+            console.error('Failed to check for updates:', error);
+            return { hasUpdate: false, error: 'Failed to check' };
+        }
+    } else {
+        // Windows/Linux: Use electron-updater
+        try {
+            const result = await autoUpdater.checkForUpdates();
+            return {
+                hasUpdate: result?.updateInfo?.version !== app.getVersion(),
+                version: result?.updateInfo?.version
+            };
+        } catch (error) {
+            return { hasUpdate: false, error: 'Failed to check' };
+        }
+    }
+});
+
+ipcMain.handle('download-update', async () => {
+    if (process.platform !== 'darwin') {
+        autoUpdater.downloadUpdate();
+        return true;
+    }
+    return false;
+});
+
+ipcMain.handle('install-update', () => {
+    if (process.platform !== 'darwin') {
+        autoUpdater.quitAndInstall();
+    }
+});
+
+ipcMain.handle('open-release-page', () => {
+    shell.openExternal('https://github.com/yusufdinc974/LinguaReader/releases/latest');
+});
+
+ipcMain.handle('get-app-version', () => {
+    return app.getVersion();
 });
 
 app.on('window-all-closed', () => {

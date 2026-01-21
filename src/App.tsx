@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import Navigation from './components/Navigation'
+import UpdateNotification from './components/UpdateNotification'
 import HomePage from './pages/HomePage'
 import PdfReader from './pages/PdfReader'
 import WordLists from './pages/WordLists'
@@ -21,6 +22,7 @@ function App() {
                     </Routes>
                 </div>
             </main>
+            <UpdateNotification />
         </div>
     )
 }

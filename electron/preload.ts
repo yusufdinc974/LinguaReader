@@ -163,6 +163,28 @@ const electronAPI = {
         wordCount?: number;
         error?: string;
     }> => ipcRenderer.invoke('export-list', listId, includeProgress),
+
+    // Auto-update
+    checkForUpdates: (): Promise<{
+        hasUpdate: boolean;
+        version?: string;
+        downloadUrl?: string;
+        releaseDate?: string;
+        error?: string;
+    }> => ipcRenderer.invoke('check-for-updates'),
+    downloadUpdate: (): Promise<boolean> => ipcRenderer.invoke('download-update'),
+    installUpdate: (): Promise<void> => ipcRenderer.invoke('install-update'),
+    openReleasePage: (): Promise<void> => ipcRenderer.invoke('open-release-page'),
+    getAppVersion: (): Promise<string> => ipcRenderer.invoke('get-app-version'),
+    onUpdateStatus: (callback: (status: {
+        status: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
+        version?: string;
+        percent?: number;
+        message?: string;
+    }) => void) => {
+        ipcRenderer.on('update-status', (_, data) => callback(data));
+        return () => ipcRenderer.removeAllListeners('update-status');
+    },
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

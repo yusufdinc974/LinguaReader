@@ -1,6 +1,6 @@
 {
   "name": "linguareader",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Cross-platform PDF reader with translation and vocabulary learning",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -26,6 +26,7 @@
   "license": "MIT",
   "dependencies": {
     "better-sqlite3": "^11.8.1",
+    "electron-updater": "^6.7.3",
     "lucide-react": "^0.469.0",
     "pdfjs-dist": "^4.10.38",
     "react": "^19.0.0",
@@ -96,6 +97,11 @@
       ],
       "icon": "icon.png",
       "category": "public.app-category.education"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "yusufdinc974",
+      "repo": "LinguaReader"
     }
   }
 }

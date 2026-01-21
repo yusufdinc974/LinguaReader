@@ -181,5 +181,24 @@ interface Window {
             wordCount?: number;
             error?: string;
         }>;
+
+        // Auto-update
+        checkForUpdates: () => Promise<{
+            hasUpdate: boolean;
+            version?: string;
+            downloadUrl?: string;
+            releaseDate?: string;
+            error?: string;
+        }>;
+        downloadUpdate: () => Promise<boolean>;
+        installUpdate: () => Promise<void>;
+        openReleasePage: () => Promise<void>;
+        getAppVersion: () => Promise<string>;
+        onUpdateStatus: (callback: (status: {
+            status: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
+            version?: string;
+            percent?: number;
+            message?: string;
+        }) => void) => () => void;
     };
 }
