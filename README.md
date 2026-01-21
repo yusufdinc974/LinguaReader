@@ -53,7 +53,7 @@
 1.  **Download** the latest `.deb` file from the [Releases Page](https://github.com/yusufdinc974/LinguaReader/releases).
 2.  **Install**:
     ```bash
-    sudo dpkg -i linguareader_1.0.5_amd64.deb
+    sudo dpkg -i linguareader_*.deb
     ```
 3.  Launch **LinguaReader** from your applications menu.
 
