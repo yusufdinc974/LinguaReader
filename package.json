@@ -1,6 +1,6 @@
 {
   "name": "linguareader",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Cross-platform PDF reader with translation and vocabulary learning",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -90,6 +90,13 @@
       ],
       "icon": "icon.png"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "yusufdinc974",
+        "repo": "LinguaReader"
+      }
+    ],
     "mac": {
       "target": [
         "dmg",
@@ -97,11 +104,6 @@
       ],
       "icon": "icon.png",
       "category": "public.app-category.education"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "yusufdinc974",
-      "repo": "LinguaReader"
     }
   }
 }
