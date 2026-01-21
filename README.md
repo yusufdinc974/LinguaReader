@@ -106,7 +106,61 @@ npm run build:win
 npm run build:mac
 ```
 
+
+## 🔄 Updates
+
+LinguaReader keeps itself up to date automatically to ensure you always have the latest features and bug fixes.
+
+### Windows & Linux
+*   **Automatic**: The app checks for updates on startup.
+*   **Seamless**: If an update is found, it downloads in the background. You'll see a notification when it's ready to install.
+*   **Restart**: Simply restart the app to apply the update.
+
+### macOS
+*   **Manual**: Due to Apple's security policies, auto-updates are disabled.
+*   **Notification**: You will be notified when a new version is available.
+*   **Action**: Click the notification to open the [Releases Page](https://github.com/yusufdinc974/LinguaReader/releases) and download the latest `.dmg` file manually.
+
 ---
+
+## 💾 Import / Export
+
+You can easily backup your data or import new word lists from other sources.
+
+### Backup & Restore
+*   **Export Data**: Generates a full JSON backup of all your word lists, words, progress, and settings.
+*   **Import Data**: Restores a previously exported backup file.
+
+### Custom Word Lists (JSON)
+You can create your own word lists externally and import them into LinguaReader. This is perfect for bulk importing vocabulary.
+
+**Format:**
+Create a `.json` file with the following structure:
+
+```json
+{
+  "listName": "My Custom List",
+  "listDescription": "Optional description for the list",
+  "words": [
+    {
+      "word": "bonjour",
+      "translation": "hello",
+      "source_language": "fr",
+      "target_language": "en"
+    },
+    {
+      "word": "merci",
+      "translation": "thank you"
+    }
+  ]
+}
+```
+
+*   **Required Fields**: `word`, `translation`
+*   **Optional Fields**: `listName`, `listDescription`, `source_language`, `target_language`
+
+---
+
 
 ## 📄 License
 
