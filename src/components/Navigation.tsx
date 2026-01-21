@@ -21,6 +21,12 @@ function Navigation() {
         document.documentElement.setAttribute('data-theme', initial);
     }, []);
 
+    const [appVersion, setAppVersion] = useState<string>('');
+
+    useEffect(() => {
+        window.electronAPI.getAppVersion().then(setAppVersion);
+    }, []);
+
     const toggleTheme = () => {
         const newTheme = theme === 'dark' ? 'light' : 'dark';
         setTheme(newTheme);
@@ -84,7 +90,7 @@ function Navigation() {
                     </span>
                 </button>
                 <p className="text-xs text-center mt-3" style={{ color: 'var(--text-muted)' }}>
-                    Version 1.0.0
+                    Version {appVersion}
                 </p>
             </div>
         </nav>
