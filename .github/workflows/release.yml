@@ -50,14 +50,30 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Release
+      - name: Release Linux
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && matrix.os == 'ubuntu-latest'
         with:
           files: |
             release/*.AppImage
             release/*.deb
+            release/*.yml
+            release/*.blockmap
+
+      - name: Release Windows
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/') && matrix.os == 'windows-latest'
+        with:
+          files: |
             release/*.exe
+            release/*.yml
+            release/*.blockmap
+
+      - name: Release macOS
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/') && matrix.os == 'macos-latest'
+        with:
+          files: |
             release/*.dmg
             release/*.zip
             release/*.yml

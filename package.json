@@ -1,6 +1,6 @@
 {
   "name": "linguareader",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Cross-platform PDF reader with translation and vocabulary learning",
   "main": "dist-electron/main.js",
   "scripts": {
