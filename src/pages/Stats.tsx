@@ -82,9 +82,9 @@ function StatsPage() {
                 return;
             }
 
-            // Full backup - import directly
-            if (parseResult.type === 'full-backup') {
-                const result = await window.electronAPI.importData();
+            // Full backup - import directly using parsed data
+            if (parseResult.type === 'full-backup' && parseResult.data) {
+                const result = await window.electronAPI.importParsedBackup(parseResult.data);
                 if (result.success && result.imported) {
                     const { lists, words, familiarity } = result.imported;
                     setImportStatus({
@@ -207,15 +207,6 @@ function StatsPage() {
         });
     }
 
-    // Health distribution for pie alternative
-    const healthData = [
-        { name: 'Overdue', count: schedule.overdue, color: '#ef4444' },
-        { name: 'Due Today', count: schedule.dueToday, color: '#f97316' },
-        { name: 'Due Soon (1-3d)', count: schedule.dueSoon, color: '#eab308' },
-        { name: 'Good (4-7d)', count: schedule.good, color: '#22c55e' },
-        { name: 'Mastered (7+d)', count: schedule.mastered, color: '#3b82f6' },
-    ];
-
     return (
         <div className="h-full p-4 sm:p-6 lg:p-8 overflow-auto" style={{ background: 'var(--bg-primary)' }}>
             <div className="max-w-6xl mx-auto">
@@ -326,12 +317,17 @@ function StatsPage() {
                                     formatter={(value: number) => [`${value} words`, 'Reviews']}
                                 />
                                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                                    {upcomingData.map((entry, index) => (
-                                        <Cell
-                                            key={index}
-                                            fill={entry.isToday ? '#f97316' : entry.isTomorrow ? '#eab308' : '#0ea5e9'}
-                                        />
-                                    ))}
+                                    {upcomingData.map((_, index) => {
+                                        // Color based on urgency: today = orange, tomorrow = yellow, 2-3 days = yellow, 4-7 = green, 7+ = blue
+                                        let color = '#0ea5e9'; // default blue for 8+ days
+                                        if (index === 0) color = '#f97316'; // Today - orange
+                                        else if (index === 1) color = '#eab308'; // Tomorrow - yellow
+                                        else if (index <= 3) color = '#eab308'; // 2-3 days - yellow
+                                        else if (index <= 7) color = '#22c55e'; // 4-7 days - green
+                                        return (
+                                            <Cell key={index} fill={color} />
+                                        );
+                                    })}
                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
@@ -345,41 +341,52 @@ function StatsPage() {
                     )}
                 </div>
 
-                {/* Word Health Distribution */}
+                {/* Learning Summary */}
                 <div className="card">
                     <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
                         <Brain size={20} className="text-accent-400" />
-                        Word Health Distribution
+                        Learning Summary
                     </h2>
-                    <div className="space-y-4">
-                        {healthData.map((item) => {
-                            const percentage = schedule.totalWords > 0
-                                ? Math.round((item.count / schedule.totalWords) * 100)
-                                : 0;
-                            return (
-                                <div key={item.name}>
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="text-sm font-medium">{item.name}</span>
-                                        <span className="text-sm text-dark-400">
-                                            {item.count} ({percentage}%)
-                                        </span>
-                                    </div>
-                                    <div className="h-3 rounded-full overflow-hidden" style={{ background: 'var(--bg-tertiary)' }}>
-                                        <div
-                                            className="h-full rounded-full transition-all duration-500"
-                                            style={{
-                                                width: `${percentage}%`,
-                                                backgroundColor: item.color,
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                            );
-                        })}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="text-center p-4 rounded-lg" style={{ background: 'var(--bg-tertiary)' }}>
+                            <p className="text-3xl font-bold" style={{ color: 'var(--accent)' }}>{schedule.totalWords}</p>
+                            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Total Words</p>
+                        </div>
+                        <div className="text-center p-4 rounded-lg" style={{ background: 'var(--bg-tertiary)' }}>
+                            <p className="text-3xl font-bold text-green-400">{schedule.mastered + schedule.good}</p>
+                            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Well Learned</p>
+                        </div>
+                        <div className="text-center p-4 rounded-lg" style={{ background: 'var(--bg-tertiary)' }}>
+                            <p className="text-3xl font-bold text-yellow-400">{schedule.dueSoon}</p>
+                            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>In Progress</p>
+                        </div>
+                        <div className="text-center p-4 rounded-lg" style={{ background: 'var(--bg-tertiary)' }}>
+                            <p className="text-3xl font-bold text-orange-400">{schedule.overdue + schedule.dueToday}</p>
+                            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Need Review</p>
+                        </div>
                     </div>
-                    <div className="mt-6 pt-4 border-t border-white/10 text-center">
-                        <p className="text-2xl font-bold">{schedule.totalWords}</p>
-                        <p className="text-dark-400">Total Words Tracked</p>
+
+                    {/* Chart Color Legend */}
+                    <div className="mt-6 pt-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
+                        <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>Chart Legend:</p>
+                        <div className="flex flex-wrap gap-4 text-sm">
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full" style={{ background: '#f97316' }} />
+                                <span style={{ color: 'var(--text-secondary)' }}>Today (Review Now)</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full" style={{ background: '#eab308' }} />
+                                <span style={{ color: 'var(--text-secondary)' }}>1-3 Days</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full" style={{ background: '#22c55e' }} />
+                                <span style={{ color: 'var(--text-secondary)' }}>4-7 Days</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full" style={{ background: '#0ea5e9' }} />
+                                <span style={{ color: 'var(--text-secondary)' }}>8+ Days</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

@@ -85,6 +85,8 @@ const electronAPI = {
         ipcRenderer.invoke('add-word-to-list', wordId, listId),
     removeWordFromList: (wordId: number, listId: number): Promise<boolean> =>
         ipcRenderer.invoke('remove-word-from-list', wordId, listId),
+    moveWordToList: (wordId: number, fromListId: number, toListId: number): Promise<{ success: boolean; message?: string }> =>
+        ipcRenderer.invoke('move-word-to-list', wordId, fromListId, toListId),
     updateWordMastery: (wordId: number, masteryLevel: number): Promise<boolean> =>
         ipcRenderer.invoke('update-word-mastery', wordId, masteryLevel),
     deleteWord: (id: number): Promise<boolean> => ipcRenderer.invoke('delete-word', id),
@@ -138,6 +140,8 @@ const electronAPI = {
         ipcRenderer.invoke('export-data'),
     importData: (): Promise<{ success: boolean; imported?: { lists: number; words: number; familiarity: number }; error?: string }> =>
         ipcRenderer.invoke('import-data'),
+    importParsedBackup: (data: unknown): Promise<{ success: boolean; imported?: { lists: number; words: number; familiarity: number }; error?: string }> =>
+        ipcRenderer.invoke('import-parsed-backup', data),
     parseImportFile: (): Promise<{
         success: boolean;
         cancelled?: boolean;

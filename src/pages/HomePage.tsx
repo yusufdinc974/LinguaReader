@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { BookOpen, List, Brain, BarChart3, TrendingUp, Target, FileText, Clock } from 'lucide-react';
 import type { Stats } from '../types';
 
@@ -18,14 +18,16 @@ interface WordFamiliarity {
 
 function HomePage() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [stats, setStats] = useState<Stats | null>(null);
     const [recentPdfs, setRecentPdfs] = useState<RecentPdf[]>([]);
     const [dueWords, setDueWords] = useState<WordFamiliarity[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Reload data every time the component mounts or location changes
     useEffect(() => {
         loadData();
-    }, []);
+    }, [location.key]);
 
     const loadData = async () => {
         try {

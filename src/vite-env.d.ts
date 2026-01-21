@@ -79,6 +79,7 @@ interface Window {
         ) => Promise<number>;
         addWordToList: (wordId: number, listId: number) => Promise<boolean>;
         removeWordFromList: (wordId: number, listId: number) => Promise<boolean>;
+        moveWordToList: (wordId: number, fromListId: number, toListId: number) => Promise<{ success: boolean; message?: string }>;
         updateWordMastery: (wordId: number, masteryLevel: number) => Promise<boolean>;
         deleteWord: (id: number) => Promise<boolean>;
 

@@ -334,7 +334,38 @@ function setupIpcHandlers(): void {
         }
         // Remove from list
         db?.prepare('DELETE FROM word_list_items WHERE word_id = ? AND word_list_id = ?').run(wordId, listId);
+
+        // Delete the word if it's no longer in any list (orphaned)
+        db?.prepare(`
+            DELETE FROM words WHERE id = ? AND NOT EXISTS (
+                SELECT 1 FROM word_list_items WHERE word_id = ?
+            )
+        `).run(wordId, wordId);
+
         return true;
+    });
+
+    ipcMain.handle('move-word-to-list', (_, wordId: number, fromListId: number, toListId: number) => {
+        try {
+            // Check if word already exists in target list
+            const existing = db?.prepare(
+                'SELECT 1 FROM word_list_items WHERE word_id = ? AND word_list_id = ?'
+            ).get(wordId, toListId);
+
+            if (existing) {
+                return { success: false, message: 'Word already exists in the target list' };
+            }
+
+            // Move the word: update the list reference (keeps familiarity data intact)
+            db?.prepare(
+                'UPDATE word_list_items SET word_list_id = ? WHERE word_id = ? AND word_list_id = ?'
+            ).run(toListId, wordId, fromListId);
+
+            return { success: true };
+        } catch (error) {
+            console.error('Failed to move word:', error);
+            return { success: false, message: 'Failed to move word' };
+        }
     });
 
     ipcMain.handle('update-word-mastery', (_, wordId: number, masteryLevel: number) => {
@@ -571,7 +602,10 @@ function setupIpcHandlers(): void {
 
         for (const word of allWords as Array<{ next_review_date: string | null }>) {
             if (!word.next_review_date) {
+                // Words without a review date are due today
                 dueToday++;
+                // Also add to upcomingDays for "Today"
+                upcomingDays[todayStr] = (upcomingDays[todayStr] || 0) + 1;
                 continue;
             }
 
@@ -581,20 +615,29 @@ function setupIpcHandlers(): void {
 
             if (daysDiff < 0) {
                 overdue++;
+                // Overdue words should also show on "Today" in the chart
+                upcomingDays[todayStr] = (upcomingDays[todayStr] || 0) + 1;
             } else if (daysDiff === 0) {
                 dueToday++;
+                // Add to upcomingDays for today
+                upcomingDays[todayStr] = (upcomingDays[todayStr] || 0) + 1;
             } else if (daysDiff <= 3) {
                 dueSoon++;
-            } else if (daysDiff <= 7) {
-                good++;
-            } else {
-                mastered++;
-            }
-
-            // Track upcoming days for next 14 days
-            if (daysDiff >= 0 && daysDiff <= 14) {
+                // Track in upcomingDays (1-3 days)
                 const dateKey = word.next_review_date.split('T')[0];
                 upcomingDays[dateKey] = (upcomingDays[dateKey] || 0) + 1;
+            } else if (daysDiff <= 7) {
+                good++;
+                // Track in upcomingDays (4-7 days)
+                const dateKey = word.next_review_date.split('T')[0];
+                upcomingDays[dateKey] = (upcomingDays[dateKey] || 0) + 1;
+            } else {
+                mastered++;
+                // Track in upcomingDays only for next 14 days
+                if (daysDiff <= 14) {
+                    const dateKey = word.next_review_date.split('T')[0];
+                    upcomingDays[dateKey] = (upcomingDays[dateKey] || 0) + 1;
+                }
             }
         }
 
@@ -736,6 +779,80 @@ function setupIpcHandlers(): void {
             return { success: true, imported: stats };
         } catch (error) {
             console.error('Import error:', error);
+            return { success: false, error: String(error) };
+        }
+    });
+
+    // Import already-parsed backup data (no file dialog)
+    ipcMain.handle('import-parsed-backup', async (_, importData: {
+        version: number;
+        wordLists: Array<{ id: number; name: string; description: string; color?: string; created_at: string }>;
+        words: Array<{ id: number; word: string; translation: string; source_language: string; target_language: string; sentence_context: string; pdf_name: string; created_at: string; mastery_level: number }>;
+        wordListItems: Array<{ word_list_id: number; word_id: number }>;
+        wordFamiliarity?: Array<{ word_lower: string; familiarity_level: number; translation?: string; easiness_factor: number; interval: number; repetitions: number; next_review_date?: string }>;
+    }) => {
+        try {
+            const stats = { lists: 0, words: 0, familiarity: 0 };
+
+            const transaction = db?.transaction(() => {
+                const listIdMap = new Map<number, number>();
+
+                for (const list of importData.wordLists) {
+                    const existing = db?.prepare('SELECT id FROM word_lists WHERE name = ?').get(list.name) as { id: number } | undefined;
+                    if (existing) {
+                        listIdMap.set(list.id, existing.id);
+                    } else {
+                        const res = db?.prepare('INSERT INTO word_lists (name, description, color, created_at) VALUES (?, ?, ?, ?)').run(
+                            list.name, list.description, list.color || null, list.created_at
+                        );
+                        listIdMap.set(list.id, res?.lastInsertRowid as number);
+                        stats.lists++;
+                    }
+                }
+
+                const wordIdMap = new Map<number, number>();
+
+                for (const word of importData.words) {
+                    const existing = db?.prepare('SELECT id FROM words WHERE word = ? AND translation = ?').get(word.word, word.translation) as { id: number } | undefined;
+                    if (existing) {
+                        wordIdMap.set(word.id, existing.id);
+                    } else {
+                        const res = db?.prepare('INSERT INTO words (word, translation, source_language, target_language, sentence_context, pdf_name, created_at, mastery_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
+                            word.word, word.translation, word.source_language, word.target_language, word.sentence_context, word.pdf_name, word.created_at, word.mastery_level
+                        );
+                        wordIdMap.set(word.id, res?.lastInsertRowid as number);
+                        stats.words++;
+                    }
+                }
+
+                for (const item of importData.wordListItems) {
+                    const newListId = listIdMap.get(item.word_list_id);
+                    const newWordId = wordIdMap.get(item.word_id);
+                    if (newListId && newWordId) {
+                        try {
+                            db?.prepare('INSERT OR IGNORE INTO word_list_items (word_list_id, word_id) VALUES (?, ?)').run(newListId, newWordId);
+                        } catch { /* Ignore duplicates */ }
+                    }
+                }
+
+                if (importData.wordFamiliarity) {
+                    for (const fam of importData.wordFamiliarity) {
+                        const existing = db?.prepare('SELECT id FROM word_familiarity WHERE word_lower = ?').get(fam.word_lower);
+                        if (!existing) {
+                            db?.prepare('INSERT INTO word_familiarity (word_lower, familiarity_level, translation, easiness_factor, interval, repetitions, next_review_date, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)').run(
+                                fam.word_lower, fam.familiarity_level, fam.translation || null, fam.easiness_factor, fam.interval, fam.repetitions, fam.next_review_date || null
+                            );
+                            stats.familiarity++;
+                        }
+                    }
+                }
+            });
+
+            transaction?.();
+
+            return { success: true, imported: stats };
+        } catch (error) {
+            console.error('Import parsed backup error:', error);
             return { success: false, error: String(error) };
         }
     });

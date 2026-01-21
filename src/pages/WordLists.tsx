@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Search, X, BookOpen, ChevronRight, Download, Share2 } from 'lucide-react';
+import { Plus, Trash2, Search, X, BookOpen, ChevronRight, Download, Share2, ArrowRightLeft } from 'lucide-react';
 import type { WordList, Word } from '../types';
 
 function WordLists() {
@@ -13,6 +13,7 @@ function WordLists() {
     const [loading, setLoading] = useState(true);
     const [exportDropdownId, setExportDropdownId] = useState<number | null>(null);
     const [exportStatus, setExportStatus] = useState<{ listId: number; message: string } | null>(null);
+    const [moveDropdownWordId, setMoveDropdownWordId] = useState<number | null>(null);
 
     useEffect(() => {
         loadWordLists();
@@ -77,11 +78,29 @@ function WordLists() {
     const handleDeleteWord = async (wordId: number) => {
         if (!selectedList) return;
 
+        if (!confirm('Are you sure you want to remove this word? If it is not in any other list, it will be permanently deleted.')) return;
+
         try {
             await window.electronAPI.removeWordFromList(wordId, selectedList.id);
             await loadWords(selectedList.id);
         } catch (error) {
             console.error('Failed to remove word:', error);
+        }
+    };
+
+    const handleMoveWord = async (wordId: number, toListId: number) => {
+        if (!selectedList) return;
+
+        try {
+            const result = await window.electronAPI.moveWordToList(wordId, selectedList.id, toListId);
+            if (result.success) {
+                await loadWords(selectedList.id);
+                setMoveDropdownWordId(null);
+            } else {
+                alert(result.message || 'Failed to move word');
+            }
+        } catch (error) {
+            console.error('Failed to move word:', error);
         }
     };
 
@@ -284,7 +303,7 @@ function WordLists() {
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {filteredWords.map(word => (
-                                        <div key={word.id} className="card card-hover group">
+                                        <div key={word.id} className="card card-hover group relative">
                                             <div className="flex items-start justify-between mb-3">
                                                 <div className="flex items-center gap-2">
                                                     <div
@@ -295,12 +314,47 @@ function WordLists() {
                                                         {word.source_language} → {word.target_language}
                                                     </span>
                                                 </div>
-                                                <button
-                                                    onClick={() => handleDeleteWord(word.id)}
-                                                    className="p-1 opacity-0 group-hover:opacity-100 hover:bg-red-500/20 rounded transition-all"
-                                                >
-                                                    <Trash2 size={14} className="text-red-400" />
-                                                </button>
+                                                <div className="flex items-center gap-1">
+                                                    {/* Move Button */}
+                                                    <div className="relative">
+                                                        <button
+                                                            onClick={() => setMoveDropdownWordId(moveDropdownWordId === word.id ? null : word.id)}
+                                                            className="p-1 opacity-0 group-hover:opacity-100 hover:bg-blue-500/20 rounded transition-all"
+                                                            title="Move to another list"
+                                                        >
+                                                            <ArrowRightLeft size={14} className="text-blue-400" />
+                                                        </button>
+                                                        {/* Move Dropdown */}
+                                                        {moveDropdownWordId === word.id && (
+                                                            <div className="absolute right-0 top-full mt-1 w-48 rounded-lg shadow-xl z-50 border border-white/10 overflow-hidden" style={{ background: 'var(--bg-secondary)' }}>
+                                                                <div className="p-2 text-xs text-dark-400 border-b border-white/10">Move to:</div>
+                                                                {wordLists.filter(l => l.id !== selectedList?.id).length === 0 ? (
+                                                                    <div className="p-3 text-sm text-dark-400">No other lists available</div>
+                                                                ) : (
+                                                                    wordLists
+                                                                        .filter(l => l.id !== selectedList?.id)
+                                                                        .map(list => (
+                                                                            <button
+                                                                                key={list.id}
+                                                                                onClick={() => handleMoveWord(word.id, list.id)}
+                                                                                className="w-full text-left px-3 py-2 text-sm hover:bg-white/10 transition-colors"
+                                                                                style={{ color: 'var(--text-primary)' }}
+                                                                            >
+                                                                                {list.name}
+                                                                            </button>
+                                                                        ))
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {/* Delete Button */}
+                                                    <button
+                                                        onClick={() => handleDeleteWord(word.id)}
+                                                        className="p-1 opacity-0 group-hover:opacity-100 hover:bg-red-500/20 rounded transition-all"
+                                                    >
+                                                        <Trash2 size={14} className="text-red-400" />
+                                                    </button>
+                                                </div>
                                             </div>
 
                                             <p className="text-lg font-semibold text-primary-300 mb-1">{word.word}</p>
