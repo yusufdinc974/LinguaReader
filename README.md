@@ -73,7 +73,7 @@
 
 ## 🛠️ Development
 
-Want to contribute or build it yourself?
+Want to contribute? Check out our [Contributing Guidelines](CONTRIBUTING.md).
 
 ### Prerequisites
 *   Node.js (v18 or later)
