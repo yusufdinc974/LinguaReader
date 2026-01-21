@@ -155,5 +155,31 @@ interface Window {
             upcomingDays: { [date: string]: number };
         }>;
         getWordColors: (listIds?: number[]) => Promise<{ word_lower: string; color: string }[]>;
+
+        // Data Import/Export
+        exportData: () => Promise<{ success: boolean; path?: string; error?: string }>;
+        importData: () => Promise<{ success: boolean; imported?: { lists: number; words: number; familiarity: number }; error?: string }>;
+        importParsedBackup: (data: unknown) => Promise<{ success: boolean; imported?: { lists: number; words: number; familiarity: number }; error?: string }>;
+        parseImportFile: () => Promise<{
+            success: boolean;
+            cancelled?: boolean;
+            type?: 'full-backup' | 'words-only';
+            data?: unknown;
+            listName?: string | null;
+            listDescription?: string;
+            words?: Array<{ word: string; translation: string; source_language?: string; target_language?: string }>;
+            error?: string;
+        }>;
+        importWordsToList: (listId: number, words: Array<{ word: string; translation: string; source_language?: string; target_language?: string }>) => Promise<{
+            success: boolean;
+            imported?: { words: number; familiarity: number };
+            error?: string;
+        }>;
+        exportList: (listId: number, includeProgress: boolean) => Promise<{
+            success: boolean;
+            path?: string;
+            wordCount?: number;
+            error?: string;
+        }>;
     };
 }
