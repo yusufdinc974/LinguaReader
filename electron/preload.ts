@@ -70,8 +70,8 @@ const electronAPI = {
 
     // Word Lists
     getWordLists: (): Promise<WordList[]> => ipcRenderer.invoke('get-word-lists'),
-    createWordList: (name: string, description: string): Promise<number> =>
-        ipcRenderer.invoke('create-word-list', name, description),
+    createWordList: (name: string, description: string, color?: string): Promise<number> =>
+        ipcRenderer.invoke('create-word-list', name, description, color),
     deleteWordList: (id: number): Promise<boolean> => ipcRenderer.invoke('delete-word-list', id),
     updateWordList: (id: number, name: string, description: string): Promise<boolean> =>
         ipcRenderer.invoke('update-word-list', id, name, description),
@@ -208,6 +208,13 @@ const electronAPI = {
             console.log('[Preload] Removing sync status listener');
             ipcRenderer.removeListener('sync-status', handler);
         };
+    },
+
+    // Data Updated Listener
+    onDataUpdated: (callback: () => void) => {
+        const handler = () => callback();
+        ipcRenderer.on('data-updated', handler);
+        return () => ipcRenderer.removeListener('data-updated', handler);
     },
 };
 

@@ -253,16 +253,19 @@ function setupIpcHandlers(): void {
         return db?.prepare('SELECT * FROM word_lists ORDER BY created_at DESC').all() || [];
     });
 
-    ipcMain.handle('create-word-list', (_, name: string, description: string) => {
-        // Assign a random color from the palette
-        const listColors = [
-            '#ef4444', '#f97316', '#eab308', '#22c55e', '#10b981',
-            '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
-            '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e'
-        ];
-        const color = listColors[Math.floor(Math.random() * listColors.length)];
+    ipcMain.handle('create-word-list', (_, name: string, description: string, color?: string) => {
+        // Assign a random color if not provided
+        let finalColor = color;
+        if (!finalColor) {
+            const listColors = [
+                '#ef4444', '#f97316', '#eab308', '#22c55e', '#10b981',
+                '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
+                '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e'
+            ];
+            finalColor = listColors[Math.floor(Math.random() * listColors.length)];
+        }
 
-        const result = db?.prepare('INSERT INTO word_lists (name, description, color) VALUES (?, ?, ?)').run(name, description, color);
+        const result = db?.prepare('INSERT INTO word_lists (name, description, color) VALUES (?, ?, ?)').run(name, description, finalColor);
         return result?.lastInsertRowid;
     });
 
@@ -903,10 +906,11 @@ function setupIpcHandlers(): void {
             // Provide Data Import Logic
             syncServer.onImportData = async (importData: any) => {
                 // Reuse the import logic from 'import-parsed-backup'
-                // We can extract that logic into a helper function or call it directly if we refactor.
-                // For now, let's copy the logic or invoke a shared function. 
-                // Since we are inside the same file, we can just call a function.
-                return await runImportTransaction(importData);
+                const result = await runImportTransaction(importData);
+                if (result.success) {
+                    mainWindow?.webContents.send('data-updated');
+                }
+                return result;
             };
         }
 
@@ -948,12 +952,22 @@ function setupIpcHandlers(): void {
 
                 // Import word lists - skip if name already exists
                 for (const list of importData.wordLists as Array<{ id: number; name: string; description: string; color?: string; created_at: string }>) {
+                    // Normalize color from Mobile (0xFFRRGGBB) to Desktop (#RRGGBB)
+                    let color = list.color;
+                    if (color && color.startsWith('0x') && color.length === 10) {
+                        color = '#' + color.substring(4);
+                    }
+
                     const existing = db?.prepare('SELECT id FROM word_lists WHERE name = ?').get(list.name) as { id: number } | undefined;
                     if (existing) {
                         listIdMap.set(list.id, existing.id);
+                        // Update color if provided by remote
+                        if (color) {
+                            db?.prepare('UPDATE word_lists SET color = ? WHERE id = ?').run(color, existing.id);
+                        }
                     } else {
                         const res = db?.prepare('INSERT INTO word_lists (name, description, color, created_at) VALUES (?, ?, ?, ?)').run(
-                            list.name, list.description, list.color || null, list.created_at
+                            list.name, list.description, color || null, list.created_at
                         );
                         listIdMap.set(list.id, res?.lastInsertRowid as number);
                         stats.lists++;

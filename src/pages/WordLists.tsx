@@ -10,13 +10,31 @@ function WordLists() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newListName, setNewListName] = useState('');
     const [newListDescription, setNewListDescription] = useState('');
+    const [newListColor, setNewListColor] = useState('#3B82F6'); // Default Blue
     const [loading, setLoading] = useState(true);
     const [exportDropdownId, setExportDropdownId] = useState<number | null>(null);
     const [exportStatus, setExportStatus] = useState<{ listId: number; message: string } | null>(null);
     const [moveDropdownWordId, setMoveDropdownWordId] = useState<number | null>(null);
 
+    const AVAILABLE_COLORS = [
+        '#EF4444', '#F97316', '#EAB308', '#22C55E', '#10B981',
+        '#14B8A6', '#06B6D4', '#0EA5E9', '#3B82F6', '#6366F1',
+        '#8B5CF6', '#A855F7', '#D946EF', '#EC4899', '#F43F5E'
+    ];
+
     useEffect(() => {
         loadWordLists();
+
+        // Listen for data updates (e.g. from sync)
+        const cleanup = window.electronAPI.onDataUpdated(() => {
+            console.log('Received data update, reloading lists...');
+            loadWordLists();
+        });
+
+        return () => {
+            // @ts-ignore - cleanup function might be void or function depending on implementation but explicit ignore is safer if types mismatch slightly
+            if (typeof cleanup === 'function') cleanup();
+        };
     }, []);
 
     const loadWordLists = async () => {
@@ -49,11 +67,12 @@ function WordLists() {
         if (!newListName.trim()) return;
 
         try {
-            await window.electronAPI.createWordList(newListName.trim(), newListDescription.trim());
+            await window.electronAPI.createWordList(newListName.trim(), newListDescription.trim(), newListColor);
             await loadWordLists();
             setShowCreateModal(false);
             setNewListName('');
             setNewListDescription('');
+            setNewListColor('#3B82F6'); // Reset to default
         } catch (error) {
             console.error('Failed to create list:', error);
         }
@@ -412,6 +431,19 @@ function WordLists() {
                                     placeholder="Describe this list..."
                                     className="input resize-none h-24"
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-dark-400 mb-2">Color</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {AVAILABLE_COLORS.map(color => (
+                                        <button
+                                            key={color}
+                                            onClick={() => setNewListColor(color)}
+                                            className={`w-8 h-8 rounded-full transition-all ${newListColor === color ? 'ring-2 ring-white scale-110' : 'hover:scale-110'}`}
+                                            style={{ backgroundColor: color }}
+                                        />
+                                    ))}
+                                </div>
                             </div>
                             <div className="flex gap-3 pt-4">
                                 <button

@@ -35,8 +35,9 @@ interface Window {
             name: string;
             description: string;
             created_at: string;
+            color?: string;
         }>>;
-        createWordList: (name: string, description: string) => Promise<number>;
+        createWordList: (name: string, description: string, color?: string) => Promise<number>;
         deleteWordList: (id: number) => Promise<boolean>;
         updateWordList: (id: number, name: string, description: string) => Promise<boolean>;
 
@@ -206,6 +207,8 @@ interface Window {
             status: 'uploading' | 'downloading' | 'completed' | 'error';
             message: string
         }) => void) => () => void;
+
+        onDataUpdated: (callback: () => void) => () => void;
 
         // Sync Server
         startSyncServer: () => Promise<{ success: boolean; info?: { ip: string; port: number; pin: string; qrDataURL: string }; error?: string }>;
