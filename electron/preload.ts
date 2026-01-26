@@ -103,6 +103,10 @@ const electronAPI = {
     getSetting: (key: string): Promise<string | undefined> => ipcRenderer.invoke('get-setting', key),
     setSetting: (key: string, value: string): Promise<boolean> => ipcRenderer.invoke('set-setting', key, value),
 
+    // Translation
+    translateText: (text: string, targetLang?: string): Promise<{ translatedText: string; detectedLanguage: string }> =>
+        ipcRenderer.invoke('translate-text', text, targetLang),
+
     // Recent PDFs
     getRecentPdfs: (): Promise<RecentPdf[]> => ipcRenderer.invoke('get-recent-pdfs'),
     addRecentPdf: (name: string, path: string): Promise<boolean> => ipcRenderer.invoke('add-recent-pdf', name, path),
@@ -164,6 +168,12 @@ const electronAPI = {
         error?: string;
     }> => ipcRenderer.invoke('export-list', listId, includeProgress),
 
+    // Sync Server
+    startSyncServer: (): Promise<{ success: boolean; info?: { ip: string; port: number; pin: string; qrDataURL: string }; error?: string }> =>
+        ipcRenderer.invoke('start-sync-server'),
+    stopSyncServer: (): Promise<{ success: boolean; error?: string }> =>
+        ipcRenderer.invoke('stop-sync-server'),
+
     // Auto-update
     checkForUpdates: (): Promise<{
         hasUpdate: boolean;
@@ -184,6 +194,20 @@ const electronAPI = {
     }) => void) => {
         ipcRenderer.on('update-status', (_, data) => callback(data));
         return () => ipcRenderer.removeAllListeners('update-status');
+    },
+
+    // Sync Status Listener
+    onSyncStatus: (callback: (status: { status: 'uploading' | 'downloading' | 'completed' | 'error'; message: string }) => void) => {
+        console.log('[Preload] Setting up sync status listener');
+        const handler = (_: any, data: any) => {
+            console.log('[Preload] Received sync-status:', data);
+            callback(data);
+        };
+        ipcRenderer.on('sync-status', handler);
+        return () => {
+            console.log('[Preload] Removing sync status listener');
+            ipcRenderer.removeListener('sync-status', handler);
+        };
     },
 };
 

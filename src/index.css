@@ -186,6 +186,8 @@ body {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
+  -webkit-app-region: no-drag; /* CRITICAL: Ensure inputs are clickable in frameless windows */
+  user-select: text; /* Ensure text is selectable */
 }
 
 .input::placeholder {

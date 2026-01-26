@@ -1,11 +1,13 @@
-import { app, BrowserWindow, ipcMain, dialog, Menu, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, Menu, shell, IpcMainInvokeEvent } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import Database from 'better-sqlite3';
 import { autoUpdater } from 'electron-updater';
+import { SyncServer } from './sync_server';
 
 let mainWindow: BrowserWindow | null = null;
 let db: Database.Database | null = null;
+let syncServer: SyncServer | null = null;
 
 const isDev = !app.isPackaged;
 
@@ -128,6 +130,19 @@ function initDatabase(): void {
             db?.prepare('UPDATE word_lists SET color = ? WHERE id = ?').run(color, list.id);
         });
         console.log(`Assigned colors to ${existingLists.length} existing lists`);
+    }
+
+    // FIX: Normalize any existing 0x colors (from previous mobile syncs)
+    const malformedLists = db?.prepare("SELECT id, color FROM word_lists WHERE color LIKE '0x%'").all() as { id: number, color: string }[] || [];
+    if (malformedLists.length > 0) {
+        console.log(`Fixing ${malformedLists.length} lists with malformed color formats...`);
+        const updateStmt = db?.prepare('UPDATE word_lists SET color = ? WHERE id = ?');
+        for (const list of malformedLists) {
+            if (list.color.length === 10) {
+                const fixedColor = '#' + list.color.substring(4);
+                updateStmt?.run(fixedColor, list.id);
+            }
+        }
     }
 
     // Fix any existing NULL next_review_date values - set to today so they appear as due
@@ -438,6 +453,71 @@ function setupIpcHandlers(): void {
         return true;
     });
 
+    ipcMain.handle('translate-text', async (_, text: string, targetLang: string = 'EN') => {
+        // 1. Get Settings
+        const setting = db?.prepare('SELECT value FROM user_settings WHERE key = ?').get('deepl_api_key') as { value: string } | undefined;
+        const apiKey = setting?.value;
+
+        // 2. Try DeepL if key exists
+        if (apiKey) {
+            try {
+                // DeepL requires target_lang to be uppercase
+                const response = await fetch('https://api-free.deepl.com/v2/translate', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `DeepL-Auth-Key ${apiKey}`,
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        'text': text,
+                        'target_lang': targetLang.toUpperCase(),
+                    }).toString()
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.translations && data.translations.length > 0) {
+                        return {
+                            translatedText: data.translations[0].text,
+                            detectedLanguage: data.translations[0].detected_source_language,
+                            source: 'DeepL'
+                        };
+                    }
+                }
+                console.log('DeepL failed:', response.status, await response.text());
+                // Fall through to MyMemory logic
+            } catch (error) {
+                console.error('DeepL error:', error);
+                // Fall through to MyMemory logic
+            }
+        }
+
+        // 3. Fallback to MyMemory (Free)
+        try {
+            console.log('Using MyMemory fallback for translation');
+            // MyMemory expects pair like "en|it" or "autodetect|it"
+            const pair = `autodetect|${targetLang}`;
+            const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${pair}`;
+            const response = await fetch(url);
+
+            if (!response.ok) throw new Error(`MyMemory failed: ${response.status}`);
+
+            const data = await response.json();
+            if (data.responseStatus !== 200) {
+                throw new Error(data.responseDetails || 'Translation failed');
+            }
+
+            return {
+                translatedText: data.responseData.translatedText,
+                detectedLanguage: data.responseData.detectedLanguage,
+                source: 'MyMemory (Free)'
+            };
+        } catch (error) {
+            console.error('Translation fallback failed:', error);
+            throw error;
+        }
+    });
+
     // Recent PDFs
     ipcMain.handle('get-recent-pdfs', () => {
         return db?.prepare('SELECT * FROM recent_pdfs ORDER BY last_opened DESC LIMIT 10').all() || [];
@@ -716,12 +796,27 @@ function setupIpcHandlers(): void {
 
                 // Import word lists - skip if name already exists
                 for (const list of importData.wordLists as Array<{ id: number; name: string; description: string; color?: string; created_at: string }>) {
+                    // Normalize color from Mobile (0xFFRRGGBB) to Desktop (#RRGGBB)
+                    let color = list.color;
+                    if (color && color.startsWith('0x') && color.length === 10) {
+                        color = '#' + color.substring(4);
+                    }
+
                     const existing = db?.prepare('SELECT id FROM word_lists WHERE name = ?').get(list.name) as { id: number } | undefined;
                     if (existing) {
                         listIdMap.set(list.id, existing.id);
+                        // Update color and description if provided by remote
+                        if (color || list.description) {
+                            db?.prepare(`
+                                UPDATE word_lists 
+                                SET color = COALESCE(?, color), 
+                                    description = COALESCE(?, description) 
+                                WHERE id = ?
+                            `).run(color || null, list.description || null, existing.id);
+                        }
                     } else {
                         const res = db?.prepare('INSERT INTO word_lists (name, description, color, created_at) VALUES (?, ?, ?, ?)').run(
-                            list.name, list.description, list.color || null, list.created_at
+                            list.name, list.description, color || null, list.created_at
                         );
                         listIdMap.set(list.id, res?.lastInsertRowid as number);
                         stats.lists++;
@@ -784,21 +879,75 @@ function setupIpcHandlers(): void {
         }
     });
 
-    // Import already-parsed backup data (no file dialog)
-    ipcMain.handle('import-parsed-backup', async (_, importData: {
-        version: number;
-        wordLists: Array<{ id: number; name: string; description: string; color?: string; created_at: string }>;
-        words: Array<{ id: number; word: string; translation: string; source_language: string; target_language: string; sentence_context: string; pdf_name: string; created_at: string; mastery_level: number }>;
-        wordListItems: Array<{ word_list_id: number; word_id: number }>;
-        wordFamiliarity?: Array<{ word_lower: string; familiarity_level: number; translation?: string; easiness_factor: number; interval: number; repetitions: number; next_review_date?: string }>;
-    }) => {
-        try {
-            const stats = { lists: 0, words: 0, familiarity: 0 };
+    // --- Sync Server Handlers ---
+    ipcMain.handle('start-sync-server', async () => {
+        if (!mainWindow) return { success: false, error: 'Window not ready' };
 
+        if (!syncServer) {
+            syncServer = new SyncServer(mainWindow);
+
+            // Provide Data Export Logic
+            syncServer.onGetExportData = async () => {
+                return {
+                    version: 1,
+                    exportedAt: new Date().toISOString(),
+                    wordLists: db?.prepare('SELECT * FROM word_lists').all() || [],
+                    words: db?.prepare('SELECT * FROM words').all() || [],
+                    wordListItems: db?.prepare('SELECT * FROM word_list_items').all() || [],
+                    quizResults: db?.prepare('SELECT * FROM quiz_results').all() || [],
+                    userSettings: db?.prepare('SELECT * FROM user_settings').all() || [],
+                    wordFamiliarity: db?.prepare('SELECT * FROM word_familiarity').all() || [],
+                };
+            };
+
+            // Provide Data Import Logic
+            syncServer.onImportData = async (importData: any) => {
+                // Reuse the import logic from 'import-parsed-backup'
+                // We can extract that logic into a helper function or call it directly if we refactor.
+                // For now, let's copy the logic or invoke a shared function. 
+                // Since we are inside the same file, we can just call a function.
+                return await runImportTransaction(importData);
+            };
+        }
+
+        try {
+            console.log('Starting sync server...');
+            const info = await syncServer.start();
+            console.log('Sync server started successfully:', info);
+            return { success: true, info };
+        } catch (e) {
+            console.error('Failed to start sync server (Main Process):', e);
+            // Check if e is Error object to get stack trace
+            if (e instanceof Error) {
+                console.error(e.stack);
+            }
+            return { success: false, error: String(e) };
+        }
+    });
+
+    ipcMain.handle('stop-sync-server', () => {
+        if (syncServer) {
+            syncServer.stop();
+            syncServer = null;
+        }
+        return { success: true };
+    });
+
+    // Helper for Import Logic (extracted from import-parsed-backup to be reusable)
+    const runImportTransaction = async (importData: any) => {
+        // Validate structure
+        if (!importData.version || !importData.wordLists || !importData.words) {
+            return { success: false, error: 'Invalid backup file format' };
+        }
+
+        const stats = { lists: 0, words: 0, familiarity: 0 };
+        try {
             const transaction = db?.transaction(() => {
+                // Map old list IDs to new list IDs
                 const listIdMap = new Map<number, number>();
 
-                for (const list of importData.wordLists) {
+                // Import word lists - skip if name already exists
+                for (const list of importData.wordLists as Array<{ id: number; name: string; description: string; color?: string; created_at: string }>) {
                     const existing = db?.prepare('SELECT id FROM word_lists WHERE name = ?').get(list.name) as { id: number } | undefined;
                     if (existing) {
                         listIdMap.set(list.id, existing.id);
@@ -811,9 +960,11 @@ function setupIpcHandlers(): void {
                     }
                 }
 
+                // Map old word IDs to new word IDs
                 const wordIdMap = new Map<number, number>();
 
-                for (const word of importData.words) {
+                // Import words - skip if same word+translation already exists
+                for (const word of importData.words as Array<{ id: number; word: string; translation: string; source_language: string; target_language: string; sentence_context: string; pdf_name: string; created_at: string; mastery_level: number }>) {
                     const existing = db?.prepare('SELECT id FROM words WHERE word = ? AND translation = ?').get(word.word, word.translation) as { id: number } | undefined;
                     if (existing) {
                         wordIdMap.set(word.id, existing.id);
@@ -826,32 +977,49 @@ function setupIpcHandlers(): void {
                     }
                 }
 
-                for (const item of importData.wordListItems) {
+                // Import word-list relationships
+                for (const item of importData.wordListItems as Array<{ word_list_id: number; word_id: number }>) {
                     const newListId = listIdMap.get(item.word_list_id);
                     const newWordId = wordIdMap.get(item.word_id);
                     if (newListId && newWordId) {
                         try {
                             db?.prepare('INSERT OR IGNORE INTO word_list_items (word_list_id, word_id) VALUES (?, ?)').run(newListId, newWordId);
-                        } catch { /* Ignore duplicates */ }
+                        } catch {
+                            // Ignore duplicates
+                        }
                     }
                 }
 
-                if (importData.wordFamiliarity) {
-                    for (const fam of importData.wordFamiliarity) {
-                        const existing = db?.prepare('SELECT id FROM word_familiarity WHERE word_lower = ?').get(fam.word_lower);
-                        if (!existing) {
-                            db?.prepare('INSERT INTO word_familiarity (word_lower, familiarity_level, translation, easiness_factor, interval, repetitions, next_review_date, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)').run(
-                                fam.word_lower, fam.familiarity_level, fam.translation || null, fam.easiness_factor, fam.interval, fam.repetitions, fam.next_review_date || null
-                            );
-                            stats.familiarity++;
-                        }
+                // Import word familiarity - update if exists, insert if not
+                for (const fam of (importData.wordFamiliarity || []) as Array<{ word_lower: string; familiarity_level: number; translation: string | null; easiness_factor: number; interval: number; repetitions: number; next_review_date: string | null; last_review_date: string | null }>) {
+                    const existing = db?.prepare('SELECT id FROM word_familiarity WHERE word_lower = ?').get(fam.word_lower);
+                    if (!existing) {
+                        db?.prepare('INSERT INTO word_familiarity (word_lower, familiarity_level, translation, easiness_factor, interval, repetitions, next_review_date, last_review_date, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)').run(
+                            fam.word_lower, fam.familiarity_level, fam.translation, fam.easiness_factor, fam.interval, fam.repetitions, fam.next_review_date, fam.last_review_date
+                        );
+                        stats.familiarity++;
                     }
+                }
+
+                // Import user settings - only if not already set
+                for (const setting of (importData.userSettings || []) as Array<{ key: string; value: string }>) {
+                    db?.prepare('INSERT OR IGNORE INTO user_settings (key, value) VALUES (?, ?)').run(setting.key, setting.value);
                 }
             });
 
             transaction?.();
-
             return { success: true, imported: stats };
+        } catch (error) {
+            console.error('Import helper error:', error);
+            throw error;
+        }
+    };
+
+
+    // Import already-parsed backup data (no file dialog)
+    ipcMain.handle('import-parsed-backup', async (_, importData: any) => {
+        try {
+            return await runImportTransaction(importData);
         } catch (error) {
             console.error('Import parsed backup error:', error);
             return { success: false, error: String(error) };
@@ -874,7 +1042,7 @@ function setupIpcHandlers(): void {
             const fileContent = fs.readFileSync(result.filePaths[0], 'utf-8');
             const importData = JSON.parse(fileContent);
 
-            // Check if it's a full backup (has version and wordLists)
+            // Check if it's a full backup
             if (importData.version && importData.wordLists && importData.words) {
                 return { success: true, type: 'full-backup', data: importData };
             }

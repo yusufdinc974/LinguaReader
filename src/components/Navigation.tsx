@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, BookOpen, List, Brain, BarChart3, Sun, Moon } from 'lucide-react';
+import { Home, BookOpen, List, Brain, BarChart3, Settings, Sun, Moon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const navItems = [
@@ -8,6 +8,7 @@ const navItems = [
     { path: '/wordlists', label: 'Word Lists', icon: List },
     { path: '/quiz', label: 'Quiz', icon: Brain },
     { path: '/stats', label: 'Stats', icon: BarChart3 },
+    { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
 function Navigation() {

@@ -6,6 +6,7 @@ import PdfReader from './pages/PdfReader'
 import WordLists from './pages/WordLists'
 import Quiz from './pages/Quiz'
 import Stats from './pages/Stats'
+import DataManagement from './pages/DataManagement'
 
 function App() {
     return (
@@ -19,6 +20,7 @@ function App() {
                         <Route path="/wordlists" element={<WordLists />} />
                         <Route path="/quiz" element={<Quiz />} />
                         <Route path="/stats" element={<Stats />} />
+                        <Route path="/settings" element={<DataManagement />} />
                     </Routes>
                 </div>
             </main>

@@ -121,6 +121,7 @@ interface Window {
         // Settings
         getSetting: (key: string) => Promise<string | undefined>;
         setSetting: (key: string, value: string) => Promise<boolean>;
+        translateText: (text: string, targetLang?: string) => Promise<{ translatedText: string; detectedLanguage: string; source: string }>;
 
         // Recent PDFs
         getRecentPdfs: () => Promise<RecentPdf[]>;
@@ -200,5 +201,14 @@ interface Window {
             percent?: number;
             message?: string;
         }) => void) => () => void;
+
+        onSyncStatus: (callback: (status: {
+            status: 'uploading' | 'downloading' | 'completed' | 'error';
+            message: string
+        }) => void) => () => void;
+
+        // Sync Server
+        startSyncServer: () => Promise<{ success: boolean; info?: { ip: string; port: number; pin: string; qrDataURL: string }; error?: string }>;
+        stopSyncServer: () => Promise<{ success: boolean; error?: string }>;
     };
 }

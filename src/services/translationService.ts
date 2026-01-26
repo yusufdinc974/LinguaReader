@@ -9,29 +9,8 @@ export async function translateText(
     sourceLang: string = 'auto'
 ): Promise<TranslationResult> {
     try {
-        // MyMemory format: source|target
-        // For auto-detect, use 'autodetect' as source
-        const source = sourceLang === 'auto' ? 'autodetect' : sourceLang;
-        const langPair = `${source}|${targetLang}`;
-
-        const url = `${MYMEMORY_API}?q=${encodeURIComponent(text)}&langpair=${langPair}`;
-
-        const response = await fetch(url);
-
-        if (!response.ok) {
-            throw new Error(`Translation failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (data.responseStatus !== 200) {
-            throw new Error(data.responseDetails || 'Translation failed');
-        }
-
-        return {
-            translatedText: data.responseData.translatedText,
-            detectedLanguage: data.responseData.detectedLanguage,
-        };
+        // Delegate to main process (supports DeepL Key + MyMemory Fallback)
+        return await window.electronAPI.translateText(text, targetLang);
     } catch (error) {
         console.error('Translation failed:', error);
         throw new Error('Translation failed. Please try again.');

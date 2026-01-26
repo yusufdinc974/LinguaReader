@@ -36,6 +36,7 @@ interface TranslationPanelState {
     translation: string;
     isLoading: boolean;
     detectedLanguage?: string;
+    source?: string;
 }
 
 function PdfReader() {
@@ -525,6 +526,7 @@ function PdfReader() {
                 ...prev,
                 translation: result.translatedText,
                 detectedLanguage: result.detectedLanguage,
+                source: result.source,
                 isLoading: false,
             }));
         } catch (error) {
@@ -818,7 +820,15 @@ function PdfReader() {
                                 <span style={{ color: 'var(--text-muted)' }}>Translating...</span>
                             </div>
                         ) : (
-                            <p className="text-lg font-medium mt-1 break-words" style={{ color: 'var(--accent)' }}>{panel.translation}</p>
+                            <div>
+                                <p className="text-lg font-medium mt-1 break-words" style={{ color: 'var(--accent)' }}>{panel.translation}</p>
+                                {panel.source && (
+                                    <div className="flex items-center gap-1 mt-1 text-xs opacity-70" style={{ color: 'var(--text-muted)' }}>
+                                        <Languages size={12} />
+                                        <span>Translated with {panel.source}</span>
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
 
@@ -1101,7 +1111,15 @@ function PdfReader() {
                                                 <span className="text-dark-400 text-sm">Translating...</span>
                                             </div>
                                         ) : (
-                                            <p className="text-primary-400 mt-1">{panel.translation}</p>
+                                            <div>
+                                                <p className="text-primary-400 mt-1">{panel.translation}</p>
+                                                {panel.source && (
+                                                    <div className="flex items-center gap-1 mt-2 text-xs text-dark-400 opacity-70">
+                                                        <Languages size={12} />
+                                                        <span>Translated with {panel.source}</span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                     <button

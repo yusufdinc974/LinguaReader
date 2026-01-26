@@ -49,6 +49,7 @@ export interface Stats {
 export interface TranslationResult {
     translatedText: string;
     detectedLanguage?: string;
+    source?: string;
 }
 
 export type QuizType = 'flashcard' | 'multiple-choice' | 'reverse';
