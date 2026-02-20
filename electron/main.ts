@@ -24,6 +24,12 @@ function initDatabase(): void {
     const dbPath = getDbPath();
     db = new Database(dbPath);
 
+    // Register a custom unicode-aware lowercase function because SQLite's LOWER() is ASCII-only
+    db.function('unicode_lower', (str: string) => {
+        if (typeof str !== 'string') return str;
+        return str.toLowerCase();
+    });
+
     // Create tables
     db.exec(`
     CREATE TABLE IF NOT EXISTS word_lists (
@@ -279,7 +285,7 @@ function setupIpcHandlers(): void {
 
         // Delete each word's familiarity entry
         for (const word of words) {
-            const wordLower = word.word.toLowerCase().replace(/[^a-zA-Zğüşıöçéèêëàâäùûüîïôöÿçñ\s]/gi, '').toLowerCase();
+            const wordLower = word.word.toLowerCase();
             db?.prepare('DELETE FROM word_familiarity WHERE word_lower = ?').run(wordLower);
         }
 
@@ -321,12 +327,18 @@ function setupIpcHandlers(): void {
         return db?.prepare(`
             SELECT w.*, wf.familiarity_level, wf.easiness_factor, wf.next_review_date
             FROM words w
-            LEFT JOIN word_familiarity wf ON LOWER(w.word) = wf.word_lower
+            LEFT JOIN word_familiarity wf ON unicode_lower(w.word) = wf.word_lower
             ORDER BY w.created_at DESC
         `).all() || [];
     });
 
     ipcMain.handle('add-word', (_, word: string, translation: string, sourceLang: string, targetLang: string, context: string, pdfName: string) => {
+        // Check if word already exists (case-insensitive, unicode-aware)
+        const existing = db?.prepare('SELECT id FROM words WHERE unicode_lower(word) = unicode_lower(?) LIMIT 1').get(word) as { id: number } | undefined;
+        if (existing) {
+            return existing.id;
+        }
+
         const result = db?.prepare(`
       INSERT INTO words (word, translation, source_language, target_language, sentence_context, pdf_name)
       VALUES (?, ?, ?, ?, ?, ?)
@@ -347,7 +359,7 @@ function setupIpcHandlers(): void {
         // Get the word text first
         const word = db?.prepare('SELECT word FROM words WHERE id = ?').get(wordId) as { word: string } | undefined;
         if (word) {
-            const wordLower = word.word.toLowerCase().replace(/[^a-zA-Zğüşıöçéèêëàâäùûüîïôöÿçñ\s]/gi, '').toLowerCase();
+            const wordLower = word.word.toLowerCase();
             // Delete from familiarity table
             db?.prepare('DELETE FROM word_familiarity WHERE word_lower = ?').run(wordLower);
         }
@@ -396,13 +408,17 @@ function setupIpcHandlers(): void {
         // First get the word to find its normalized form
         const word = db?.prepare('SELECT word FROM words WHERE id = ?').get(id) as { word: string } | undefined;
         if (word) {
-            const wordLower = word.word.toLowerCase().replace(/[^a-zA-Zğüşıöçéèêëàâäùûüîïôöÿçñ\s]/gi, '').toLowerCase();
+            const wordLower = word.word.toLowerCase();
             // Delete from familiarity table
             db?.prepare('DELETE FROM word_familiarity WHERE word_lower = ?').run(wordLower);
         }
         // Delete from words table
         db?.prepare('DELETE FROM words WHERE id = ?').run(id);
         return true;
+    });
+
+    ipcMain.handle('get-word-by-lower', (_, wordLower: string) => {
+        return db?.prepare('SELECT id FROM words WHERE unicode_lower(word) = ? LIMIT 1').get(wordLower) || null;
     });
 
     // Quiz Results
@@ -639,8 +655,9 @@ function setupIpcHandlers(): void {
     ipcMain.handle('get-word-colors', (_, listIds?: number[]) => {
         // Join words -> word_list_items -> word_lists to get colors
         // If word is in multiple lists, pick the color from the most recently created list
+        // Use custom unicode_lower without stripping chars so Cyrillic and other scripts are preserved case-insensitively
         let query = `
-            SELECT lower(replace(replace(replace(w.word, '’', ''), '''', ''), ' ', '')) as word_lower, l.color 
+            SELECT unicode_lower(w.word) as word_lower, l.color 
             FROM words w
             JOIN word_list_items wli ON w.id = wli.word_id
             JOIN word_lists l ON wli.word_list_id = l.id

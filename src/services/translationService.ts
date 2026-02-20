@@ -5,8 +5,7 @@ const MYMEMORY_API = 'https://api.mymemory.translated.net/get';
 
 export async function translateText(
     text: string,
-    targetLang: string = 'en',
-    sourceLang: string = 'auto'
+    targetLang: string = 'en'
 ): Promise<TranslationResult> {
     try {
         // Delegate to main process (supports DeepL Key + MyMemory Fallback)
@@ -34,7 +33,7 @@ export async function detectLanguage(text: string): Promise<string> {
     }
 }
 
-// Available languages (Latin alphabet only for now)
+// Available languages for translation target
 export const SUPPORTED_LANGUAGES = [
     { code: 'en', name: 'English' },
     { code: 'fr', name: 'French' },
@@ -44,6 +43,7 @@ export const SUPPORTED_LANGUAGES = [
     { code: 'pt', name: 'Portuguese' },
     { code: 'es', name: 'Spanish' },
     { code: 'tr', name: 'Turkish' },
+    { code: 'uk', name: 'Ukrainian' },
     { code: 'vi', name: 'Vietnamese' },
     { code: 'nl', name: 'Dutch' },
     { code: 'sv', name: 'Swedish' },
@@ -54,4 +54,5 @@ export const SUPPORTED_LANGUAGES = [
     { code: 'ro', name: 'Romanian' },
     { code: 'hu', name: 'Hungarian' },
     { code: 'id', name: 'Indonesian' },
+    { code: 'ru', name: 'Russian' },
 ];

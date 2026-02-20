@@ -90,6 +90,7 @@ const electronAPI = {
     updateWordMastery: (wordId: number, masteryLevel: number): Promise<boolean> =>
         ipcRenderer.invoke('update-word-mastery', wordId, masteryLevel),
     deleteWord: (id: number): Promise<boolean> => ipcRenderer.invoke('delete-word', id),
+    getWordByLower: (wordLower: string): Promise<{ id: number } | null> => ipcRenderer.invoke('get-word-by-lower', wordLower),
 
     // Quiz
     saveQuizResult: (listId: number, score: number, total: number, quizType: string): Promise<number> =>

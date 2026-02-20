@@ -83,6 +83,7 @@ interface Window {
         moveWordToList: (wordId: number, fromListId: number, toListId: number) => Promise<{ success: boolean; message?: string }>;
         updateWordMastery: (wordId: number, masteryLevel: number) => Promise<boolean>;
         deleteWord: (id: number) => Promise<boolean>;
+        getWordByLower: (wordLower: string) => Promise<{ id: number } | null>;
 
         // Quiz
         saveQuizResult: (

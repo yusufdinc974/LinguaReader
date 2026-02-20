@@ -60,6 +60,7 @@ function PdfReader() {
     const [showListDropdown, setShowListDropdown] = useState(false);
     const [newListName, setNewListName] = useState('');
     const [focusMode, setFocusMode] = useState(false);
+    const [panelWordId, setPanelWordId] = useState<number | null>(null); // ID of word in DB for current panel
     // Translation panel position (remembers where user dragged it)
     const [panelPosition, setPanelPosition] = useState<{ x: number; y: number } | null>(null);
     // Panning/scrolling state
@@ -158,9 +159,10 @@ function PdfReader() {
         }
     };
 
-    // Normalize single word for lookup (removes non-letters)
+    // Normalize single word for lookup (removes non-letter chars, strips combining marks/accents)
+    // Uses Unicode-aware regex so Cyrillic, Greek, etc. are preserved correctly
     const normalizeWord = (word: string) => {
-        return word.toLowerCase().replace(/[^a-zA-Zğüşıöçéèêëàâäùûüîïôöÿçñ]/gi, '');
+        return word.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\p{L}]/gu, '');
     };
 
     // Normalize phrase for lookup (preserves single spaces, normalizes case)
@@ -227,8 +229,9 @@ function PdfReader() {
             textLayer.style.width = `${viewport.width}px`;
             textLayer.style.height = `${viewport.height}px`;
 
-            // Build a list of phrases (multi-word) from wordColors for phrase matching
-            const phrases = Object.keys(wordColors).filter(key => key.includes(' '));
+            // Build a list of phrases (multi-word) and single words from wordColors for matching
+            // Sort by length descending so longer phrases match before shorter individual words
+            const phrases = Object.keys(wordColors).sort((a, b) => b.length - a.length);
 
             textContent.items.forEach((item) => {
                 if ('str' in item && item.str) {
@@ -254,7 +257,9 @@ function PdfReader() {
                     const phraseMarkers: { start: number; end: number; color: string }[] = [];
 
                     for (const phrase of phrases) {
-                        const regex = new RegExp(`\\b${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+                        const escapedPhrase = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        // Use Unicode-aware lookahead/lookbehind instead of \b (which is Latin-only)
+                        const regex = new RegExp(`(?<![\\p{L}])${escapedPhrase}(?![\\p{L}])`, 'giu');
                         let match;
                         while ((match = regex.exec(text.toLowerCase())) !== null) {
                             phraseMarkers.push({
@@ -277,29 +282,6 @@ function PdfReader() {
                         const bgColor = marker.color + '4D'; // 30% opacity
                         const escaped = matched.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                         processedText = `${before}<mark style="background:${bgColor};border-radius:2px;color:inherit;">${escaped}</mark>${after}`;
-                    }
-
-                    // If no phrase matches, check individual words
-                    if (!hasHighlight) {
-                        const words = text.split(/(\s+)/);
-
-                        const highlightedHtml = words.map(word => {
-                            if (!word || !word.trim()) return word; // Keep whitespace as-is
-
-                            const wordLower = normalizeWord(word);
-                            if (wordLower && wordColors[wordLower]) {
-                                hasHighlight = true;
-                                const color = wordColors[wordLower];
-                                const bgColor = color + '4D'; // 30% opacity
-                                // Escape HTML and wrap in mark
-                                const escaped = word.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                                return `<mark style="background:${bgColor};border-radius:2px;color:inherit;">${escaped}</mark>`;
-                            }
-                            // Return word with HTML escaped
-                            return word.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                        }).join('');
-
-                        processedText = highlightedHtml;
                     }
 
                     if (hasHighlight) {
@@ -365,12 +347,13 @@ function PdfReader() {
             textLayer.innerHTML = '';
             textLayer.style.width = `${viewport.width}px`;
             textLayer.style.height = `${viewport.height}px`;
-
-            const phrases = Object.keys(wordColors).filter(key => key.includes(' '));
+            // Build a list of phrases and words from wordColors for matching
+            // Sort by length descending so longer phrases match before shorter individual words
+            const phrases = Object.keys(wordColors).sort((a, b) => b.length - a.length);
 
             // Normalize word function (same as main)
             const normalizeWord = (word: string) => {
-                return word.toLowerCase().replace(/[^a-zA-Zğüşıöçéèêëàâäùûüîïôöÿçñ]/gi, '');
+                return word.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\p{L}]/gu, '');
             };
 
             textContent.items.forEach((item) => {
@@ -397,7 +380,9 @@ function PdfReader() {
                     // First, check for phrase matches (multi-word)
                     const phraseMarkers: { start: number; end: number; color: string }[] = [];
                     for (const phrase of phrases) {
-                        const regex = new RegExp(`\\b${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+                        const escapedPhrase = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        // Use Unicode-aware lookahead/lookbehind instead of \b (which is Latin-only)
+                        const regex = new RegExp(`(?<![\\p{L}])${escapedPhrase}(?![\\p{L}])`, 'giu');
                         let match;
                         while ((match = regex.exec(text.toLowerCase())) !== null) {
                             phraseMarkers.push({
@@ -420,24 +405,6 @@ function PdfReader() {
                         const bgColor = marker.color + '4D';
                         const escaped = matched.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                         processedText = `${before}<mark style="background:${bgColor};border-radius:2px;color:inherit;">${escaped}</mark>${after}`;
-                    }
-
-                    // If no phrase matches, check individual words
-                    if (!hasHighlight) {
-                        const words = text.split(/(\s+)/);
-                        const highlightedHtml = words.map(word => {
-                            if (!word || !word.trim()) return word;
-                            const wordLower = normalizeWord(word);
-                            if (wordLower && wordColors[wordLower]) {
-                                hasHighlight = true;
-                                const color = wordColors[wordLower];
-                                const bgColor = color + '4D';
-                                const escaped = word.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                                return `<mark style="background:${bgColor};border-radius:2px;color:inherit;">${escaped}</mark>`;
-                            }
-                            return word.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                        }).join('');
-                        processedText = highlightedHtml;
                     }
 
                     if (hasHighlight) {
@@ -513,6 +480,10 @@ function PdfReader() {
             setSelectedLevel(1);
         }
 
+        // Always check if the word exists in the DB so we can offer a delete button
+        const existingWord = await window.electronAPI.getWordByLower(phraseKey);
+        setPanelWordId(existingWord?.id ?? null);
+
         setPanel({
             show: true,
             text,
@@ -572,6 +543,9 @@ function PdfReader() {
             // Refresh colors to show highlighting immediately
             await loadWordColors();
 
+            // Store the word ID so the panel can offer a delete
+            setPanelWordId(Number(wordId));
+
             setShowListDropdown(false);
             setPanel(prev => ({ ...prev, show: false }));
 
@@ -591,6 +565,29 @@ function PdfReader() {
             setNewListName('');
         } catch (error) {
             console.error('Failed to create list:', error);
+        }
+    };
+
+    // Remove word from all lists and delete it
+    const handleDeleteWord = async () => {
+        if (!panelWordId) return;
+        try {
+            await window.electronAPI.deleteWord(panelWordId);
+
+            const phraseKey = normalizePhrase(panel.text);
+            // Remove from local familiarity state
+            setWordFamiliarity(prev => {
+                const next = { ...prev };
+                delete next[phraseKey];
+                return next;
+            });
+            setPanelWordId(null);
+
+            // Refresh colors so highlight disappears
+            await loadWordColors();
+            setPanel(prev => ({ ...prev, show: false }));
+        } catch (error) {
+            console.error('Failed to delete word:', error);
         }
     };
 
@@ -917,6 +914,20 @@ function PdfReader() {
                             )}
                         </div>
                     </div>
+
+                    {/* Delete Word Button - only shown for words already saved */}
+                    {panelWordId !== null && (
+                        <div className="mt-2 pt-4" style={{ borderTop: '1px solid var(--border-color)' }}>
+                            <button
+                                onClick={handleDeleteWord}
+                                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-90"
+                                style={{ background: '#ef444420', color: '#ef4444', border: '1px solid #ef444440' }}
+                            >
+                                <X size={14} />
+                                Remove from Word List
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
