@@ -39,6 +39,9 @@ jobs:
           "Installed: $($exe.FullName)"
           "APP_EXE=$($exe.FullName)" >> $env:GITHUB_ENV
           Get-ChildItem (Join-Path $exe.DirectoryName 'resources\ocr') | Format-Table Name, Length
+          # Where the installed size goes
+          Get-ChildItem $exe.DirectoryName -Recurse -File | Sort-Object Length -Descending | Select-Object -First 15 |
+            Format-Table @{n='MB'; e={[math]::Round($_.Length / 1MB, 1)}}, FullName -AutoSize
 
       - name: Read text in the installed app
         run: node test/e2e/ocr-smoke.mjs "$env:APP_EXE" e2e-out

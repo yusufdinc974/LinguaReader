@@ -116,7 +116,9 @@
       "icon": "icon.png",
       "files": [
         "!node_modules/onnxruntime-node/bin/napi-v6/darwin/**",
-        "!node_modules/onnxruntime-node/bin/napi-v6/linux/**"
+        "!node_modules/onnxruntime-node/bin/napi-v6/linux/**",
+        "!node_modules/onnxruntime-node/bin/napi-v6/win32/arm64/**",
+        "!node_modules/onnxruntime-node/bin/napi-v6/win32/x64/{DirectML,dxcompiler,dxil}.dll"
       ]
     },
     "publish": [
