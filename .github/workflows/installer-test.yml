@@ -33,7 +33,9 @@ jobs:
           $setup = Get-ChildItem release -Filter '*Setup*.exe' | Select-Object -First 1
           if (-not $setup) { throw 'No installer in release/' }
           "Installer: $($setup.Name) ($([math]::Round($setup.Length / 1MB)) MB)"
-          Start-Process $setup.FullName -ArgumentList '/S' -Wait
+          Get-ChildItem release\win-unpacked | Format-Table Name, Length
+          $p = Start-Process $setup.FullName -ArgumentList '/S' -Wait -PassThru
+          "Installer exit code: $($p.ExitCode)"
           # The installer can hand over to a child process and return early: wait for the files.
           $exe = $null
           for ($i = 0; $i -lt 120 -and -not $exe; $i++) {
@@ -42,7 +44,10 @@ jobs:
           }
           Wait-Process -Name ($setup.BaseName) -ErrorAction SilentlyContinue -Timeout 120
           Start-Sleep 3
-          if (-not $exe) { throw 'LinguaReader.exe was not installed' }
+          if (-not $exe) {
+            Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Depth 2 -ErrorAction SilentlyContinue | Select-Object -First 40 FullName
+            throw 'LinguaReader.exe was not installed'
+          }
           "Installed: $($exe.FullName)"
           "APP_EXE=$($exe.FullName)" >> $env:GITHUB_ENV
           Get-ChildItem (Join-Path $exe.DirectoryName 'resources\ocr') | Format-Table Name, Length
