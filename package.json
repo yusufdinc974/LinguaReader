@@ -103,6 +103,10 @@
         "--no-sandbox"
       ],
       "files": [
+        "dist/**/*",
+        "dist-electron/**/*",
+        "!**/*chrome-sandbox",
+        "!**/*chrome_sandbox",
         "!node_modules/onnxruntime-node/bin/napi-v6/darwin/**",
         "!node_modules/onnxruntime-node/bin/napi-v6/win32/**",
         "!node_modules/onnxruntime-node/bin/napi-v6/linux/**/libonnxruntime_providers_{cuda,tensorrt}.so"
@@ -115,6 +119,10 @@
       ],
       "icon": "icon.png",
       "files": [
+        "dist/**/*",
+        "dist-electron/**/*",
+        "!**/*chrome-sandbox",
+        "!**/*chrome_sandbox",
         "!node_modules/onnxruntime-node/bin/napi-v6/darwin/**",
         "!node_modules/onnxruntime-node/bin/napi-v6/linux/**",
         "!node_modules/onnxruntime-node/bin/napi-v6/win32/arm64/**"
@@ -135,6 +143,10 @@
       "icon": "icon.png",
       "category": "public.app-category.education",
       "files": [
+        "dist/**/*",
+        "dist-electron/**/*",
+        "!**/*chrome-sandbox",
+        "!**/*chrome_sandbox",
         "!node_modules/onnxruntime-node/bin/napi-v6/win32/**",
         "!node_modules/onnxruntime-node/bin/napi-v6/linux/**"
       ]
