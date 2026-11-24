@@ -23,60 +23,60 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
 
       # Linux Build
       - name: Build for Linux
         if: matrix.os == 'ubuntu-latest'
-        run: npm run build:linux
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build:linux -- --publish never
 
       # Windows Build
       - name: Build for Windows
         if: matrix.os == 'windows-latest'
-        run: npm run build:win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build:win -- --publish never
 
       # macOS Build
       - name: Build for macOS
         if: matrix.os == 'macos-latest'
-        run: npm run build:mac
+        run: npm run build:mac -- --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Not signed yet (no certificate)
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
       - name: Release Linux
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') && matrix.os == 'ubuntu-latest'
         with:
+          body_path: .github/release-notes/${{ github.ref_name }}.md
+          fail_on_unmatched_files: true
           files: |
             release/*.AppImage
             release/*.deb
-            release/*.yml
-            release/*.blockmap
+            release/latest*.yml
 
       - name: Release Windows
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') && matrix.os == 'windows-latest'
         with:
+          body_path: .github/release-notes/${{ github.ref_name }}.md
+          fail_on_unmatched_files: true
           files: |
             release/*.exe
-            release/*.yml
+            release/latest*.yml
             release/*.blockmap
 
       - name: Release macOS
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') && matrix.os == 'macos-latest'
         with:
+          body_path: .github/release-notes/${{ github.ref_name }}.md
+          fail_on_unmatched_files: true
           files: |
             release/*.dmg
             release/*.zip
-            release/*.yml
+            release/latest*.yml
             release/*.blockmap
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
