@@ -1,0 +1,63 @@
+name: Installer test
+
+# Builds the Windows installer, installs it silently, and checks that the
+# installed app reads text from a scanned PDF and a manga (OCR).
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build the installer
+        run: npm run build:win -- --publish never
+
+      - name: Install silently
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem release -Filter '*Setup*.exe' | Select-Object -First 1
+          if (-not $setup) { throw 'No installer in release/' }
+          "Installer: $($setup.Name) ($([math]::Round($setup.Length / 1MB)) MB)"
+          Start-Process $setup.FullName -ArgumentList '/S' -Wait
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter 'LinguaReader.exe' | Select-Object -First 1
+          if (-not $exe) { throw 'LinguaReader.exe was not installed' }
+          "Installed: $($exe.FullName)"
+          "APP_EXE=$($exe.FullName)" >> $env:GITHUB_ENV
+          Get-ChildItem (Join-Path $exe.DirectoryName 'resources\ocr') | Format-Table Name, Length
+
+      - name: Read text in the installed app
+        run: node test/e2e/ocr-smoke.mjs "$env:APP_EXE" e2e-out
+
+      - name: Uninstall
+        if: always() && env.APP_EXE != ''
+        shell: pwsh
+        run: |
+          $dir = Split-Path $env:APP_EXE
+          $un = Get-ChildItem $dir -Filter 'Uninstall*.exe' | Select-Object -First 1
+          Start-Process $un.FullName -ArgumentList '/S' -Wait
+          Start-Sleep 5
+          if (Test-Path $env:APP_EXE) { throw 'The uninstaller left the app behind' }
+          'Uninstalled'
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-screenshots
+          path: e2e-out/
+          if-no-files-found: ignore
