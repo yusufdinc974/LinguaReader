@@ -19,10 +19,14 @@ fs.mkdirSync(outDir, { recursive: true });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const PORT = 9333;
 
-async function launch() {
+async function launch(files = []) {
     const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'lr-e2e-'));
     const args = [`--remote-debugging-port=${PORT}`, `--user-data-dir=${userData}`];
-    if (process.platform === 'linux') args.push('--no-sandbox');
+    // Chromium won't sandbox as root; everywhere else the app runs sandboxed.
+    if (process.platform === 'linux' && process.getuid?.() === 0) args.push('--no-sandbox');
+    // The app only reads files the user picked; a file given on the command
+    // line ("Open with") counts and lands in the library.
+    args.push(...files);
     const proc = spawn(exe, args, { stdio: ['ignore', 'pipe', 'pipe'] });
     proc.stdout.on('data', d => process.stdout.write('[main] ' + d));
     proc.stderr.on('data', d => process.stdout.write('[main] ' + d));
@@ -86,13 +90,11 @@ const SHOW_LAYER = `(() => { const s = document.createElement('style'); s.textCo
 
 /** Opens `file` from the library and returns the recognised text of its first page. */
 async function readFirstPage(file, shotName) {
-    const app = await launch();
+    const app = await launch([path.join(fixtures, file)]);
     try {
         await app.waitFor('!!window.electronAPI', 30000);
         const ok = await app.evaluate('window.electronAPI.ocrAvailable()');
         if (!ok) throw new Error('OCR models are not installed in this build');
-        await app.evaluate(`window.electronAPI.addRecentPdf(${JSON.stringify(file)}, ${JSON.stringify(path.join(fixtures, file))})`);
-        await app.evaluate('location.reload(), true');
         await sleep(2500);
         const name = file.replace(/\.[^.]+$/, '');
         await app.evaluate(`(() => { const el = [...document.querySelectorAll('button, a, [role=button]')].find(e => e.textContent.includes(${JSON.stringify(name)})); el.click(); return true })()`);

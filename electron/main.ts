@@ -6,16 +6,28 @@ import { autoUpdater } from 'electron-updater';
 import { SyncServer } from './sync_server';
 import { wordKey, legacyKeys } from './wordKey';
 import { setupOcr } from './ocrService';
+import { configureSandbox, guardIpc, lockDownWebContents, makeAppUrlCheck, restrictRequests, FileGrants, filesFromArgv } from './security';
+import { deeplKeyStatus, getDeeplKey, isPlausibleDeeplKey, portableSettings, PORTABLE_SETTINGS, RENDERER_SETTINGS, setDeeplKey } from './secrets';
+import { isNewerVersion } from './version';
+import { parseBackup, type Backup } from './backup';
 
 let mainWindow: BrowserWindow | null = null;
 let db: Database.Database | null = null;
 let syncServer: SyncServer | null = null;
 
 const isDev = !app.isPackaged;
+const DEV_URL = 'http://localhost:5173';
 
-// Disable sandbox to fix crash on some Linux systems
-// (Required because default AppImage/Debian run doesn't include --no-sandbox)
-app.commandLine.appendSwitch('no-sandbox');
+// Chromium sandbox on (falls back only on Linux systems that can't run it)
+configureSandbox();
+
+// Only the app's own page may load, navigate and call IPC handlers.
+const isAppUrl = makeAppUrlCheck(path.join(__dirname, '../dist'), isDev ? DEV_URL : null);
+guardIpc(isAppUrl);
+lockDownWebContents(isAppUrl);
+
+// Files the renderer is allowed to read (see FileGrants)
+const fileGrants = new FileGrants();
 
 function getDbPath(): string {
     const userDataPath = app.getPath('userData');
@@ -303,6 +315,10 @@ function createWindow(): void {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
             nodeIntegration: false,
+            sandbox: true,
+            webSecurity: true,
+            webviewTag: false,
+            navigateOnDragDrop: false,
         },
         titleBarStyle: 'hiddenInset',
         backgroundColor: '#0f172a',
@@ -316,7 +332,7 @@ function createWindow(): void {
     }
 
     if (isDev) {
-        mainWindow.loadURL('http://localhost:5173');
+        mainWindow.loadURL(DEV_URL);
         mainWindow.webContents.openDevTools();
     } else {
         mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
@@ -347,6 +363,7 @@ function setupIpcHandlers(): void {
 
         if (!result.canceled && result.filePaths.length > 0) {
             const filePath = result.filePaths[0];
+            fileGrants.grant(filePath);
             const fileBuffer = fs.readFileSync(filePath);
             return {
                 name: path.basename(filePath),
@@ -533,20 +550,33 @@ function setupIpcHandlers(): void {
     });
 
     // Settings
+    // Only plain preferences; the DeepL key has its own handlers and never goes back to the page.
     ipcMain.handle('get-setting', (_, key: string) => {
+        if (!RENDERER_SETTINGS.has(key)) return undefined;
         const result = db?.prepare('SELECT value FROM user_settings WHERE key = ?').get(key) as { value: string } | undefined;
         return result?.value;
     });
 
     ipcMain.handle('set-setting', (_, key: string, value: string) => {
+        if (!RENDERER_SETTINGS.has(key) || typeof value !== 'string' || value.length > 1000) return false;
         db?.prepare('INSERT OR REPLACE INTO user_settings (key, value) VALUES (?, ?)').run(key, value);
+        return true;
+    });
+
+    ipcMain.handle('get-deepl-key-status', () => (db ? deeplKeyStatus(db) : { saved: false, hint: '' }));
+
+    ipcMain.handle('set-deepl-key', async (_, key: string) => {
+        if (!db || !isPlausibleDeeplKey(key)) return false;
+        await setDeeplKey(db, key);
         return true;
     });
 
     ipcMain.handle('translate-text', async (_, text: string, targetLang: string = 'EN') => {
         // 1. Get Settings
-        const setting = db?.prepare('SELECT value FROM user_settings WHERE key = ?').get('deepl_api_key') as { value: string } | undefined;
-        const apiKey = setting?.value;
+        if (typeof text !== 'string' || typeof targetLang !== 'string' || !/^[A-Za-z-]{2,8}$/.test(targetLang)) {
+            throw new Error('Invalid translation request');
+        }
+        const apiKey = db ? await getDeeplKey(db) : null;
 
         // 2. Try DeepL if key exists
         if (apiKey) {
@@ -614,6 +644,7 @@ function setupIpcHandlers(): void {
     });
 
     ipcMain.handle('add-recent-pdf', (_, name: string, pdfPath: string) => {
+        if (!fileGrants.has(pdfPath) || typeof name !== 'string') return false;
         db?.prepare(`
             INSERT INTO recent_pdfs (name, path, last_opened) 
             VALUES (?, ?, CURRENT_TIMESTAMP)
@@ -635,7 +666,12 @@ function setupIpcHandlers(): void {
 
     ipcMain.handle('open-pdf-by-path', (_, pdfPath: string) => {
         try {
-            if (!fs.existsSync(pdfPath)) {
+            // Only files the user opened (dialog, recent list, command line)
+            if (!fileGrants.has(pdfPath)) {
+                console.warn('[security] Refused to open a file the user did not choose');
+                return null;
+            }
+            if (!fs.existsSync(pdfPath) || !fs.statSync(pdfPath).isFile()) {
                 return null;
             }
             const fileBuffer = fs.readFileSync(pdfPath);
@@ -862,7 +898,7 @@ function setupIpcHandlers(): void {
                 words: db?.prepare('SELECT * FROM words').all() || [],
                 wordListItems: db?.prepare('SELECT * FROM word_list_items').all() || [],
                 quizResults: db?.prepare('SELECT * FROM quiz_results').all() || [],
-                userSettings: db?.prepare('SELECT * FROM user_settings').all() || [],
+                userSettings: db ? portableSettings(db) : [],
                 wordFamiliarity: db?.prepare('SELECT * FROM word_familiarity').all() || [],
             };
 
@@ -888,102 +924,10 @@ function setupIpcHandlers(): void {
             }
 
             const fileContent = fs.readFileSync(result.filePaths[0], 'utf-8');
-            const importData = JSON.parse(fileContent);
-
-            // Validate structure
-            if (!importData.version || !importData.wordLists || !importData.words) {
-                return { success: false, error: 'Invalid backup file format' };
-            }
-
-            const stats = { lists: 0, words: 0, familiarity: 0 };
-
-            // Use transaction for data integrity
-            const transaction = db?.transaction(() => {
-                // Map old list IDs to new list IDs
-                const listIdMap = new Map<number, number>();
-
-                // Import word lists - skip if name already exists
-                for (const list of importData.wordLists as Array<{ id: number; name: string; description: string; color?: string; created_at: string }>) {
-                    // Normalize color from Mobile (0xFFRRGGBB) to Desktop (#RRGGBB)
-                    let color = list.color;
-                    if (color && color.startsWith('0x') && color.length === 10) {
-                        color = '#' + color.substring(4);
-                    }
-
-                    const existing = db?.prepare('SELECT id FROM word_lists WHERE name = ?').get(list.name) as { id: number } | undefined;
-                    if (existing) {
-                        listIdMap.set(list.id, existing.id);
-                        // Update color and description if provided by remote
-                        if (color || list.description) {
-                            db?.prepare(`
-                                UPDATE word_lists 
-                                SET color = COALESCE(?, color), 
-                                    description = COALESCE(?, description) 
-                                WHERE id = ?
-                            `).run(color || null, list.description || null, existing.id);
-                        }
-                    } else {
-                        const res = db?.prepare('INSERT INTO word_lists (name, description, color, created_at) VALUES (?, ?, ?, ?)').run(
-                            list.name, list.description, color || null, list.created_at
-                        );
-                        listIdMap.set(list.id, res?.lastInsertRowid as number);
-                        stats.lists++;
-                    }
-                }
-
-                // Map old word IDs to new word IDs
-                const wordIdMap = new Map<number, number>();
-
-                // Import words - skip if same word+translation already exists
-                for (const word of importData.words as Array<{ id: number; word: string; translation: string; source_language: string; target_language: string; sentence_context: string; pdf_name: string; created_at: string; mastery_level: number }>) {
-                    const existing = db?.prepare('SELECT id FROM words WHERE word = ? AND translation = ?').get(word.word, word.translation) as { id: number } | undefined;
-                    if (existing) {
-                        wordIdMap.set(word.id, existing.id);
-                    } else {
-                        const res = db?.prepare('INSERT INTO words (word, translation, source_language, target_language, sentence_context, pdf_name, created_at, mastery_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
-                            word.word, word.translation, word.source_language, word.target_language, word.sentence_context, word.pdf_name, word.created_at, word.mastery_level
-                        );
-                        wordIdMap.set(word.id, res?.lastInsertRowid as number);
-                        stats.words++;
-                    }
-                }
-
-                // Import word-list relationships
-                for (const item of importData.wordListItems as Array<{ word_list_id: number; word_id: number }>) {
-                    const newListId = listIdMap.get(item.word_list_id);
-                    const newWordId = wordIdMap.get(item.word_id);
-                    if (newListId && newWordId) {
-                        try {
-                            db?.prepare('INSERT OR IGNORE INTO word_list_items (word_list_id, word_id) VALUES (?, ?)').run(newListId, newWordId);
-                        } catch {
-                            // Ignore duplicates
-                        }
-                    }
-                }
-
-                // Import word familiarity - update if exists, insert if not
-                for (const fam of importData.wordFamiliarity as Array<{ word_lower: string; familiarity_level: number; translation: string | null; easiness_factor: number; interval: number; repetitions: number; next_review_date: string | null; last_review_date: string | null }>) {
-                    const existing = db?.prepare('SELECT id FROM word_familiarity WHERE word_lower = ?').get(wordKey(fam.word_lower));
-                    if (!existing) {
-                        db?.prepare('INSERT INTO word_familiarity (word_lower, familiarity_level, translation, easiness_factor, interval, repetitions, next_review_date, last_review_date, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)').run(
-                            wordKey(fam.word_lower), fam.familiarity_level, fam.translation, fam.easiness_factor, fam.interval, fam.repetitions, fam.next_review_date, fam.last_review_date
-                        );
-                        stats.familiarity++;
-                    }
-                }
-
-                // Import user settings - only if not already set
-                for (const setting of (importData.userSettings || []) as Array<{ key: string; value: string }>) {
-                    db?.prepare('INSERT OR IGNORE INTO user_settings (key, value) VALUES (?, ?)').run(setting.key, setting.value);
-                }
-            });
-
-            transaction?.();
-
-            return { success: true, imported: stats };
+            return await runImportTransaction(JSON.parse(fileContent));
         } catch (error) {
             console.error('Import error:', error);
-            return { success: false, error: String(error) };
+            return { success: false, error: error instanceof SyntaxError ? 'The file is not valid JSON' : String((error as Error)?.message ?? error) };
         }
     });
 
@@ -993,6 +937,7 @@ function setupIpcHandlers(): void {
 
         if (!syncServer) {
             syncServer = new SyncServer(mainWindow);
+            syncServer.onStopped = () => { syncServer = null; };
 
             // Provide Data Export Logic
             syncServer.onGetExportData = async () => {
@@ -1003,13 +948,13 @@ function setupIpcHandlers(): void {
                     words: db?.prepare('SELECT * FROM words').all() || [],
                     wordListItems: db?.prepare('SELECT * FROM word_list_items').all() || [],
                     quizResults: db?.prepare('SELECT * FROM quiz_results').all() || [],
-                    userSettings: db?.prepare('SELECT * FROM user_settings').all() || [],
+                    userSettings: db ? portableSettings(db) : [],
                     wordFamiliarity: db?.prepare('SELECT * FROM word_familiarity').all() || [],
                 };
             };
 
             // Provide Data Import Logic
-            syncServer.onImportData = async (importData: any) => {
+            syncServer.onImportData = async (importData: unknown) => {
                 // Reuse the import logic from 'import-parsed-backup'
                 const result = await runImportTransaction(importData);
                 if (result.success) {
@@ -1022,7 +967,7 @@ function setupIpcHandlers(): void {
         try {
             console.log('Starting sync server...');
             const info = await syncServer.start();
-            console.log('Sync server started successfully:', info);
+            console.log('Sync server started');
             return { success: true, info };
         } catch (e) {
             console.error('Failed to start sync server (Main Process):', e);
@@ -1043,10 +988,13 @@ function setupIpcHandlers(): void {
     });
 
     // Helper for Import Logic (extracted from import-parsed-backup to be reusable)
-    const runImportTransaction = async (importData: any) => {
-        // Validate structure
-        if (!importData.version || !importData.wordLists || !importData.words) {
-            return { success: false, error: 'Invalid backup file format' };
+    const runImportTransaction = async (raw: unknown) => {
+        // Backups and phone uploads come from outside: check every field first
+        let importData: Backup;
+        try {
+            importData = parseBackup(raw);
+        } catch (e) {
+            return { success: false, error: (e as Error).message };
         }
 
         const stats = { lists: 0, words: 0, familiarity: 0 };
@@ -1056,12 +1004,9 @@ function setupIpcHandlers(): void {
                 const listIdMap = new Map<number, number>();
 
                 // Import word lists - skip if name already exists
-                for (const list of importData.wordLists as Array<{ id: number; name: string; description: string; color?: string; created_at: string }>) {
-                    // Normalize color from Mobile (0xFFRRGGBB) to Desktop (#RRGGBB)
-                    let color = list.color;
-                    if (color && color.startsWith('0x') && color.length === 10) {
-                        color = '#' + color.substring(4);
-                    }
+                for (const list of importData.wordLists) {
+                    // parseBackup already turned phone colors (0xFFRRGGBB) into #RRGGBB
+                    const color = list.color;
 
                     const existing = db?.prepare('SELECT id FROM word_lists WHERE name = ?').get(list.name) as { id: number } | undefined;
                     if (existing) {
@@ -1071,7 +1016,7 @@ function setupIpcHandlers(): void {
                             db?.prepare('UPDATE word_lists SET color = ? WHERE id = ?').run(color, existing.id);
                         }
                     } else {
-                        const res = db?.prepare('INSERT INTO word_lists (name, description, color, created_at) VALUES (?, ?, ?, ?)').run(
+                        const res = db?.prepare('INSERT INTO word_lists (name, description, color, created_at) VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))').run(
                             list.name, list.description, color || null, list.created_at
                         );
                         listIdMap.set(list.id, res?.lastInsertRowid as number);
@@ -1083,12 +1028,12 @@ function setupIpcHandlers(): void {
                 const wordIdMap = new Map<number, number>();
 
                 // Import words - skip if same word+translation already exists
-                for (const word of importData.words as Array<{ id: number; word: string; translation: string; source_language: string; target_language: string; sentence_context: string; pdf_name: string; created_at: string; mastery_level: number }>) {
+                for (const word of importData.words) {
                     const existing = db?.prepare('SELECT id FROM words WHERE word = ? AND translation = ?').get(word.word, word.translation) as { id: number } | undefined;
                     if (existing) {
                         wordIdMap.set(word.id, existing.id);
                     } else {
-                        const res = db?.prepare('INSERT INTO words (word, translation, source_language, target_language, sentence_context, pdf_name, created_at, mastery_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
+                        const res = db?.prepare('INSERT INTO words (word, translation, source_language, target_language, sentence_context, pdf_name, created_at, mastery_level) VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), ?)').run(
                             word.word, word.translation, word.source_language, word.target_language, word.sentence_context, word.pdf_name, word.created_at, word.mastery_level
                         );
                         wordIdMap.set(word.id, res?.lastInsertRowid as number);
@@ -1097,7 +1042,7 @@ function setupIpcHandlers(): void {
                 }
 
                 // Import word-list relationships
-                for (const item of importData.wordListItems as Array<{ word_list_id: number; word_id: number }>) {
+                for (const item of importData.wordListItems) {
                     const newListId = listIdMap.get(item.word_list_id);
                     const newWordId = wordIdMap.get(item.word_id);
                     if (newListId && newWordId) {
@@ -1110,7 +1055,7 @@ function setupIpcHandlers(): void {
                 }
 
                 // Import word familiarity - update if exists, insert if not
-                for (const fam of (importData.wordFamiliarity || []) as Array<{ word_lower: string; familiarity_level: number; translation: string | null; easiness_factor: number; interval: number; repetitions: number; next_review_date: string | null; last_review_date: string | null }>) {
+                for (const fam of importData.wordFamiliarity) {
                     const existing = db?.prepare('SELECT id FROM word_familiarity WHERE word_lower = ?').get(wordKey(fam.word_lower));
                     if (!existing) {
                         db?.prepare('INSERT INTO word_familiarity (word_lower, familiarity_level, translation, easiness_factor, interval, repetitions, next_review_date, last_review_date, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)').run(
@@ -1121,7 +1066,9 @@ function setupIpcHandlers(): void {
                 }
 
                 // Import user settings - only if not already set
-                for (const setting of (importData.userSettings || []) as Array<{ key: string; value: string }>) {
+                for (const setting of importData.userSettings) {
+                    // Never secrets or internal state (a backup or phone could carry anything here)
+                    if (!PORTABLE_SETTINGS.has(setting.key)) continue;
                     db?.prepare('INSERT OR IGNORE INTO user_settings (key, value) VALUES (?, ?)').run(setting.key, setting.value);
                 }
             });
@@ -1339,8 +1286,24 @@ function setupIpcHandlers(): void {
     });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+    restrictRequests(isAppUrl, isDev ? DEV_URL : null);
     initDatabase();
+    if (db) {
+        // A key saved in plain text by an earlier version gets encrypted.
+        const plain = db.prepare("SELECT value FROM user_settings WHERE key = 'deepl_api_key'").get() as { value: string } | undefined;
+        if (plain?.value) await setDeeplKey(db, plain.value).catch(e => console.error('[secrets] Could not encrypt the DeepL key:', e));
+        // Files the user opened before may be opened again.
+        for (const r of db.prepare('SELECT path FROM recent_pdfs').all() as { path: string }[]) fileGrants.grant(r.path);
+        // Files passed on the command line ("Open with") go into the library.
+        for (const file of filesFromArgv(process.argv)) {
+            fileGrants.grant(file);
+            db.prepare(`
+                INSERT INTO recent_pdfs (name, path, last_opened) VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(path) DO UPDATE SET last_opened = CURRENT_TIMESTAMP
+            `).run(path.basename(file), file);
+        }
+    }
     setupIpcHandlers();
     setupOcr(() => db);
     createWindow();
@@ -1417,7 +1380,7 @@ ipcMain.handle('check-for-updates', async () => {
             const latestVersion = release.tag_name.replace('v', '');
             const currentVersion = app.getVersion();
 
-            if (latestVersion > currentVersion) {
+            if (isNewerVersion(latestVersion, currentVersion)) {
                 return {
                     hasUpdate: true,
                     version: latestVersion,
@@ -1435,7 +1398,7 @@ ipcMain.handle('check-for-updates', async () => {
         try {
             const result = await autoUpdater.checkForUpdates();
             return {
-                hasUpdate: result?.updateInfo?.version !== app.getVersion(),
+                hasUpdate: !!result?.updateInfo?.version && isNewerVersion(result.updateInfo.version, app.getVersion()),
                 version: result?.updateInfo?.version
             };
         } catch (error) {

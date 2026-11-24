@@ -10,7 +10,7 @@ interface Props {
 }
 
 type SyncInfo = { ip: string; port: number; pin: string; qrDataURL: string };
-type SyncStatus = { status: 'uploading' | 'downloading' | 'completed' | 'error'; message: string };
+type SyncStatus = { status: 'uploading' | 'downloading' | 'completed' | 'error' | 'stopped'; message: string };
 type Notice = { type: 'ok' | 'error'; text: string } | null;
 
 function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
@@ -28,8 +28,9 @@ function Section({ title, description, children }: { title: string; description?
 }
 
 export default function SettingsPanel({ open, onClose, theme, onThemeChange }: Props) {
+    // The saved key never comes back to this page: only whether one is saved and its last 4 characters.
     const [apiKey, setApiKey] = useState('');
-    const [savedKey, setSavedKey] = useState('');
+    const [keyStatus, setKeyStatus] = useState<{ saved: boolean; hint: string }>({ saved: false, hint: '' });
     const [notice, setNotice] = useState<Notice>(null);
     const [busy, setBusy] = useState<'export' | 'import' | 'key' | 'sync' | null>(null);
     const [syncInfo, setSyncInfo] = useState<SyncInfo | null>(null);
@@ -38,10 +39,8 @@ export default function SettingsPanel({ open, onClose, theme, onThemeChange }: P
 
     useEffect(() => {
         if (!open) return;
-        window.electronAPI.getSetting('deepl_api_key').then(k => {
-            setApiKey(k || '');
-            setSavedKey(k || '');
-        });
+        setApiKey('');
+        window.electronAPI.getDeeplKeyStatus().then(setKeyStatus);
         window.electronAPI.getAppVersion().then(setVersion);
     }, [open]);
 
@@ -58,6 +57,12 @@ export default function SettingsPanel({ open, onClose, theme, onThemeChange }: P
             return;
         }
         const cleanup = window.electronAPI.onSyncStatus(status => {
+            if (status.status === 'stopped') {
+                // The desktop stopped pairing by itself (timed out, or too many wrong codes)
+                setSyncInfo(null);
+                flash({ type: 'error', text: status.message });
+                return;
+            }
             setSyncStatus(status);
             if (status.status === 'completed') {
                 setTimeout(() => {
@@ -82,14 +87,16 @@ export default function SettingsPanel({ open, onClose, theme, onThemeChange }: P
         if (n?.type === 'ok') setTimeout(() => setNotice(null), 3500);
     };
 
-    const saveKey = async () => {
+    const saveKey = async (key: string) => {
         setBusy('key');
         try {
-            await window.electronAPI.setSetting('deepl_api_key', apiKey.trim());
-            setSavedKey(apiKey.trim());
-            flash({ type: 'ok', text: 'DeepL key saved.' });
+            const ok = await window.electronAPI.setDeeplKey(key);
+            if (!ok) throw new Error('rejected');
+            setApiKey('');
+            setKeyStatus(await window.electronAPI.getDeeplKeyStatus());
+            flash({ type: 'ok', text: key ? 'DeepL key saved.' : 'DeepL key removed.' });
         } catch {
-            flash({ type: 'error', text: 'Could not save the key.' });
+            flash({ type: 'error', text: key ? "Could not save the key. Check that it's a DeepL API key." : 'Could not remove the key.' });
         } finally {
             setBusy(null);
         }
@@ -180,16 +187,23 @@ export default function SettingsPanel({ open, onClose, theme, onThemeChange }: P
                                 id="deepl-key"
                                 type="password"
                                 className="field"
-                                placeholder="Optional"
+                                placeholder={keyStatus.saved ? `Saved key ending in ${keyStatus.hint}` : 'Optional'}
                                 value={apiKey}
+                                autoComplete="off"
+                                spellCheck={false}
                                 onChange={e => setApiKey(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && saveKey()}
+                                onKeyDown={e => e.key === 'Enter' && apiKey.trim() && saveKey(apiKey.trim())}
                             />
-                            <button className="btn btn-outline" onClick={saveKey} disabled={busy === 'key' || apiKey.trim() === savedKey}>
-                                Save
+                            <button className="btn btn-outline" onClick={() => saveKey(apiKey.trim())} disabled={busy === 'key' || !apiKey.trim()}>
+                                {keyStatus.saved ? 'Replace' : 'Save'}
                             </button>
+                            {keyStatus.saved && (
+                                <button className="btn btn-ghost" onClick={() => saveKey('')} disabled={busy === 'key'}>
+                                    Remove
+                                </button>
+                            )}
                         </div>
-                        <p className="text-[12px] faint mt-1.5">Stored only on this computer.</p>
+                        <p className="text-[12px] faint mt-1.5">Stored encrypted on this computer. Never included in backups or phone sync.</p>
                     </Section>
 
                     <Section title="Backup" description="Lists, words and review progress as a JSON file.">
@@ -218,8 +232,7 @@ export default function SettingsPanel({ open, onClose, theme, onThemeChange }: P
                                 </div>
                                 <div className="min-w-0 text-[13px]">
                                     <p className="muted">In the phone app, open <strong className="font-medium" style={{ color: 'var(--text)' }}>Sync with Desktop</strong> and scan the code.</p>
-                                    <p className="mt-3 label">PIN</p>
-                                    <p className="font-mono text-[18px] tracking-[0.2em] mt-0.5">{syncInfo.pin}</p>
+                                    <p className="text-[12px] faint mt-2">The code works for one sync and expires in 10 minutes.</p>
                                     <p className="font-mono text-[12px] faint mt-1">{syncInfo.ip}:{syncInfo.port}</p>
 
                                     {syncStatus && (

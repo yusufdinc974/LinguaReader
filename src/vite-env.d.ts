@@ -137,6 +137,10 @@ interface Window {
         // Settings
         getSetting: (key: string) => Promise<string | undefined>;
         setSetting: (key: string, value: string) => Promise<boolean>;
+        /** Whether a DeepL key is saved, and its last 4 characters. The key itself never reaches the page. */
+        getDeeplKeyStatus: () => Promise<{ saved: boolean; hint: string }>;
+        /** Saves the DeepL key (empty string removes it). */
+        setDeeplKey: (key: string) => Promise<boolean>;
         translateText: (text: string, targetLang?: string) => Promise<{ translatedText: string; detectedLanguage: string; source: string }>;
 
         // Recent PDFs
@@ -221,7 +225,7 @@ interface Window {
         }) => void) => () => void;
 
         onSyncStatus: (callback: (status: {
-            status: 'uploading' | 'downloading' | 'completed' | 'error';
+            status: 'uploading' | 'downloading' | 'completed' | 'error' | 'stopped';
             message: string
         }) => void) => () => void;
 
