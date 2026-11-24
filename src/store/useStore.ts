@@ -1,56 +1,32 @@
 import { create } from 'zustand';
-import type { PdfFile, WordList, Stats } from '../types';
+import type { PdfFile } from '../types';
 
 interface AppState {
-    // PDF State
     currentPdf: PdfFile | null;
     currentPage: number;
     totalPages: number;
+    /** Reader focus mode: hides the app sidebar. */
+    focus: boolean;
+    /** Bumped whenever words/lists change so badges can refresh. */
+    dataVersion: number;
 
-    // Word Lists State
-    wordLists: WordList[];
-    selectedListId: number | null;
-
-    // Settings
-    targetLanguage: string;
-
-    // Actions
     setCurrentPdf: (pdf: PdfFile | null) => void;
     setCurrentPage: (page: number) => void;
     setTotalPages: (total: number) => void;
-    setWordLists: (lists: WordList[]) => void;
-    setSelectedListId: (id: number | null) => void;
-    setTargetLanguage: (lang: string) => void;
-
-    // Async Actions (these call electron API)
-    loadWordLists: () => Promise<void>;
-    loadStats: () => Promise<Stats>;
+    setFocus: (focus: boolean) => void;
+    bumpData: () => void;
 }
 
-export const useStore = create<AppState>((set) => ({
-    // Initial State
+export const useStore = create<AppState>(set => ({
     currentPdf: null,
     currentPage: 1,
     totalPages: 0,
-    wordLists: [],
-    selectedListId: null,
-    targetLanguage: 'en',
+    focus: false,
+    dataVersion: 0,
 
-    // Sync Actions
-    setCurrentPdf: (pdf) => set({ currentPdf: pdf, currentPage: 1 }),
-    setCurrentPage: (page) => set({ currentPage: page }),
-    setTotalPages: (total) => set({ totalPages: total }),
-    setWordLists: (lists) => set({ wordLists: lists }),
-    setSelectedListId: (id) => set({ selectedListId: id }),
-    setTargetLanguage: (lang) => set({ targetLanguage: lang }),
-
-    // Async Actions
-    loadWordLists: async () => {
-        const lists = await window.electronAPI.getWordLists();
-        set({ wordLists: lists });
-    },
-
-    loadStats: async () => {
-        return await window.electronAPI.getStats();
-    },
+    setCurrentPdf: pdf => set({ currentPdf: pdf, currentPage: 1 }),
+    setCurrentPage: page => set({ currentPage: page }),
+    setTotalPages: total => set({ totalPages: total }),
+    setFocus: focus => set({ focus }),
+    bumpData: () => set(s => ({ dataVersion: s.dataVersion + 1 })),
 }));
