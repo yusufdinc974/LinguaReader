@@ -120,6 +120,11 @@ function initDatabase(): void {
         db.prepare("ALTER TABLE word_familiarity ADD COLUMN last_review_date TEXT").run();
     }
 
+    // Migration: reading position per PDF (bookmark)
+    const pdfColumns = (db.prepare("PRAGMA table_info(recent_pdfs)").all() as { name: string }[]).map(c => c.name);
+    if (!pdfColumns.includes('last_page')) db.prepare('ALTER TABLE recent_pdfs ADD COLUMN last_page INTEGER DEFAULT 1').run();
+    if (!pdfColumns.includes('page_count')) db.prepare('ALTER TABLE recent_pdfs ADD COLUMN page_count INTEGER').run();
+
     // Migration: Add color column to word_lists
     const listTableInfo = db.prepare("PRAGMA table_info(word_lists)").all() as { name: string }[];
     const listColumns = listTableInfo.map(c => c.name);
@@ -608,6 +613,17 @@ function setupIpcHandlers(): void {
             VALUES (?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(path) DO UPDATE SET last_opened = CURRENT_TIMESTAMP, name = excluded.name
         `).run(name, pdfPath);
+        return true;
+    });
+
+    // Reading position (bookmark) per PDF
+    ipcMain.handle('get-pdf-progress', (_, pdfPath: string) => {
+        return db?.prepare('SELECT last_page, page_count FROM recent_pdfs WHERE path = ?').get(pdfPath) || null;
+    });
+
+    ipcMain.handle('set-pdf-progress', (_, pdfPath: string, page: number, pageCount: number) => {
+        if (!Number.isInteger(page) || page < 1) return false;
+        db?.prepare('UPDATE recent_pdfs SET last_page = ?, page_count = ? WHERE path = ?').run(page, pageCount || null, pdfPath);
         return true;
     });
 

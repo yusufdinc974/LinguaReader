@@ -20,9 +20,6 @@ const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 3;
 const ZOOM_STEP = 0.1;
 
-// Remember which file the page number belongs to across visits.
-let lastLoadedPath: string | null = null;
-
 export default function Reader() {
     const navigate = useNavigate();
     const { currentPdf, setCurrentPdf, currentPage, setCurrentPage, totalPages, setTotalPages, focus, setFocus, bumpData } = useStore();
@@ -49,6 +46,8 @@ export default function Reader() {
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const selectionSeq = useRef(0);
+    /** Path whose saved page has been applied; saving waits for this. */
+    const restoredFor = useRef<string | null>(null);
 
     useEffect(() => localStorage.setItem('readerScale', String(scale)), [scale]);
     useEffect(() => localStorage.setItem('readerSpread', spread ? '1' : '0'), [spread]);
@@ -87,11 +86,17 @@ export default function Reader() {
         setLoading(true);
         setLoadError(null);
         try {
-            const pdf = await openDocument(data);
+            restoredFor.current = null;
+            const [pdf, progress] = await Promise.all([
+                openDocument(data),
+                window.electronAPI.getPdfProgress(path).catch(() => null),
+            ]);
             setDoc(pdf);
             setTotalPages(pdf.numPages);
-            if (lastLoadedPath !== path) setCurrentPage(1);
-            lastLoadedPath = path;
+            // Resume where the reader left off (bookmark), clamped in case the file changed
+            const saved = progress?.last_page ?? 1;
+            setCurrentPage(Math.min(Math.max(1, saved), pdf.numPages));
+            restoredFor.current = path;
         } catch (e) {
             console.error('Failed to load PDF:', e);
             setLoadError('This file could not be opened as a PDF.');
@@ -113,6 +118,15 @@ export default function Reader() {
         })();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentPdf]);
+
+    // Save the reading position whenever the page changes (after it was restored)
+    useEffect(() => {
+        if (!doc || !currentPdf || restoredFor.current !== currentPdf.path) return;
+        const t = setTimeout(() => {
+            window.electronAPI.setPdfProgress(currentPdf.path, currentPage, totalPages).catch(() => { });
+        }, 300);
+        return () => clearTimeout(t);
+    }, [doc, currentPdf, currentPage, totalPages]);
 
     const openFile = async () => {
         const file = await window.electronAPI.openPdfDialog();
@@ -147,8 +161,8 @@ export default function Reader() {
 
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
-            const t = e.target as HTMLElement;
-            if (t.closest('input, textarea, select, [contenteditable]')) return;
+            const t = e.target as HTMLElement | null;
+            if (t?.closest?.('input, textarea, select, [contenteditable]')) return;
             if (e.key === 'Escape') {
                 if (card) setCard(null);
                 else if (focus) setFocus(false);

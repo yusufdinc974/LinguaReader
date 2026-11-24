@@ -17,7 +17,9 @@ export function base64ToBytes(b64: string) {
 }
 
 export function openDocument(base64Data: string) {
-    return pdfjsLib.getDocument({ data: base64ToBytes(base64Data), cMapUrl: CMAP_URL, cMapPacked: true }).promise;
+    // fontExtraProperties keeps each font's glyph widths and unicode map on the
+    // main thread; the text layer uses them to place every word exactly.
+    return pdfjsLib.getDocument({ data: base64ToBytes(base64Data), cMapUrl: CMAP_URL, cMapPacked: true, fontExtraProperties: true }).promise;
 }
 
 // ---- Library thumbnails (first page), cached for the session ----
