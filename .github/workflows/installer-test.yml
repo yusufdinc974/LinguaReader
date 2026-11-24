@@ -34,7 +34,14 @@ jobs:
           if (-not $setup) { throw 'No installer in release/' }
           "Installer: $($setup.Name) ($([math]::Round($setup.Length / 1MB)) MB)"
           Start-Process $setup.FullName -ArgumentList '/S' -Wait
-          $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter 'LinguaReader.exe' | Select-Object -First 1
+          # The installer can hand over to a child process and return early: wait for the files.
+          $exe = $null
+          for ($i = 0; $i -lt 120 -and -not $exe; $i++) {
+            $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter 'LinguaReader.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $exe) { Start-Sleep 1 }
+          }
+          Wait-Process -Name ($setup.BaseName) -ErrorAction SilentlyContinue -Timeout 120
+          Start-Sleep 3
           if (-not $exe) { throw 'LinguaReader.exe was not installed' }
           "Installed: $($exe.FullName)"
           "APP_EXE=$($exe.FullName)" >> $env:GITHUB_ENV
