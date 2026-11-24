@@ -1,7 +1,7 @@
 // Run with: npm test  (Node 22.18+ runs TypeScript directly)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { schedule, levelFromInterval, MAX_INTERVAL, type SrsState, type Grade } from '../src/lib/srs.ts';
+import { schedule, leavesSession, levelFromInterval, MAX_INTERVAL, type SrsState, type Grade } from '../src/lib/srs.ts';
 
 const DAY = 86400000;
 const t0 = new Date(2026, 0, 10, 12, 0, 0);
@@ -93,4 +93,10 @@ test('levels follow the gap and Known is reachable by reviewing', () => {
     assert.equal(state.familiarity_level, 5);
     const fail = run([1, 3, 3]).state;
     assert.ok(fail.familiarity_level! < 4, 'a failed new word must not show Familiar');
+});
+
+test('a word leaves the session on "Knew it" only', () => {
+    assert.equal(leavesSession(3), true);
+    assert.equal(leavesSession(2), false);
+    assert.equal(leavesSession(1), false);
 });

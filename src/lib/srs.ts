@@ -17,6 +17,16 @@
  * The caller must apply this once per word per session (its first answer).
  */
 
+/**
+ * Whether a word leaves the review session after this answer. Only "Knew it"
+ * (or a right pick) does: a word right on the first try leaves at once, and a
+ * word missed or marked "Unsure" comes back later in the session until it is
+ * answered right, like Anki's relearning steps.
+ */
+export function leavesSession(grade: Grade): boolean {
+    return grade === 3;
+}
+
 export type Grade = 1 | 2 | 3;
 
 export interface SrsState {
