@@ -10,7 +10,8 @@
     "build:linux": "npm run build && electron-builder --linux",
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "npm run build && electron-builder --mac",
-    "build:all": "npm run build && electron-builder --linux --win --mac"
+    "build:all": "npm run build && electron-builder --linux --win --mac",
+    "test": "node --test test/*.test.ts"
   },
   "keywords": [
     "pdf",

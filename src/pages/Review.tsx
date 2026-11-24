@@ -4,6 +4,7 @@ import { X, Check, ArrowRight } from 'lucide-react';
 import type { QuizQuestion, Word } from '../types';
 import type { ReviewConfig } from '../components/ReviewSetup';
 import { wordKey } from '../lib/words';
+import { schedule, type Grade } from '../lib/srs';
 import { useStore } from '../store/useStore';
 
 // A word must be answered correctly this many times in a row to leave the session.
@@ -17,31 +18,17 @@ interface Item {
 
 const shuffle = <T,>(a: T[]) => [...a].sort(() => Math.random() - 0.5);
 
-// SM-2 style update, unchanged from the previous quiz screen.
-async function updateSRS(word: string, grade: number) {
+/**
+ * Reschedules a word from its first answer in a session. Later answers in the
+ * same session are practice and must not call this (see src/lib/srs.ts).
+ */
+async function updateSRS(word: string, grade: Grade) {
     try {
         const key = wordKey(word);
         const f = await window.electronAPI.getWordFamiliarity(key);
         if (!f) return;
-        let ef = f.easiness_factor;
-        let interval: number;
-        let reps: number;
-        if (grade === 1) {
-            reps = 0;
-            interval = 1;
-            ef = Math.max(1.3, f.easiness_factor - 0.2);
-        } else if (grade === 2) {
-            reps = 0;
-            interval = 1;
-        } else {
-            reps = f.repetitions + 1;
-            ef = Math.min(2.5, f.easiness_factor + 0.1);
-            interval = reps === 1 ? 1 : reps === 2 ? 6 : Math.ceil(f.interval * ef);
-        }
-        const next = new Date();
-        next.setDate(next.getDate() + interval);
-        const level = ef < 1.7 ? 1 : ef < 2.0 ? 2 : ef < 2.3 ? 3 : ef < 2.6 ? 4 : 5;
-        await window.electronAPI.updateWordSRS(key, ef, interval, reps, next.toISOString(), level);
+        const u = schedule(f, grade);
+        await window.electronAPI.updateWordSRS(key, u.easinessFactor, u.interval, u.repetitions, u.nextReviewDate, u.level);
     } catch (e) {
         console.error('Failed to update SRS:', e);
     }
@@ -129,18 +116,22 @@ export default function Review() {
 
     const gradeFlashcard = useCallback((grade: number) => {
         if (!current) return;
-        if (current.attempts === 0 && grade === 3) setFirstTry(n => n + 1);
-        updateSRS(current.question.word.word, grade);
+        if (current.attempts === 0) {
+            if (grade === 3) setFirstTry(n => n + 1);
+            updateSRS(current.question.word.word, grade as Grade);
+        }
         advance(grade);
     }, [current, advance]);
 
     const choose = useCallback((option: string) => {
         if (!current || revealed) return;
         const correct = option === current.question.correctAnswer;
-        if (current.attempts === 0 && correct) setFirstTry(n => n + 1);
+        if (current.attempts === 0) {
+            if (correct) setFirstTry(n => n + 1);
+            updateSRS(current.question.word.word, correct ? 3 : 1);
+        }
         setPicked(option);
         setRevealed(true);
-        updateSRS(current.question.word.word, correct ? 3 : 1);
     }, [current, revealed]);
 
     const next = useCallback(() => {
