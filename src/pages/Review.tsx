@@ -4,16 +4,12 @@ import { X, Check, ArrowRight } from 'lucide-react';
 import type { QuizQuestion, Word } from '../types';
 import type { ReviewConfig } from '../components/ReviewSetup';
 import { wordKey } from '../lib/words';
-import { schedule, type Grade } from '../lib/srs';
+import { schedule, leavesSession, type Grade } from '../lib/srs';
 import { useStore } from '../store/useStore';
-
-// A word must be answered correctly this many times in a row to leave the session.
-const GRADUATION_THRESHOLD = 2;
 
 interface Item {
     question: QuizQuestion;
     attempts: number;
-    streak: number;
 }
 
 const shuffle = <T,>(a: T[]) => [...a].sort(() => Math.random() - 0.5);
@@ -69,7 +65,7 @@ export default function Review() {
             const others = shuffle(pool.filter(w => w.id !== word.id)).slice(0, 3);
             const correct = mode === 'reverse' ? word.word : word.translation;
             const options = shuffle([correct, ...others.map(w => (mode === 'reverse' ? w.word : w.translation))]);
-            return { question: { word, options, correctAnswer: correct }, attempts: 0, streak: 0 };
+            return { question: { word, options, correctAnswer: correct }, attempts: 0 };
         });
         setQueue(items);
         setDone([]);
@@ -102,9 +98,8 @@ export default function Review() {
     const advance = useCallback((grade: number) => {
         const [head, ...rest] = queue;
         if (!head) return;
-        const streak = grade === 3 ? head.streak + 1 : 0;
-        const updated = { ...head, attempts: head.attempts + 1, streak };
-        if (streak >= GRADUATION_THRESHOLD) {
+        const updated = { ...head, attempts: head.attempts + 1 };
+        if (leavesSession(grade as Grade)) {
             setDone(d => [...d, updated]);
             setQueue(rest);
         } else {
@@ -197,7 +192,7 @@ export default function Review() {
                         <p className="serif text-[30px] font-semibold mt-2">Session complete</p>
                         <p className="muted mt-2">
                             You got <strong style={{ color: 'var(--text)' }}>{firstTry} of {total}</strong> right on the first try.
-                            {' '}Every word was answered correctly {GRADUATION_THRESHOLD} times in a row.
+                            {' '}Words you missed came back until you got them right.
                         </p>
                         <div className="flex justify-center gap-2 mt-8">
                             <button className="btn btn-outline btn-lg" onClick={exit}>Done</button>
