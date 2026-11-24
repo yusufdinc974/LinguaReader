@@ -1,6 +1,6 @@
 name: Installer test
 
-# Builds the Windows installer, installs it silently, and checks that the
+# Builds the Windows and macOS installers, installs them, and checks that the
 # installed app reads text from a scanned PDF and a manga (OCR).
 on:
   pull_request:
@@ -74,5 +74,54 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-screenshots
+          path: e2e-out/
+          if-no-files-found: ignore
+
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      # No signing certificate here; the test runs the unsigned app.
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build the installer
+        run: npm run build:mac -- --publish never
+
+      - name: Install from the disk image
+        run: |
+          set -euo pipefail
+          dmg=$(ls release/*.dmg | head -1)
+          echo "Disk image: $(basename "$dmg") ($(( $(stat -f%z "$dmg") / 1048576 )) MB)"
+          mnt=$(mktemp -d)
+          hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mnt"
+          mkdir -p "$HOME/Applications"
+          cp -R "$mnt/LinguaReader.app" "$HOME/Applications/"
+          hdiutil detach "$mnt"
+          app="$HOME/Applications/LinguaReader.app"
+          file "$app/Contents/MacOS/LinguaReader"
+          ls -la "$app/Contents/Resources/ocr"
+          echo "APP_EXE=$app/Contents/MacOS/LinguaReader" >> "$GITHUB_ENV"
+
+      - name: Read text in the installed app
+        run: node test/e2e/ocr-smoke.mjs "$APP_EXE" e2e-out
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-screenshots
           path: e2e-out/
           if-no-files-found: ignore
