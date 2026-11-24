@@ -89,7 +89,7 @@ export default function PageView({ doc, pageNum, scale, highlighter, ocrMode, oc
                 canvas.style.height = `${viewport.height}px`;
                 const ctx = canvas.getContext('2d');
                 if (!ctx) return;
-                task = page.render({ canvasContext: ctx, viewport, transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined });
+                task = page.render({ canvas, canvasContext: ctx, viewport, transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined });
                 await task.promise;
                 task = null;
                 if (!cancelled) setRendered({ page, scale });

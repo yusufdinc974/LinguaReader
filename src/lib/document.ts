@@ -98,7 +98,7 @@ export async function openReaderDoc(file: { name: string; data: string }): Promi
 
 export function destroyDoc(doc: ReaderDoc | null) {
     if (!doc) return;
-    if (doc.kind === 'pdf') doc.pdf.destroy();
+    if (doc.kind === 'pdf') doc.pdf.loadingTask.destroy();
     else for (const p of doc.pages) if (p.url) URL.revokeObjectURL(p.url);
 }
 
@@ -146,7 +146,7 @@ export async function pageImage(doc: ReaderDoc, n: number): Promise<{ data: Uint
         const ctx = canvas.getContext('2d')!;
         ctx.fillStyle = '#fff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        await page.render({ canvas, canvasContext: ctx, viewport: vp }).promise;
         source = canvas;
     } else {
         const src = doc.pages[n - 1];
@@ -197,7 +197,7 @@ export function getThumbnail(path: string, width = 220): Promise<string | null> 
                 const viewport = page.getViewport({ scale: (width * 2) / base.width });
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
-                await page.render({ canvasContext: canvas.getContext('2d')!, viewport }).promise;
+                await page.render({ canvas, canvasContext: canvas.getContext('2d')!, viewport }).promise;
             } else {
                 const src = doc.pages[0];
                 const { width: w, height: h } = await imageSize(src);

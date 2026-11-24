@@ -104,6 +104,8 @@ const electronAPI = {
     // Settings
     getSetting: (key: string): Promise<string | undefined> => ipcRenderer.invoke('get-setting', key),
     setSetting: (key: string, value: string): Promise<boolean> => ipcRenderer.invoke('set-setting', key, value),
+    getDeeplKeyStatus: (): Promise<{ saved: boolean; hint: string }> => ipcRenderer.invoke('get-deepl-key-status'),
+    setDeeplKey: (key: string): Promise<boolean> => ipcRenderer.invoke('set-deepl-key', key),
 
     // Translation
     translateText: (text: string, targetLang?: string): Promise<{ translatedText: string; detectedLanguage: string }> =>

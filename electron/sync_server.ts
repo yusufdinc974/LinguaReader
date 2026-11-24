@@ -1,186 +1,231 @@
-import express from 'express';
+// Phone sync over the local network.
+//
+// The desktop shows a QR code with its address and a one-time pairing token;
+// the phone uploads its data, then downloads the desktop's. The server:
+//  - uses a 128-bit random token instead of a 4-digit PIN, so it can't be guessed
+//    (it is still sent as "pin" in the QR and the x-auth-pin header, which is
+//    what the phone app already reads and sends);
+//  - locks out an address after a few wrong tokens, and shuts down after too
+//    many wrong tokens overall;
+//  - stops by itself after one complete sync, or after 10 minutes;
+//  - listens only on the LAN address shown in the QR code;
+//  - caps request bodies, and never sends secrets (see onGetExportData in main.ts).
+//
+// Traffic is plain HTTP on the local network; the token only lives while the
+// pairing screen is open.
+
 import * as http from 'http';
+import * as os from 'os';
+import { randomBytes, timingSafeEqual } from 'crypto';
 import * as QRCode from 'qrcode';
-import * as ip from 'ip';
-import { BrowserWindow, ipcMain } from 'electron';
+import type { BrowserWindow } from 'electron';
+
+export const SYNC_PROTOCOL_VERSION = 1;
+const MAX_BODY_BYTES = 32 * 1024 * 1024;
+const LIFETIME_MS = 10 * 60 * 1000;
+const MAX_FAILS_PER_ADDRESS = 5;
+const MAX_FAILS_TOTAL = 20;
+
+export interface SyncInfo {
+    ip: string;
+    port: number;
+    pin: string;
+    qrDataURL: string;
+}
+
+type Status = { status: string; message: string };
+
+/** The address other devices on the LAN can reach: private IPv4 first. */
+export function lanAddress(interfaces = os.networkInterfaces()): string {
+    const candidates: string[] = [];
+    for (const list of Object.values(interfaces)) {
+        for (const i of list ?? []) {
+            if (i.family === 'IPv4' && !i.internal && !i.address.startsWith('169.254.')) candidates.push(i.address);
+        }
+    }
+    const isPrivate = (a: string) => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(a);
+    return candidates.find(isPrivate) ?? candidates[0] ?? '127.0.0.1';
+}
+
+export function tokensMatch(given: unknown, expected: string) {
+    if (typeof given !== 'string' || !expected) return false;
+    const a = Buffer.from(given);
+    const b = Buffer.from(expected);
+    return a.length === b.length && timingSafeEqual(a, b);
+}
+
+class HttpError extends Error {
+    code: number;
+    constructor(code: number, message: string) {
+        super(message);
+        this.code = code;
+    }
+}
 
 export class SyncServer {
-    private app: express.Express;
     private server: http.Server | null = null;
-    private port: number = 0;
-    private pin: string = '';
+    private token = '';
+    private failsByAddress = new Map<string, number>();
+    private failsTotal = 0;
+    private uploaded = false;
+    private stopTimer: NodeJS.Timeout | null = null;
+
+    public onGetExportData: (() => Promise<unknown>) | null = null;
+    public onImportData: ((data: unknown) => Promise<unknown>) | null = null;
+    /** Called once when the server shuts itself down (timeout, completed, too many bad tokens). */
+    public onStopped: (() => void) | null = null;
+
     private mainWindow: BrowserWindow;
+    private host: string;
 
-    constructor(mainWindow: BrowserWindow) {
+    constructor(mainWindow: BrowserWindow, host = lanAddress()) {
         this.mainWindow = mainWindow;
-        this.app = express();
-        // Initial setup - we will reset this later but good to have defaults
-        this.app.use(express.json({ limit: '50mb' }));
-        this.setupRoutes();
+        this.host = host;
     }
 
-    private setupRoutes() {
-        // middleware: Body Parser (Must re-add after stack clear)
-        this.app.use(express.json({ limit: '50mb' }));
-
-        // Authenticate all requests
-        this.app.use((req, res, next) => {
-            console.log(`[SyncServer] Incoming request: ${req.method} ${req.url} from ${req.ip}`);
-            const requestPin = req.headers['x-auth-pin'];
-            if (requestPin !== this.pin) {
-                console.warn(`[SyncServer] Invalid PIN attempt: ${requestPin}`);
-                res.status(401).json({ error: 'Invalid PIN' });
-                return;
-            }
-            next();
-        });
-
-        // Test Endpoint
-        this.app.get('/sync/handshake', (req, res) => {
-            res.json({ message: 'LinguaReader Desktop', version: '1.0.0' });
-        });
-
-        // NOTE: Real data handlers are added by setupHandlersWithCallbacks()
-        // Do NOT add placeholder routes here, or they will block the real ones and hang!
+    private status(s: Status) {
+        if (!this.mainWindow.isDestroyed()) this.mainWindow.webContents.send('sync-status', s);
     }
 
-    // We need to inject the data handlers
-    public onGetExportData: (() => Promise<any>) | null = null;
-    public onImportData: ((data: any) => Promise<any>) | null = null;
-
-    private setupHandlersWithCallbacks() {
-        // Re-implement routes with callbacks
-        this.app.get('/sync/download', async (req, res) => {
-            console.log('[SyncServer] Handling GET /sync/download');
-
-            // Log window state and send status
-            if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-                console.log(`[SyncServer] Sending 'sync-status: downloading' to WebContents ID: ${this.mainWindow.webContents.id}`);
-                this.mainWindow.webContents.send('sync-status', { status: 'downloading', message: 'Sending data to mobile...' });
-            } else {
-                console.error('[SyncServer] Cannot send status: MainWindow is missing or destroyed');
-            }
-
-            try {
-                if (this.onGetExportData) {
-                    console.log('[SyncServer] Fetching export data from main process...');
-                    const data = await this.onGetExportData();
-                    console.log(`[SyncServer] Data fetched. Keys: ${Object.keys(data).join(', ')}. Sending response...`);
-                    res.json(data);
-                    console.log('[SyncServer] Download response sent.');
-
-                    // Final success message
-                    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-                        console.log(`[SyncServer] Sending 'sync-status: completed' to WebContents ID: ${this.mainWindow.webContents.id}`);
-                        this.mainWindow.webContents.send('sync-status', { status: 'completed', message: 'Sync Complete!' });
-                    }
-                } else {
-                    console.warn('[SyncServer] Export provider not ready');
-                    res.status(503).json({ error: 'Export provider not ready' });
-                    this.mainWindow?.webContents?.send('sync-status', { status: 'error', message: 'Server not ready' });
-                }
-            } catch (error) {
-                console.error('Sync Download Error:', error);
-                res.status(500).json({ error: String(error) });
-                this.mainWindow?.webContents?.send('sync-status', { status: 'error', message: String(error) });
-            }
-        });
-
-        this.app.post('/sync/upload', async (req, res) => {
-            console.log('[SyncServer] Handling POST /sync/upload');
-            // First valid request -> Connected
-            if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-                console.log(`[SyncServer] Sending 'sync-status: uploading' to WebContents ID: ${this.mainWindow.webContents.id}`);
-                this.mainWindow.webContents.send('sync-status', { status: 'uploading', message: 'Receiving data from mobile...' });
-            } else {
-                console.error('[SyncServer] Cannot send status: MainWindow is missing or destroyed');
-            }
-
-            try {
-                const data = req.body;
-                console.log(`[SyncServer] Received upload payload. Size: ${JSON.stringify(data).length} chars approx.`);
-
-                if (this.onImportData) {
-                    console.log('[SyncServer] Invoking import handler...');
-                    const result = await this.onImportData(data);
-                    console.log('[SyncServer] Import handler finished:', result);
-                    res.json(result);
-                    console.log('[SyncServer] Upload response sent.');
-                } else {
-                    console.warn('[SyncServer] Import provider not ready');
-                    res.status(503).json({ error: 'Import provider not ready' });
-                    this.mainWindow?.webContents?.send('sync-status', { status: 'error', message: 'Server not ready' });
-                }
-            } catch (error) {
-                console.error('Sync Upload Error:', error);
-                res.status(500).json({ error: String(error) });
-                this.mainWindow?.webContents?.send('sync-status', { status: 'error', message: String(error) });
-            }
-        });
+    private authorize(req: http.IncomingMessage) {
+        const addr = req.socket.remoteAddress ?? '?';
+        if ((this.failsByAddress.get(addr) ?? 0) >= MAX_FAILS_PER_ADDRESS) throw new HttpError(429, 'Too many attempts');
+        const header = req.headers['x-auth-pin'];
+        const bearer = req.headers.authorization?.replace(/^Bearer\s+/i, '');
+        if (tokensMatch(header ?? bearer, this.token)) return;
+        this.failsByAddress.set(addr, (this.failsByAddress.get(addr) ?? 0) + 1);
+        this.failsTotal++;
+        console.warn(`[sync] Rejected a request with a wrong pairing code (${this.failsTotal} so far)`);
+        if (this.failsTotal >= MAX_FAILS_TOTAL) {
+            this.status({ status: 'stopped', message: 'Phone sync stopped after too many wrong pairing attempts.' });
+            setImmediate(() => this.shutdown());
+        }
+        throw new HttpError(401, 'Invalid PIN');
     }
 
-    public async start(): Promise<{ ip: string; port: number; pin: string; qrDataURL: string }> {
+    private readJson(req: http.IncomingMessage): Promise<unknown> {
         return new Promise((resolve, reject) => {
-            // Find a free port (0 lets OS choose)
-            this.server = this.app.listen(0, '0.0.0.0', async () => {
-                const address = this.server?.address();
-                console.log('Sync Server listening at:', address);
-
-                if (address && typeof address !== 'string') {
-                    this.port = address.port;
-                    this.pin = Math.floor(1000 + Math.random() * 9000).toString(); // 4 digit PIN
-
-                    try {
-                        const ipAddress = ip.address();
-                        console.log('Detected IP (default):', ipAddress);
-
-                        // LOG ALL INTERFACES DEBUGGING
-                        const os = require('os');
-                        const interfaces = os.networkInterfaces();
-                        console.log('Available Network Interfaces:');
-                        for (const name of Object.keys(interfaces)) {
-                            for (const iface of interfaces[name]) {
-                                console.log(`  ${name}: ${iface.family} - ${iface.address} (Internal: ${iface.internal})`);
-                            }
-                        }
-
-                        const connInfo = {
-                            ip: ipAddress,
-                            port: this.port,
-                            pin: this.pin
-                        };
-
-                        const qrDataURL = await QRCode.toDataURL(JSON.stringify(connInfo));
-                        console.log('QR Code generated successfully');
-
-                        console.log('QR Code generated successfully');
-
-                        // Setup routes with actual logic now that we are starting
-                        // Hacky but effective way to reset routes: verify _router exists first
-                        if (this.app._router) {
-                            this.app._router.stack = []; // CLEAR handlers
-                        }
-                        this.setupRoutes(); // Restore middleware
-                        this.setupHandlersWithCallbacks(); // Restore logic
-
-                        resolve({ ...connInfo, qrDataURL });
-                    } catch (e) {
-                        console.error('Error generating sync info:', e);
-                        reject(e);
-                    }
-                } else {
-                    const err = new Error('Failed to get server port');
-                    console.error(err);
-                    reject(err);
+            const type = req.headers['content-type'] ?? '';
+            if (!type.toLowerCase().startsWith('application/json')) return reject(new HttpError(415, 'Expected JSON'));
+            const declared = Number(req.headers['content-length'] ?? 0);
+            if (declared > MAX_BODY_BYTES) return reject(new HttpError(413, 'Too large'));
+            const chunks: Buffer[] = [];
+            let size = 0;
+            req.on('data', (c: Buffer) => {
+                size += c.length;
+                if (size > MAX_BODY_BYTES) {
+                    reject(new HttpError(413, 'Too large'));
+                    req.destroy();
+                } else chunks.push(c);
+            });
+            req.on('end', () => {
+                try {
+                    resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+                } catch {
+                    reject(new HttpError(400, 'Invalid JSON'));
                 }
             });
+            req.on('error', reject);
         });
+    }
+
+    private async route(req: http.IncomingMessage): Promise<unknown> {
+        this.authorize(req);
+        const url = (req.url ?? '').split('?')[0];
+
+        if (req.method === 'GET' && url === '/sync/handshake') {
+            return { message: 'LinguaReader Desktop', version: SYNC_PROTOCOL_VERSION };
+        }
+        if (req.method === 'POST' && url === '/sync/upload') {
+            this.status({ status: 'uploading', message: 'Receiving data from phone…' });
+            const data = await this.readJson(req);
+            if (!this.onImportData) throw new HttpError(503, 'Not ready');
+            const result = await this.onImportData(data);
+            this.uploaded = true;
+            return result;
+        }
+        if (req.method === 'GET' && url === '/sync/download') {
+            this.status({ status: 'downloading', message: 'Sending data to phone…' });
+            if (!this.onGetExportData) throw new HttpError(503, 'Not ready');
+            const data = await this.onGetExportData();
+            if (this.uploaded) {
+                // The phone uploads first, then downloads: this was the last step.
+                this.status({ status: 'completed', message: 'Sync complete' });
+                setTimeout(() => this.shutdown(), 1000);
+            }
+            return data;
+        }
+        throw new HttpError(404, 'Not found');
+    }
+
+    private handle = (req: http.IncomingMessage, res: http.ServerResponse) => {
+        this.route(req).then(
+            body => {
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+                res.end(JSON.stringify(body));
+            },
+            (err: unknown) => {
+                const code = err instanceof HttpError ? err.code : 500;
+                if (!(err instanceof HttpError)) {
+                    console.error('[sync] Request failed:', err);
+                    this.status({ status: 'error', message: 'Sync failed' });
+                }
+                // Generic messages only: no SQL errors or stack traces to the network.
+                const message = err instanceof HttpError ? err.message : 'Sync failed';
+                if (!res.headersSent) res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', Connection: 'close' });
+                res.end(JSON.stringify({ error: message }));
+            },
+        );
+    };
+
+    public async start(): Promise<SyncInfo> {
+        this.stop();
+        this.token = randomBytes(16).toString('base64url');
+        this.failsByAddress.clear();
+        this.failsTotal = 0;
+        this.uploaded = false;
+
+        const server = http.createServer({ maxHeaderSize: 16 * 1024 }, this.handle);
+        server.requestTimeout = 120_000;
+        server.headersTimeout = 15_000;
+        server.maxConnections = 8;
+        this.server = server;
+        await new Promise<void>((resolve, reject) => {
+            server.once('error', reject);
+            server.listen(0, this.host, () => resolve());
+        });
+        const address = server.address();
+        if (!address || typeof address === 'string') throw new Error('Failed to get server port');
+
+        this.stopTimer = setTimeout(() => {
+            this.status({ status: 'stopped', message: 'The pairing code expired. Show a new one to sync.' });
+            this.shutdown();
+        }, LIFETIME_MS);
+
+        const conn = { ip: this.host, port: address.port, pin: this.token };
+        const qrDataURL = await QRCode.toDataURL(JSON.stringify(conn));
+        console.log(`[sync] Listening on ${this.host}:${address.port}`);
+        return { ...conn, qrDataURL };
+    }
+
+    private shutdown() {
+        if (!this.server) return;
+        this.stop();
+        this.onStopped?.();
     }
 
     public stop() {
+        if (this.stopTimer) clearTimeout(this.stopTimer);
+        this.stopTimer = null;
+        this.token = '';
         if (this.server) {
             this.server.close();
+            this.server.closeAllConnections();
             this.server = null;
         }
+    }
+
+    public get running() {
+        return this.server !== null;
     }
 }
