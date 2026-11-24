@@ -55,14 +55,6 @@ jobs:
           Get-ChildItem $exe.DirectoryName -Recurse -File | Sort-Object Length -Descending | Select-Object -First 15 |
             Format-Table @{n='MB'; e={[math]::Round($_.Length / 1MB, 1)}}, FullName -AutoSize
 
-      - name: What is inside app.asar
-        shell: pwsh
-        run: |
-          npx --yes @electron/asar extract release\win-unpacked\resources\app.asar asar-x
-          Get-ChildItem asar-x, asar-x\node_modules -Directory | ForEach-Object {
-            [pscustomobject]@{ MB = [math]::Round(((Get-ChildItem $_.FullName -Recurse -File | Measure-Object Length -Sum).Sum) / 1MB, 1); Dir = $_.FullName.Substring((Get-Location).Path.Length + 1) }
-          } | Sort-Object MB -Descending | Select-Object -First 25 | Format-Table -AutoSize
-
       - name: Read text in the installed app
         run: node test/e2e/ocr-smoke.mjs "$env:APP_EXE" e2e-out
 
