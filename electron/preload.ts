@@ -113,6 +113,10 @@ const electronAPI = {
     addRecentPdf: (name: string, path: string): Promise<boolean> => ipcRenderer.invoke('add-recent-pdf', name, path),
     openPdfByPath: (path: string): Promise<PdfFile | null> => ipcRenderer.invoke('open-pdf-by-path', path),
     getLastPdfPath: (): Promise<string | undefined> => ipcRenderer.invoke('get-last-pdf-path'),
+    getPdfProgress: (path: string): Promise<{ last_page: number | null; page_count: number | null } | null> =>
+        ipcRenderer.invoke('get-pdf-progress', path),
+    setPdfProgress: (path: string, page: number, pageCount: number): Promise<boolean> =>
+        ipcRenderer.invoke('set-pdf-progress', path, page, pageCount),
 
     // Word Familiarity with SRS
     getWordFamiliarity: (wordLower: string): Promise<WordFamiliarity | null> =>

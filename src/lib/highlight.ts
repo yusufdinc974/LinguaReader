@@ -1,8 +1,18 @@
 // Builds highlighted text-layer spans with DOM nodes only (no innerHTML), so
 // text coming from a PDF can never be interpreted as markup.
 
+export interface HighlightRange {
+    start: number;
+    end: number;
+    color: string;
+}
+
 export interface Highlighter {
-    /** Fills `span` with `text`, wrapping saved words/phrases in <mark>. */
+    /** Saved words/phrases found in `text`, non-overlapping, sorted. */
+    ranges: (text: string) => HighlightRange[];
+    /** Fills `span` with text[start, end), wrapping the parts inside `ranges` in <mark>. */
+    fillSegment: (span: HTMLElement, text: string, start: number, end: number, ranges: HighlightRange[]) => void;
+    /** Fills `span` with all of `text`, highlighted. */
     fill: (span: HTMLElement, text: string) => void;
 }
 
@@ -24,49 +34,50 @@ export function createHighlighter(wordColors: Record<string, string>): Highlight
             return { regex: new RegExp(`(?<![\\p{L}])${escaped}(?![\\p{L}])`, 'giu'), color };
         });
 
-    return {
-        fill(span, text) {
-            if (matchers.length === 0) {
-                span.textContent = text;
-                return;
-            }
-
-            const lower = text.toLowerCase();
-            const ranges: { start: number; end: number; color: string }[] = [];
-
-            for (const { regex, color } of matchers) {
-                regex.lastIndex = 0;
-                let m: RegExpExecArray | null;
-                while ((m = regex.exec(lower)) !== null) {
-                    const start = m.index;
-                    const end = start + m[0].length;
-                    if (m[0].length === 0) {
-                        regex.lastIndex++;
-                        continue;
-                    }
-                    // Skip anything overlapping a longer match already taken.
-                    if (!ranges.some(r => start < r.end && end > r.start)) {
-                        ranges.push({ start, end, color });
-                    }
+    const ranges = (text: string): HighlightRange[] => {
+        if (matchers.length === 0) return [];
+        const lower = text.toLowerCase();
+        // toLowerCase can change length (e.g. "İ"); offsets would no longer line up.
+        if (lower.length !== text.length) return [];
+        const found: HighlightRange[] = [];
+        for (const { regex, color } of matchers) {
+            regex.lastIndex = 0;
+            let m: RegExpExecArray | null;
+            while ((m = regex.exec(lower)) !== null) {
+                if (m[0].length === 0) {
+                    regex.lastIndex++;
+                    continue;
                 }
+                const start = m.index;
+                const end = start + m[0].length;
+                // Skip anything overlapping a longer match already taken.
+                if (!found.some(r => start < r.end && end > r.start)) found.push({ start, end, color });
             }
+        }
+        return found.sort((a, b) => a.start - b.start);
+    };
 
-            if (ranges.length === 0) {
-                span.textContent = text;
-                return;
-            }
+    const fillSegment: Highlighter['fillSegment'] = (span, text, start, end, rs) => {
+        let cursor = start;
+        for (const r of rs) {
+            const s = Math.max(r.start, start);
+            const e = Math.min(r.end, end);
+            if (e <= s) continue;
+            if (s > cursor) span.appendChild(document.createTextNode(text.slice(cursor, s)));
+            const mark = document.createElement('mark');
+            mark.textContent = text.slice(s, e);
+            mark.style.background = `${r.color}55`;
+            span.appendChild(mark);
+            cursor = e;
+        }
+        if (cursor < end) span.appendChild(document.createTextNode(text.slice(cursor, end)));
+    };
 
-            ranges.sort((a, b) => a.start - b.start);
-            let cursor = 0;
-            for (const r of ranges) {
-                if (r.start > cursor) span.appendChild(document.createTextNode(text.slice(cursor, r.start)));
-                const mark = document.createElement('mark');
-                mark.textContent = text.slice(r.start, r.end);
-                mark.style.background = `${r.color}55`;
-                span.appendChild(mark);
-                cursor = r.end;
-            }
-            if (cursor < text.length) span.appendChild(document.createTextNode(text.slice(cursor)));
+    return {
+        ranges,
+        fillSegment,
+        fill(span, text) {
+            fillSegment(span, text, 0, text.length, ranges(text));
         },
     };
 }

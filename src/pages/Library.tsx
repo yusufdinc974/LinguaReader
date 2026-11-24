@@ -9,6 +9,8 @@ interface RecentPdf {
     name: string;
     path: string;
     last_opened: string;
+    last_page?: number | null;
+    page_count?: number | null;
 }
 
 function relativeDate(iso: string) {
@@ -18,6 +20,11 @@ function relativeDate(iso: string) {
     if (days === 1) return 'Yesterday';
     if (days < 7) return `${days} days ago`;
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: days > 300 ? 'numeric' : undefined });
+}
+
+function progressLabel(pdf: { last_page?: number | null; page_count?: number | null }) {
+    if (!pdf.page_count) return null;
+    return `Page ${pdf.last_page ?? 1} of ${pdf.page_count}`;
 }
 
 function displayName(name: string) {
@@ -155,10 +162,17 @@ export default function Library({ dueCount }: { dueCount: number }) {
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <p className="serif text-[19px] font-semibold leading-snug truncate">{displayName(latest.name)}</p>
-                                        <p className="faint text-[12.5px] mt-1">Opened {relativeDate(latest.last_opened).toLowerCase()}</p>
+                                        <p className="faint text-[12.5px] mt-1">
+                                            {progressLabel(latest) ? `${progressLabel(latest)} · ` : ''}Opened {relativeDate(latest.last_opened).toLowerCase()}
+                                        </p>
+                                        {latest.page_count ? (
+                                            <div className="h-1 w-48 rounded-full mt-3 overflow-hidden" style={{ background: 'var(--surface-3)' }}>
+                                                <div className="h-full rounded-full" style={{ width: `${Math.round(((latest.last_page ?? 1) / latest.page_count) * 100)}%`, background: 'var(--accent)' }} />
+                                            </div>
+                                        ) : null}
                                     </div>
                                     <span className="btn btn-outline shrink-0 mr-1">
-                                        Resume <ArrowRight size={14} />
+                                        {(latest.last_page ?? 1) > 1 ? 'Resume' : 'Open'} <ArrowRight size={14} />
                                     </span>
                                 </button>
                             </section>
@@ -172,7 +186,7 @@ export default function Library({ dueCount }: { dueCount: number }) {
                                         <button key={pdf.id} onClick={() => openRecent(pdf)} className="group text-left min-w-0">
                                             <Cover path={pdf.path} name={pdf.name} />
                                             <p className="text-[13px] font-medium mt-3 leading-snug line-clamp-2">{displayName(pdf.name)}</p>
-                                            <p className="text-[12px] faint mt-0.5">{relativeDate(pdf.last_opened)}</p>
+                                            <p className="text-[12px] faint mt-0.5">{progressLabel(pdf) ?? relativeDate(pdf.last_opened)}</p>
                                         </button>
                                     ))}
                                 </div>

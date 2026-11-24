@@ -5,6 +5,8 @@ interface RecentPdf {
     name: string;
     path: string;
     last_opened: string;
+    last_page?: number | null;
+    page_count?: number | null;
 }
 
 interface WordFamiliarity {
@@ -134,6 +136,8 @@ interface Window {
             data: string;
         } | null>;
         getLastPdfPath: () => Promise<string | undefined>;
+        getPdfProgress: (path: string) => Promise<{ last_page: number | null; page_count: number | null } | null>;
+        setPdfProgress: (path: string, page: number, pageCount: number) => Promise<boolean>;
 
         // Word Familiarity with SRS
         getWordFamiliarity: (wordLower: string) => Promise<WordFamiliarity | null>;

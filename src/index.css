@@ -380,11 +380,30 @@ textarea {
   z-index: 2;
 }
 
-.pdf-text-layer > span {
+.pdf-text-layer span {
   color: transparent;
   position: absolute;
   white-space: pre;
   cursor: text;
+  transform-origin: 0 0;
+}
+
+.pdf-text-layer mark {
+  position: static;
+}
+
+/* Words and spaces are separate spans here; square marks join into one band */
+.glyph-layer mark {
+  border-radius: 0;
+}
+
+/* <br>s mark line ends so a selection across lines keeps a line break */
+.pdf-text-layer br {
+  position: absolute;
+}
+
+.pdf-text-layer br::selection {
+  background: transparent;
 }
 
 .pdf-text-layer mark {
