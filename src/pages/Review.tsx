@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { X, Check, ArrowRight } from 'lucide-react';
 import type { QuizQuestion, Word } from '../types';
 import type { ReviewConfig } from '../components/ReviewSetup';
-import { reviewKey, srsKey } from '../lib/words';
+import { wordKey } from '../lib/words';
 import { useStore } from '../store/useStore';
 
 // A word must be answered correctly this many times in a row to leave the session.
@@ -20,7 +20,7 @@ const shuffle = <T,>(a: T[]) => [...a].sort(() => Math.random() - 0.5);
 // SM-2 style update, unchanged from the previous quiz screen.
 async function updateSRS(word: string, grade: number) {
     try {
-        const key = srsKey(word);
+        const key = wordKey(word);
         const f = await window.electronAPI.getWordFamiliarity(key);
         if (!f) return;
         let ef = f.easiness_factor;
@@ -71,7 +71,7 @@ export default function Review() {
         let candidates = pool;
         if (config.dueOnly) {
             const due = new Set((await window.electronAPI.getWordsDueForReview()).map(w => w.word_lower));
-            candidates = pool.filter(w => due.has(reviewKey(w.word)));
+            candidates = pool.filter(w => due.has(wordKey(w.word)));
         }
         if (candidates.length === 0) {
             setStatus('empty');
