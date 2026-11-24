@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FolderOpen, FileText, ArrowRight } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { getThumbnail } from '../lib/pdf';
+import { displayName, getThumbnail } from '../lib/document';
 
 interface RecentPdf {
     id: number;
@@ -25,10 +25,6 @@ function relativeDate(iso: string) {
 function progressLabel(pdf: { last_page?: number | null; page_count?: number | null }) {
     if (!pdf.page_count) return null;
     return `Page ${pdf.last_page ?? 1} of ${pdf.page_count}`;
-}
-
-function displayName(name: string) {
-    return name.replace(/\.pdf$/i, '');
 }
 
 function Cover({ path, name }: { path: string; name: string }) {
@@ -107,7 +103,7 @@ export default function Library({ dueCount }: { dueCount: number }) {
                     </div>
                     <button className="btn btn-primary btn-lg" onClick={openFile}>
                         <FolderOpen size={16} />
-                        Open PDF
+                        Open file
                     </button>
                 </header>
 

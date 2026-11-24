@@ -8,7 +8,9 @@
         "skipLibCheck": true,
         "outDir": "dist-electron",
         "rootDir": "electron",
-        "resolveJsonModule": true
+        "resolveJsonModule": true,
+        "allowImportingTsExtensions": true,
+        "rewriteRelativeImportExtensions": true
     },
     "include": [
         "electron/**/*"

@@ -1,0 +1,78 @@
+name: Installer test
+
+# Builds the Windows installer, installs it silently, and checks that the
+# installed app reads text from a scanned PDF and a manga (OCR).
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build the installer
+        run: npm run build:win -- --publish never
+
+      - name: Install silently
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem release -Filter '*Setup*.exe' | Select-Object -First 1
+          if (-not $setup) { throw 'No installer in release/' }
+          "Installer: $($setup.Name) ($([math]::Round($setup.Length / 1MB)) MB)"
+          Get-ChildItem release\win-unpacked | Format-Table Name, Length
+          $p = Start-Process $setup.FullName -ArgumentList '/S' -Wait -PassThru
+          "Installer exit code: $($p.ExitCode)"
+          # The installer can hand over to a child process and return early: wait for the files.
+          $exe = $null
+          for ($i = 0; $i -lt 120 -and -not $exe; $i++) {
+            $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter 'LinguaReader.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $exe) { Start-Sleep 1 }
+          }
+          Wait-Process -Name ($setup.BaseName) -ErrorAction SilentlyContinue -Timeout 120
+          Start-Sleep 3
+          if (-not $exe) {
+            Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Depth 2 -ErrorAction SilentlyContinue | Select-Object -First 40 FullName
+            throw 'LinguaReader.exe was not installed'
+          }
+          "Installed: $($exe.FullName)"
+          "APP_EXE=$($exe.FullName)" >> $env:GITHUB_ENV
+          Get-ChildItem (Join-Path $exe.DirectoryName 'resources\ocr') | Format-Table Name, Length
+          # Where the installed size goes
+          Get-ChildItem $exe.DirectoryName -Recurse -File | Sort-Object Length -Descending | Select-Object -First 15 |
+            Format-Table @{n='MB'; e={[math]::Round($_.Length / 1MB, 1)}}, FullName -AutoSize
+
+      - name: Read text in the installed app
+        run: node test/e2e/ocr-smoke.mjs "$env:APP_EXE" e2e-out
+
+      - name: Uninstall
+        if: always() && env.APP_EXE != ''
+        shell: pwsh
+        run: |
+          $dir = Split-Path $env:APP_EXE
+          $un = Get-ChildItem $dir -Filter 'Uninstall*.exe' | Select-Object -First 1
+          Start-Process $un.FullName -ArgumentList '/S' -Wait
+          Start-Sleep 5
+          if (Test-Path $env:APP_EXE) { throw 'The uninstaller left the app behind' }
+          'Uninstalled'
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-screenshots
+          path: e2e-out/
+          if-no-files-found: ignore

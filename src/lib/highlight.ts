@@ -22,6 +22,7 @@ interface Matcher {
 }
 
 const HEX = /^#[0-9a-f]{3,8}$/i;
+const NO_SPACES = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}]/u;
 
 export function createHighlighter(wordColors: Record<string, string>): Highlighter {
     // Longest first so phrases win over the single words inside them.
@@ -31,7 +32,9 @@ export function createHighlighter(wordColors: Record<string, string>): Highlight
         .map(phrase => {
             const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const color = HEX.test(wordColors[phrase]) ? wordColors[phrase] : '#eab308';
-            return { regex: new RegExp(`(?<![\\p{L}])${escaped}(?![\\p{L}])`, 'giu'), color };
+            // Chinese and Japanese have no spaces: a saved word matches inside any run of text.
+            const bounded = !NO_SPACES.test(phrase);
+            return { regex: new RegExp(bounded ? `(?<![\\p{L}])${escaped}(?![\\p{L}])` : escaped, 'giu'), color };
         });
 
     const ranges = (text: string): HighlightRange[] => {

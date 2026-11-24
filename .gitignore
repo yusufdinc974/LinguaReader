@@ -19,3 +19,4 @@ lerna-debug.log*
 .cache
 linguareader.db
 squashfs-root/
+resources/ocr/

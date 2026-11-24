@@ -31,6 +31,18 @@ interface Window {
             data: string;
         } | null>;
 
+        // Text recognition (OCR)
+        ocrAvailable: () => Promise<boolean>;
+        ocrGetDoc: (hash: string) => Promise<{ script: import('../electron/ocr/types').ScriptId; chosen: boolean } | null>;
+        ocrSetDocScript: (hash: string, script: import('../electron/ocr/types').ScriptId | null) => Promise<boolean>;
+        ocrCached: (hash: string, page: number, script: import('../electron/ocr/types').ScriptId | 'auto') => Promise<import('../electron/ocr/types').OcrPage | null>;
+        ocrRecognize: (
+            hash: string,
+            page: number,
+            script: import('../electron/ocr/types').ScriptId | 'auto',
+            image: { data: Uint8Array; width: number; height: number },
+        ) => Promise<import('../electron/ocr/types').OcrPage>;
+
         // Word Lists
         getWordLists: () => Promise<Array<{
             id: number;

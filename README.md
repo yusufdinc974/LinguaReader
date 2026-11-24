@@ -24,6 +24,13 @@
 *   **Distraction Free**: Focus mode cleans up the interface for deep reading.
 *   **Fast Rendering**: Powered by optimized PDF.js for smooth scrolling.
 
+### 🖼️ Scans, Manga and Webtoons
+*   **Text in Pictures**: Scanned PDFs, images (PNG, JPG, WebP…) and comic archives (CBZ) get selectable text through built-in OCR, so you can translate and save words from them like any other page.
+*   **Many Alphabets**: Latin (English, Turkish, German, French, Spanish…), Chinese, Japanese, Cyrillic, Korean, Arabic, Greek, Thai, Devanagari, Tamil and Telugu. The alphabet is detected automatically, or you can pick it per book.
+*   **Manga Ready**: Vertical Japanese columns, speech bubbles in right-to-left order, and furigana skipped.
+*   **Webtoon Mode**: Long strips scroll continuously.
+*   **Offline and Private**: Recognition runs on your computer (PaddleOCR models), and each page is read only once.
+
 ### 🌐 Instant Contextual Translation
 *   **Click-to-Translate**: Simply click any word to get its meaning instantly.
 *   **Sentence Context**: Translates whole sentences to help you grasp idioms and grammar.
@@ -99,6 +106,8 @@ npm install
 npm run dev
 ```
 
+`npm run dev` and `npm run build` download the OCR models (about 96 MB) into `resources/ocr/` the first time, checking each file's SHA-256. To fetch them by hand: `npm run fetch-ocr-models`.
+
 ### Building
 
 ```bash
@@ -171,6 +180,8 @@ Create a `.json` file with the following structure:
 ## 📄 License
 
 Distributed under the MIT License. See `LICENSE` for more information.
+
+The bundled OCR models are [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) PP-OCRv6 and PP-OCRv5 models (Apache License 2.0), run with [ONNX Runtime](https://github.com/microsoft/onnxruntime) (MIT).
 
 ---
 

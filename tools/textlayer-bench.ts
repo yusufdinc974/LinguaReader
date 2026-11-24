@@ -7,7 +7,7 @@
 //
 // `truth` = [{ text, x, y, w, h }] in PDF points from the page's top-left.
 import '../src/index.css';
-import { openDocument } from '../src/lib/pdf';
+import { base64ToBytes, openPdf } from '../src/lib/pdf';
 import { createHighlighter } from '../src/lib/highlight';
 import { renderTextLayer, type TextLayerStrategy } from '../src/lib/textLayer';
 
@@ -32,7 +32,7 @@ function wordAt(node: Node, offset: number) {
 async function runBench(b64: string, truth: TruthWord[], strategy: TextLayerStrategy, scale: number) {
     const host = document.getElementById('host')!;
     host.replaceChildren();
-    const doc = await openDocument(b64);
+    const doc = await openPdf(base64ToBytes(b64));
     const page = await doc.getPage(1);
     const viewport = page.getViewport({ scale });
 
