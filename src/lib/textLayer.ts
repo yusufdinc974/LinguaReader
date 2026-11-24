@@ -43,18 +43,22 @@ export interface RenderTextLayerOptions {
     isCancelled?: () => boolean;
 }
 
-export async function renderTextLayer(opts: RenderTextLayerOptions) {
+/** Renders the PDF's own text; resolves to how many non-space characters the page has. */
+export async function renderTextLayer(opts: RenderTextLayerOptions): Promise<number> {
     const { page, viewport, container, strategy = 'glyph' } = opts;
     container.replaceChildren();
     container.style.width = `${viewport.width}px`;
     container.style.height = `${viewport.height}px`;
 
     const content = await page.getTextContent();
-    if (opts.isCancelled?.()) return;
+    if (opts.isCancelled?.()) return 0;
+    let chars = 0;
+    for (const item of content.items as TextItem[]) chars += (item.str ?? '').replace(/\s+/g, '').length;
 
-    if (strategy === 'pdfjs') return renderPdfjs(opts, content);
-    if (strategy === 'legacy') return renderLegacy(opts, content.items as TextItem[]);
-    return renderGlyph(opts, content.items as TextItem[], content.styles as Record<string, Style>);
+    if (strategy === 'pdfjs') await renderPdfjs(opts, content);
+    else if (strategy === 'legacy') renderLegacy(opts, content.items as TextItem[]);
+    else renderGlyph(opts, content.items as TextItem[], content.styles as Record<string, Style>);
+    return chars;
 }
 
 // ---------------------------------------------------------------- legacy
@@ -144,7 +148,7 @@ function fontInfo(page: PDFPage, fontName: string): FontInfo | null {
 }
 
 let measureCtx: CanvasRenderingContext2D | null = null;
-function measure(text: string, fontFamily: string, sizePx: number) {
+export function measure(text: string, fontFamily: string, sizePx: number) {
     measureCtx ??= document.createElement('canvas').getContext('2d');
     if (!measureCtx) return text.length * sizePx * 0.5;
     measureCtx.font = `${sizePx}px ${fontFamily}`;

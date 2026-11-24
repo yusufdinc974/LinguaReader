@@ -4,14 +4,17 @@
   "description": "Cross-platform PDF reader with translation and vocabulary learning",
   "main": "dist-electron/main.js",
   "scripts": {
+    "predev": "node scripts/fetch-ocr-models.mjs --optional",
     "dev": "concurrently \"vite\" \"npm run electron:dev\"",
     "electron:dev": "tsc -p tsconfig.electron.json && electron . --no-sandbox",
+    "prebuild": "node scripts/fetch-ocr-models.mjs",
     "build": "tsc -p tsconfig.electron.json && vite build",
     "build:linux": "npm run build && electron-builder --linux",
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "npm run build && electron-builder --mac",
     "build:all": "npm run build && electron-builder --linux --win --mac",
-    "test": "node --test test/*.test.ts"
+    "test": "node --test test/*.test.ts",
+    "fetch-ocr-models": "node scripts/fetch-ocr-models.mjs"
   },
   "keywords": [
     "pdf",
@@ -29,8 +32,10 @@
     "better-sqlite3": "^11.8.1",
     "electron-updater": "^6.7.3",
     "express": "^5.2.1",
+    "fflate": "^0.8.3",
     "ip": "^2.0.1",
     "lucide-react": "^0.469.0",
+    "onnxruntime-node": "^1.23.2",
     "pdfjs-dist": "^4.10.38",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
@@ -75,6 +80,14 @@
       {
         "from": "icon.png",
         "to": "icon.png"
+      },
+      {
+        "from": "resources/ocr",
+        "to": "ocr",
+        "filter": [
+          "*.onnx",
+          "*.txt"
+        ]
       }
     ],
     "linux": {
@@ -88,6 +101,11 @@
       "maintainer": "Yusuf Dinc <yusufdinc974@github.com>",
       "executableArgs": [
         "--no-sandbox"
+      ],
+      "files": [
+        "!node_modules/onnxruntime-node/bin/napi-v6/darwin/**",
+        "!node_modules/onnxruntime-node/bin/napi-v6/win32/**",
+        "!node_modules/onnxruntime-node/bin/napi-v6/linux/**/libonnxruntime_providers_{cuda,tensorrt}.so"
       ]
     },
     "win": {
@@ -95,7 +113,11 @@
         "nsis",
         "portable"
       ],
-      "icon": "icon.png"
+      "icon": "icon.png",
+      "files": [
+        "!node_modules/onnxruntime-node/bin/napi-v6/darwin/**",
+        "!node_modules/onnxruntime-node/bin/napi-v6/linux/**"
+      ]
     },
     "publish": [
       {
@@ -110,7 +132,14 @@
         "zip"
       ],
       "icon": "icon.png",
-      "category": "public.app-category.education"
-    }
+      "category": "public.app-category.education",
+      "files": [
+        "!node_modules/onnxruntime-node/bin/napi-v6/win32/**",
+        "!node_modules/onnxruntime-node/bin/napi-v6/linux/**"
+      ]
+    },
+    "asarUnpack": [
+      "node_modules/onnxruntime-node/bin/**"
+    ]
   }
 }

@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { OcrPage, ScriptId } from './ocr/types';
 
 export interface PdfFile {
     name: string;
@@ -172,6 +173,14 @@ const electronAPI = {
         wordCount?: number;
         error?: string;
     }> => ipcRenderer.invoke('export-list', listId, includeProgress),
+
+    // Text recognition (OCR) for scanned pages and images
+    ocrAvailable: (): Promise<boolean> => ipcRenderer.invoke('ocr-available'),
+    ocrGetDoc: (hash: string): Promise<{ script: ScriptId; chosen: boolean } | null> => ipcRenderer.invoke('ocr-get-doc', hash),
+    ocrSetDocScript: (hash: string, script: ScriptId | null): Promise<boolean> => ipcRenderer.invoke('ocr-set-doc-script', hash, script),
+    ocrCached: (hash: string, page: number, script: ScriptId | 'auto'): Promise<OcrPage | null> => ipcRenderer.invoke('ocr-cached', hash, page, script),
+    ocrRecognize: (hash: string, page: number, script: ScriptId | 'auto', image: { data: Uint8Array; width: number; height: number }): Promise<OcrPage> =>
+        ipcRenderer.invoke('ocr-recognize', hash, page, script, image),
 
     // Sync Server
     startSyncServer: (): Promise<{ success: boolean; info?: { ip: string; port: number; pin: string; qrDataURL: string }; error?: string }> =>

@@ -6,6 +6,10 @@ export function wordKey(text: string) {
     return text.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+const CJK = '\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}ー々';
+/** Line breaks between Chinese/Japanese characters are not word breaks. */
+const CJK_GAP = new RegExp(`(?<=[${CJK}])\\s+(?=[${CJK}])`, 'gu');
+
 /**
  * Cleans a reader selection before it's translated and saved: trims
  * punctuation and quotes from both ends ("étals," → "étals") and joins
@@ -13,6 +17,7 @@ export function wordKey(text: string) {
  */
 export function cleanSelection(text: string) {
     return text
+        .replace(CJK_GAP, '')
         .replace(/\s+/g, ' ')
         .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '')
         .trim();

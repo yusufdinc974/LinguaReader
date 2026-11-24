@@ -5,6 +5,7 @@ import Database from 'better-sqlite3';
 import { autoUpdater } from 'electron-updater';
 import { SyncServer } from './sync_server';
 import { wordKey, legacyKeys } from './wordKey';
+import { setupOcr } from './ocrService';
 
 let mainWindow: BrowserWindow | null = null;
 let db: Database.Database | null = null;
@@ -332,11 +333,16 @@ function createWindow(): void {
 
 // IPC Handlers
 function setupIpcHandlers(): void {
-    // File dialog for PDF
+    // File dialog: PDFs, images and comic archives
     ipcMain.handle('open-pdf-dialog', async () => {
         const result = await dialog.showOpenDialog({
             properties: ['openFile'],
-            filters: [{ name: 'PDF Files', extensions: ['pdf'] }],
+            filters: [
+                { name: 'Books, comics and images', extensions: ['pdf', 'cbz', 'zip', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'] },
+                { name: 'PDF', extensions: ['pdf'] },
+                { name: 'Comics (CBZ)', extensions: ['cbz', 'zip'] },
+                { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'] },
+            ],
         });
 
         if (!result.canceled && result.filePaths.length > 0) {
@@ -1336,6 +1342,7 @@ function setupIpcHandlers(): void {
 app.whenReady().then(() => {
     initDatabase();
     setupIpcHandlers();
+    setupOcr(() => db);
     createWindow();
 
     // Setup auto-updater (only for Windows and Linux)
