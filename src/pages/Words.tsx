@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Plus, Search, X, MoreHorizontal, ArrowRightLeft, Trash2, Play } from 'lucide-react';
 import type { Word, WordList } from '../types';
 import { useStore } from '../store/useStore';
-import { LEVELS, LIST_COLORS, DEFAULT_LIST_COLOR, reviewKey } from '../lib/words';
+import { LEVELS, LIST_COLORS, DEFAULT_LIST_COLOR, wordKey } from '../lib/words';
 import Dialog, { ConfirmDialog } from '../components/Dialog';
 import ReviewSetup from '../components/ReviewSetup';
 
@@ -98,7 +98,7 @@ export default function Words() {
         const c: Counts = {};
         await Promise.all(ls.map(async l => {
             const ws = await window.electronAPI.getWordsInList(l.id);
-            c[l.id] = { total: ws.length, due: ws.filter(w => dueSet.has(reviewKey(w.word))).length };
+            c[l.id] = { total: ws.length, due: ws.filter(w => dueSet.has(wordKey(w.word))).length };
         }));
         setLists(ls);
         setCounts(c);

@@ -6,7 +6,7 @@ import {
 import { useStore } from '../store/useStore';
 import { openDocument, type PDFDoc } from '../lib/pdf';
 import { createHighlighter } from '../lib/highlight';
-import { phraseKey, DEFAULT_LIST_COLOR } from '../lib/words';
+import { wordKey, cleanSelection, DEFAULT_LIST_COLOR } from '../lib/words';
 import { translateText, SUPPORTED_LANGUAGES } from '../services/translationService';
 import PdfPage from '../components/PdfPage';
 import WordCard, { type WordCardState } from '../components/WordCard';
@@ -180,14 +180,15 @@ export default function Reader() {
     // ---------- selection → translation ----------
     const onMouseUp = async () => {
         const sel = window.getSelection();
-        const text = sel?.toString().trim();
+        // "étals," → "étals": edge punctuation would otherwise be saved with the word
+        const text = cleanSelection(sel?.toString() ?? '');
         if (!sel || !text || sel.rangeCount === 0) {
             setCard(null);
             return;
         }
         const r = sel.getRangeAt(0).getBoundingClientRect();
         const seq = ++selectionSeq.current;
-        const key = phraseKey(text);
+        const key = wordKey(text);
 
         setLevel(familiarity[key]?.level ?? 1);
         setCard({ text, translation: '', loading: true, failed: false, anchor: { left: r.left, top: r.top, bottom: r.bottom, width: r.width } });
@@ -207,7 +208,7 @@ export default function Reader() {
     const saveToList = async (listId: number) => {
         if (!card || card.loading || !card.translation) return;
         try {
-            const key = phraseKey(card.text);
+            const key = wordKey(card.text);
             const wordId = await window.electronAPI.addWord(card.text, card.translation, card.detectedLanguage || 'auto', targetLang, '', currentPdf?.name || '');
             await window.electronAPI.addWordToList(wordId, listId);
             await window.electronAPI.setWordFamiliarity(key, level, card.translation);
@@ -236,7 +237,7 @@ export default function Reader() {
         if (!savedWordId || !card) return;
         try {
             await window.electronAPI.deleteWord(savedWordId);
-            const key = phraseKey(card.text);
+            const key = wordKey(card.text);
             setFamiliarity(prev => {
                 const next = { ...prev };
                 delete next[key];

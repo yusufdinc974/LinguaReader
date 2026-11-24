@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import Database from 'better-sqlite3';
 import { autoUpdater } from 'electron-updater';
 import { SyncServer } from './sync_server';
+import { wordKey, legacyKeys } from './wordKey';
 
 let mainWindow: BrowserWindow | null = null;
 let db: Database.Database | null = null;
@@ -29,6 +30,8 @@ function initDatabase(): void {
         if (typeof str !== 'string') return str;
         return str.toLowerCase();
     });
+    // The shared key linking words to word_familiarity rows (see wordKey.ts)
+    db.function('word_key', { deterministic: true }, (str: string) => wordKey(str));
 
     // Create tables
     db.exec(`
@@ -159,11 +162,15 @@ function initDatabase(): void {
         WHERE next_review_date IS NULL
     `).run(today);
 
-    // CLEANUP: Remove orphaned word_familiarity entries that don't have words in any list
+    migrateFamiliarityKeys(db);
+
+    // CLEANUP: Remove word_familiarity rows whose word is in no list.
+    // Uses the same word_key() as every other query, so a saved word's
+    // progress can no longer be mistaken for an orphan.
     const cleanupResult = db.prepare(`
-        DELETE FROM word_familiarity 
+        DELETE FROM word_familiarity
         WHERE word_lower NOT IN (
-            SELECT LOWER(REPLACE(w.word, '[^a-zA-Zğüşıöçéèêëàâäùûüîïôöÿçñ ]', ''))
+            SELECT word_key(w.word)
             FROM words w
             JOIN word_list_items wli ON w.id = wli.word_id
         )
@@ -174,6 +181,91 @@ function initDatabase(): void {
     const insertSetting = db.prepare('INSERT OR IGNORE INTO user_settings (key, value) VALUES (?, ?)');
     insertSetting.run('target_language', 'en');
     insertSetting.run('theme', 'dark');
+}
+
+type FamRow = { id: number; word_lower: string; repetitions: number | null; last_review_date: string | null; updated_at: string | null };
+
+/** Which of two progress rows for the same word to keep. */
+function moreProgress(a: FamRow, b: FamRow): FamRow {
+    const ar = a.repetitions ?? 0;
+    const br = b.repetitions ?? 0;
+    if (ar !== br) return ar > br ? a : b;
+    return (a.last_review_date ?? a.updated_at ?? '') >= (b.last_review_date ?? b.updated_at ?? '') ? a : b;
+}
+
+/**
+ * One-time move of word_familiarity rows onto the shared word_key().
+ * Earlier versions wrote keys four different ways, so some progress rows
+ * were unreachable and the startup cleanup deleted others.
+ */
+export function migrateFamiliarityKeys(database: Database.Database) {
+    const done = database.prepare("SELECT value FROM user_settings WHERE key = 'word_key_version'").get() as { value: string } | undefined;
+    if (done?.value === '2') return;
+
+    const getRow = database.prepare('SELECT * FROM word_familiarity WHERE word_lower = ?');
+    const rename = database.prepare('UPDATE word_familiarity SET word_lower = ? WHERE id = ?');
+    const remove = database.prepare('DELETE FROM word_familiarity WHERE id = ?');
+    let moved = 0;
+    let merged = 0;
+
+    const run = database.transaction(() => {
+        // 1. Words whose progress sits under an old-style key.
+        const words = database.prepare('SELECT DISTINCT word FROM words').all() as { word: string }[];
+        for (const { word } of words) {
+            const target = wordKey(word);
+            if (!target || getRow.get(target)) continue;
+            for (const legacy of legacyKeys(word)) {
+                if (!legacy || legacy === target) continue;
+                const row = getRow.get(legacy) as FamRow | undefined;
+                if (row) {
+                    rename.run(target, row.id);
+                    moved++;
+                    break;
+                }
+            }
+        }
+
+        // 2. Any remaining row whose key isn't in canonical form.
+        const rows = database.prepare('SELECT * FROM word_familiarity').all() as FamRow[];
+        for (const row of rows) {
+            const target = wordKey(row.word_lower);
+            if (target === row.word_lower) continue;
+            const existing = getRow.get(target) as FamRow | undefined;
+            if (!existing) {
+                rename.run(target, row.id);
+                moved++;
+            } else {
+                const keep = moreProgress(existing, row);
+                const drop = keep === existing ? row : existing;
+                remove.run(drop.id);
+                if (keep !== existing) rename.run(target, keep.id);
+                merged++;
+            }
+        }
+
+        database.prepare("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('word_key_version', '2')").run();
+    });
+    run();
+    console.log(`Migration: re-keyed ${moved} progress rows, merged ${merged} duplicates`);
+}
+
+/** Deletes words that are in no list, along with their progress. */
+function deleteOrphanWords(database: Database.Database, onlyIds?: number[]) {
+    const orphanQuery = `
+        SELECT w.id, w.word FROM words w
+        WHERE NOT EXISTS (SELECT 1 FROM word_list_items wli WHERE wli.word_id = w.id)`;
+    const orphans = (onlyIds && onlyIds.length > 0
+        ? database.prepare(`${orphanQuery} AND w.id IN (${onlyIds.map(() => '?').join(',')})`).all(...onlyIds)
+        : database.prepare(orphanQuery).all()) as { id: number; word: string }[];
+    const delFam = database.prepare('DELETE FROM word_familiarity WHERE word_lower = ?');
+    const delWord = database.prepare('DELETE FROM words WHERE id = ?');
+    const stillUsed = database.prepare('SELECT 1 FROM words WHERE id != ? AND word_key(word) = ? LIMIT 1');
+    for (const o of orphans) {
+        const key = wordKey(o.word);
+        // Another word row with the same key still owns this progress
+        if (!stillUsed.get(o.id, key)) delFam.run(key);
+        delWord.run(o.id);
+    }
 }
 
 // Explicitly set App Name for Linux WMClass
@@ -276,33 +368,15 @@ function setupIpcHandlers(): void {
     });
 
     ipcMain.handle('delete-word-list', (_, id: number) => {
-        // Get all words in this list first
-        const words = db?.prepare(`
-            SELECT w.word FROM words w
-            JOIN word_list_items wli ON w.id = wli.word_id
-            WHERE wli.word_list_id = ?
-        `).all(id) as Array<{ word: string }> || [];
-
-        // Delete each word's familiarity entry
-        for (const word of words) {
-            const wordLower = word.word.toLowerCase();
-            db?.prepare('DELETE FROM word_familiarity WHERE word_lower = ?').run(wordLower);
-        }
-
-        // Delete word_list_items for this list
-        db?.prepare('DELETE FROM word_list_items WHERE word_list_id = ?').run(id);
-
-        // Delete words that belonged only to this list
-        db?.prepare(`
-            DELETE FROM words WHERE id IN (
-                SELECT w.id FROM words w
-                LEFT JOIN word_list_items wli ON w.id = wli.word_id
-                WHERE wli.word_id IS NULL
-            )
-        `).run();
-
-        // Delete the list itself
-        db?.prepare('DELETE FROM word_lists WHERE id = ?').run(id);
+        if (!db) return false;
+        db.transaction(() => {
+            const ids = (db!.prepare('SELECT word_id FROM word_list_items WHERE word_list_id = ?').all(id) as { word_id: number }[]).map(r => r.word_id);
+            db!.prepare('DELETE FROM word_list_items WHERE word_list_id = ?').run(id);
+            // Only words that were in no other list are deleted, with their progress.
+            // Words shared with other lists keep their progress.
+            deleteOrphanWords(db!, ids);
+            db!.prepare('DELETE FROM word_lists WHERE id = ?').run(id);
+        })();
         return true;
     });
 
@@ -317,7 +391,7 @@ function setupIpcHandlers(): void {
       SELECT w.*, wf.familiarity_level, wf.easiness_factor, wf.next_review_date
       FROM words w
       JOIN word_list_items wli ON w.id = wli.word_id
-      LEFT JOIN word_familiarity wf ON LOWER(w.word) = wf.word_lower
+      LEFT JOIN word_familiarity wf ON wf.word_lower = word_key(w.word)
       WHERE wli.word_list_id = ?
       ORDER BY wli.added_at DESC
     `).all(listId) || [];
@@ -327,14 +401,14 @@ function setupIpcHandlers(): void {
         return db?.prepare(`
             SELECT w.*, wf.familiarity_level, wf.easiness_factor, wf.next_review_date
             FROM words w
-            LEFT JOIN word_familiarity wf ON unicode_lower(w.word) = wf.word_lower
+            LEFT JOIN word_familiarity wf ON wf.word_lower = word_key(w.word)
             ORDER BY w.created_at DESC
         `).all() || [];
     });
 
     ipcMain.handle('add-word', (_, word: string, translation: string, sourceLang: string, targetLang: string, context: string, pdfName: string) => {
         // Check if word already exists (case-insensitive, unicode-aware)
-        const existing = db?.prepare('SELECT id FROM words WHERE unicode_lower(word) = unicode_lower(?) LIMIT 1').get(word) as { id: number } | undefined;
+        const existing = db?.prepare('SELECT id FROM words WHERE word_key(word) = ? LIMIT 1').get(wordKey(word)) as { id: number } | undefined;
         if (existing) {
             return existing.id;
         }
@@ -356,23 +430,12 @@ function setupIpcHandlers(): void {
     });
 
     ipcMain.handle('remove-word-from-list', (_, wordId: number, listId: number) => {
-        // Get the word text first
-        const word = db?.prepare('SELECT word FROM words WHERE id = ?').get(wordId) as { word: string } | undefined;
-        if (word) {
-            const wordLower = word.word.toLowerCase();
-            // Delete from familiarity table
-            db?.prepare('DELETE FROM word_familiarity WHERE word_lower = ?').run(wordLower);
-        }
-        // Remove from list
-        db?.prepare('DELETE FROM word_list_items WHERE word_id = ? AND word_list_id = ?').run(wordId, listId);
-
-        // Delete the word if it's no longer in any list (orphaned)
-        db?.prepare(`
-            DELETE FROM words WHERE id = ? AND NOT EXISTS (
-                SELECT 1 FROM word_list_items WHERE word_id = ?
-            )
-        `).run(wordId, wordId);
-
+        if (!db) return false;
+        db.transaction(() => {
+            db!.prepare('DELETE FROM word_list_items WHERE word_id = ? AND word_list_id = ?').run(wordId, listId);
+            // Progress is only deleted if the word is now in no list at all
+            deleteOrphanWords(db!, [wordId]);
+        })();
         return true;
     });
 
@@ -408,17 +471,14 @@ function setupIpcHandlers(): void {
         // First get the word to find its normalized form
         const word = db?.prepare('SELECT word FROM words WHERE id = ?').get(id) as { word: string } | undefined;
         if (word) {
-            const wordLower = word.word.toLowerCase();
-            // Delete from familiarity table
-            db?.prepare('DELETE FROM word_familiarity WHERE word_lower = ?').run(wordLower);
+            db?.prepare('DELETE FROM word_familiarity WHERE word_lower = ?').run(wordKey(word.word));
         }
-        // Delete from words table
         db?.prepare('DELETE FROM words WHERE id = ?').run(id);
         return true;
     });
 
     ipcMain.handle('get-word-by-lower', (_, wordLower: string) => {
-        return db?.prepare('SELECT id FROM words WHERE unicode_lower(word) = ? LIMIT 1').get(wordLower) || null;
+        return db?.prepare('SELECT id FROM words WHERE word_key(word) = ? LIMIT 1').get(wordKey(wordLower)) || null;
     });
 
     // Quiz Results
@@ -574,11 +634,17 @@ function setupIpcHandlers(): void {
 
     // Word Familiarity with SRS
     ipcMain.handle('get-word-familiarity', (_, wordLower: string) => {
-        const result = db?.prepare('SELECT * FROM word_familiarity WHERE word_lower = ?').get(wordLower);
+        const result = db?.prepare('SELECT * FROM word_familiarity WHERE word_lower = ?').get(wordKey(wordLower));
         return result || null;
     });
 
-    ipcMain.handle('set-word-familiarity', (_, wordLower: string, level: number, translation: string, ef: number = 2.5) => {
+    ipcMain.handle('set-word-familiarity', (_, rawKey: string, level: number, translation: string, ef: number = 2.5) => {
+        const wordLower = wordKey(rawKey);
+        // Saving a word that already has progress at the same level (e.g. adding
+        // it to a second list) must not reset its review schedule.
+        const current = db?.prepare('SELECT familiarity_level FROM word_familiarity WHERE word_lower = ?').get(wordLower) as { familiarity_level: number } | undefined;
+        if (current && current.familiarity_level === level) return true;
+
         // Set initial SRS parameters based on familiarity level
         // Higher levels = user already knows the word = longer initial intervals
         let initialEF = ef;
@@ -633,7 +699,7 @@ function setupIpcHandlers(): void {
         return true;
     });
 
-    ipcMain.handle('update-word-srs', (_, wordLower: string, ef: number, interval: number, repetitions: number, nextReviewDate: string, familiarityLevel: number) => {
+    ipcMain.handle('update-word-srs', (_, rawKey: string, ef: number, interval: number, repetitions: number, nextReviewDate: string, familiarityLevel: number) => {
         db?.prepare(`
             UPDATE word_familiarity SET 
                 easiness_factor = ?,
@@ -644,7 +710,7 @@ function setupIpcHandlers(): void {
                 familiarity_level = ?,
                 updated_at = CURRENT_TIMESTAMP
             WHERE word_lower = ?
-        `).run(ef, interval, repetitions, nextReviewDate, familiarityLevel, wordLower);
+        `).run(ef, interval, repetitions, nextReviewDate, familiarityLevel, wordKey(rawKey));
         return true;
     });
     ipcMain.handle('get-all-word-familiarity', () => {
@@ -657,7 +723,7 @@ function setupIpcHandlers(): void {
         // If word is in multiple lists, pick the color from the most recently created list
         // Use custom unicode_lower without stripping chars so Cyrillic and other scripts are preserved case-insensitively
         let query = `
-            SELECT unicode_lower(w.word) as word_lower, l.color 
+            SELECT word_key(w.word) as word_lower, l.color
             FROM words w
             JOIN word_list_items wli ON w.id = wli.word_id
             JOIN word_lists l ON wli.word_list_id = l.id
@@ -875,10 +941,10 @@ function setupIpcHandlers(): void {
 
                 // Import word familiarity - update if exists, insert if not
                 for (const fam of importData.wordFamiliarity as Array<{ word_lower: string; familiarity_level: number; translation: string | null; easiness_factor: number; interval: number; repetitions: number; next_review_date: string | null; last_review_date: string | null }>) {
-                    const existing = db?.prepare('SELECT id FROM word_familiarity WHERE word_lower = ?').get(fam.word_lower);
+                    const existing = db?.prepare('SELECT id FROM word_familiarity WHERE word_lower = ?').get(wordKey(fam.word_lower));
                     if (!existing) {
                         db?.prepare('INSERT INTO word_familiarity (word_lower, familiarity_level, translation, easiness_factor, interval, repetitions, next_review_date, last_review_date, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)').run(
-                            fam.word_lower, fam.familiarity_level, fam.translation, fam.easiness_factor, fam.interval, fam.repetitions, fam.next_review_date, fam.last_review_date
+                            wordKey(fam.word_lower), fam.familiarity_level, fam.translation, fam.easiness_factor, fam.interval, fam.repetitions, fam.next_review_date, fam.last_review_date
                         );
                         stats.familiarity++;
                     }
@@ -1023,10 +1089,10 @@ function setupIpcHandlers(): void {
 
                 // Import word familiarity - update if exists, insert if not
                 for (const fam of (importData.wordFamiliarity || []) as Array<{ word_lower: string; familiarity_level: number; translation: string | null; easiness_factor: number; interval: number; repetitions: number; next_review_date: string | null; last_review_date: string | null }>) {
-                    const existing = db?.prepare('SELECT id FROM word_familiarity WHERE word_lower = ?').get(fam.word_lower);
+                    const existing = db?.prepare('SELECT id FROM word_familiarity WHERE word_lower = ?').get(wordKey(fam.word_lower));
                     if (!existing) {
                         db?.prepare('INSERT INTO word_familiarity (word_lower, familiarity_level, translation, easiness_factor, interval, repetitions, next_review_date, last_review_date, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)').run(
-                            fam.word_lower, fam.familiarity_level, fam.translation, fam.easiness_factor, fam.interval, fam.repetitions, fam.next_review_date, fam.last_review_date
+                            wordKey(fam.word_lower), fam.familiarity_level, fam.translation, fam.easiness_factor, fam.interval, fam.repetitions, fam.next_review_date, fam.last_review_date
                         );
                         stats.familiarity++;
                     }
@@ -1130,7 +1196,7 @@ function setupIpcHandlers(): void {
                     }
 
                     // Set initial familiarity (level 1 = unknown)
-                    const wordLower = wordData.word.toLowerCase().replace(/[^a-zA-Zğüşıöçéèêëàâäùûüîïôöÿçñ\s]/gi, '');
+                    const wordLower = wordKey(wordData.word);
                     const existingFam = db?.prepare('SELECT id FROM word_familiarity WHERE word_lower = ?').get(wordLower);
                     if (!existingFam) {
                         const today = new Date().toISOString().split('T')[0];
@@ -1188,7 +1254,7 @@ function setupIpcHandlers(): void {
             if (includeProgress) {
                 // Include SRS data for each word
                 const wordsWithProgress = words.map(w => {
-                    const wordLower = w.word.toLowerCase().replace(/[^a-zA-Zğüşıöçéèêëàâäùûüîïôöÿçñ\s]/gi, '');
+                    const wordLower = wordKey(w.word);
                     const familiarity = db?.prepare('SELECT * FROM word_familiarity WHERE word_lower = ?').get(wordLower) as {
                         familiarity_level: number;
                         easiness_factor: number;

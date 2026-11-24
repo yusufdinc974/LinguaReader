@@ -1,19 +1,21 @@
-// Shared word helpers. Normalisation rules are kept exactly as they were in
-// the old pages so stored keys keep matching.
-
-/** Key used by the reader for word_familiarity (lowercase, single spaces). */
-export function phraseKey(text: string) {
-    return text.toLowerCase().replace(/\s+/g, ' ').trim();
+/**
+ * The one key used to link a saved word to its review progress
+ * (word_familiarity.word_lower). Keep identical to electron/wordKey.ts.
+ */
+export function wordKey(text: string) {
+    return text.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-/** Key used by the quiz/review code when looking up due words in a list. */
-export function reviewKey(word: string) {
-    return word.toLowerCase().replace(/[^a-zA-Zğüşıöçéèêëàâäùûüîïôöÿçñ\s]/gi, '').toLowerCase();
-}
-
-/** Key used by the quiz/review code when updating SRS data. */
-export function srsKey(word: string) {
-    return word.toLowerCase().replace(/[^a-zA-Zğüşıöçéèêëàâäùûüîïôöÿçñ]/gi, '');
+/**
+ * Cleans a reader selection before it's translated and saved: trims
+ * punctuation and quotes from both ends ("étals," → "étals") and joins
+ * lines with single spaces. Inner apostrophes and hyphens stay.
+ */
+export function cleanSelection(text: string) {
+    return text
+        .replace(/\s+/g, ' ')
+        .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '')
+        .trim();
 }
 
 export const LEVELS: Record<number, { label: string; color: string }> = {
