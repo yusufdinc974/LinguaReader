@@ -10,7 +10,7 @@
 [![Windows, macOS, Linux](https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-555?style=flat-square)](#download)
 [![MIT license](https://img.shields.io/github/license/yusufdinc974/LinguaReader?style=flat-square&color=555)](LICENSE)
 
-[**Download**](#download) · [Features](#features) · [Screenshots](#screenshots) · [Build from source](#build-from-source) · [Website](https://lingua-reader-web.vercel.app/)
+[**Download**](#download) · [Features](#features) · [Screenshots](#screenshots) · [Build from source](#build-from-source) · [Contributing](#contributing) · [Website](https://lingua-reader-web.vercel.app/)
 
 <br>
 
@@ -179,7 +179,51 @@ The first `npm run dev` or `npm run build` downloads the OCR models (about 96 MB
 
 Installers land in `release/`. Built with Electron, React, TypeScript, Vite, Tailwind CSS, pdf.js, SQLite (better-sqlite3) and ONNX Runtime.
 
-Want to help? See [CONTRIBUTING.md](CONTRIBUTING.md).
+## Contributing
+
+LinguaReader is open source, and help of any size is welcome: a bug report, a translation fix, a test, or a whole feature.
+
+### Ways to help
+
+- 🐛 **Report a bug.** [Open an issue](https://github.com/yusufdinc974/LinguaReader/issues/new) with what you did, what you expected and what happened. Add your OS, the app version (**Settings → About**) and, if you can, the file that shows the problem.
+- 💡 **Suggest a feature.** Open an issue that describes the problem it solves for language learners, not only the solution.
+- 🔤 **Test a language.** OCR and word selection behave differently in every script. Telling us how LinguaReader handles your language is very useful, especially for Korean, Arabic, Thai and the Indic scripts.
+- 🛠️ **Send a pull request.** For anything bigger than a small fix, open an issue first so we can agree on the approach.
+
+### Your first pull request
+
+1. Fork the repository and create a branch from `main`, for example `fix/cbz-page-order`.
+2. Set up the app as in [Build from source](#build-from-source) and run `npm run dev`.
+3. Make your change. Keep the pull request about one thing.
+4. Check it before you push:
+   ```bash
+   npm test                                # unit tests
+   npx tsc --noEmit                        # type check the UI
+   npx tsc --noEmit -p tsconfig.electron.json   # type check the main process
+   ```
+5. Open the pull request. Say what changed and why, how you tested it, and add a screenshot for anything visible.
+
+Every pull request builds and installs the app on Windows and macOS and checks that OCR still works, so give the checks a few minutes.
+
+### Where things live
+
+| Folder | What's in it |
+|---|---|
+| `src/pages/` | The four screens: Library, Reader, Words, Review |
+| `src/components/` | Sidebar, settings, word card, page view and other UI pieces |
+| `src/lib/` | Reader logic: PDF and comic loading, text layer, highlights, OCR layer, spaced repetition |
+| `electron/` | Main process: database, IPC, file access, updates, phone sync, DeepL key storage |
+| `electron/ocr/` | The OCR worker (PaddleOCR models on ONNX Runtime) |
+| `test/` | Unit tests, fixtures and the end-to-end OCR check |
+
+### Guidelines
+
+- **TypeScript, no type errors.** Match the style of the code around your change.
+- **Keep it safe.** The renderer is sandboxed and talks to the main process only through `electron/preload.ts`. New IPC handlers must check their arguments, and the app must never read a file the user didn't open.
+- **Keep it private.** No telemetry, and no new network calls beyond what a feature needs (translation, update checks, phone sync on the local network).
+- **Write for learners.** Interface text should be short, plain English.
+
+More detail is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

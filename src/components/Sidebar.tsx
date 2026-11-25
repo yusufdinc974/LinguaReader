@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { Library, BookOpen, Layers, Settings } from 'lucide-react';
+import Logo from './Logo';
 
 const items = [
     { to: '/', label: 'Library', icon: Library, end: true },
@@ -19,12 +20,8 @@ export default function Sidebar({ onOpenSettings, dueCount }: Props) {
             style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
             aria-label="Main"
         >
-            <div
-                className="no-drag w-8 h-8 mb-3 rounded-md flex items-center justify-center serif text-[17px] font-semibold"
-                style={{ background: 'var(--text)', color: 'var(--surface)' }}
-                title="LinguaReader"
-            >
-                L
+            <div className="no-drag w-8 h-8 mb-3 flex items-center justify-center" title="LinguaReader">
+                <Logo size={32} />
             </div>
 
             {items.map(({ to, label, icon: Icon, end }) => (
