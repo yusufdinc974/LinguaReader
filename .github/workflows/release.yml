@@ -44,7 +44,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: npm run build:mac -- --publish never
         env:
-          # Not signed yet (no certificate)
+          # No Developer ID certificate yet: the app is ad-hoc signed (mac.identity "-")
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
       - name: Release Linux

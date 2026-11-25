@@ -116,9 +116,15 @@ The app isn't code-signed yet, so SmartScreen may warn the first time. Click **M
 </details>
 
 <details>
-<summary><b>macOS</b>: "LinguaReader can't be opened"</summary>
+<summary><b>macOS</b>: "LinguaReader can't be opened" or "is damaged"</summary>
 
-The app isn't signed or notarized yet, so Gatekeeper may block it the first time. Right-click LinguaReader in Applications, choose **Open**, then confirm. On recent macOS versions you may need to allow it under **System Settings → Privacy & Security** instead.
+The app isn't notarized by Apple yet, so Gatekeeper blocks it the first time. Open LinguaReader once, close the warning, then go to **System Settings → Privacy & Security** and click **Open Anyway** next to the LinguaReader message. On macOS 14 and earlier you can instead right-click LinguaReader in Applications and choose **Open**.
+
+If macOS says the app **is damaged and can't be opened** (versions 1.2.1 and earlier), run this once in Terminal and open it again:
+
+```bash
+xattr -cr /Applications/LinguaReader.app
+```
 
 The macOS build is for Apple Silicon (M1 and later).
 </details>

@@ -136,6 +136,9 @@
       ],
       "icon": "icon.png",
       "category": "public.app-category.education",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "notarize": false,
       "files": [
         "dist/**/*",
         "dist-electron/**/*",

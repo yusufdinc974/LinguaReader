@@ -81,7 +81,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 45
     env:
-      # No signing certificate here; the test runs the unsigned app.
+      # No signing certificate here; the app is ad-hoc signed.
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
       - uses: actions/checkout@v4
@@ -112,6 +112,9 @@ jobs:
           hdiutil detach "$mnt"
           app="$HOME/Applications/LinguaReader.app"
           file "$app/Contents/MacOS/LinguaReader"
+          # An invalid signature makes macOS call a downloaded app "damaged" (issue #2).
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign -dv "$app" 2>&1 | grep -E '^(Identifier|Signature|CodeDirectory)'
           ls -la "$app/Contents/Resources/ocr"
           echo "APP_EXE=$app/Contents/MacOS/LinguaReader" >> "$GITHUB_ENV"
 
