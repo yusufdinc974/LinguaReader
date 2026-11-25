@@ -62,7 +62,7 @@
   "build": {
     "appId": "com.linguareader.app",
     "productName": "LinguaReader",
-    "icon": "build/icon.png",
+    "icon": "icon.png",
     "directories": {
       "output": "release"
     },
@@ -91,7 +91,7 @@
         "deb"
       ],
       "category": "Education",
-      "icon": "build/icons",
+      "icon": "icon.png",
       "executableName": "LinguaReader",
       "maintainer": "Yusuf Dinc <yusufdinc974@github.com>",
       "files": [
