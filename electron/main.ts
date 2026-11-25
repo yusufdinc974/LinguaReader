@@ -436,15 +436,20 @@ function setupIpcHandlers(): void {
 
     ipcMain.handle('add-word', (_, word: string, translation: string, sourceLang: string, targetLang: string, context: string, pdfName: string) => {
         // Check if word already exists (case-insensitive, unicode-aware)
-        const existing = db?.prepare('SELECT id FROM words WHERE word_key(word) = ? LIMIT 1').get(wordKey(word)) as { id: number } | undefined;
+        const sentence = typeof context === 'string' ? context.slice(0, 1000) : '';
+        const existing = db?.prepare('SELECT id, sentence_context FROM words WHERE word_key(word) = ? LIMIT 1').get(wordKey(word)) as { id: number; sentence_context: string | null } | undefined;
         if (existing) {
+            // Words saved before sentences were kept get one the next time they're saved
+            if (sentence && !existing.sentence_context) {
+                db?.prepare('UPDATE words SET sentence_context = ?, pdf_name = COALESCE(NULLIF(pdf_name, \'\'), ?) WHERE id = ?').run(sentence, pdfName, existing.id);
+            }
             return existing.id;
         }
 
         const result = db?.prepare(`
       INSERT INTO words (word, translation, source_language, target_language, sentence_context, pdf_name)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).run(word, translation, sourceLang, targetLang, context, pdfName);
+    `).run(word, translation, sourceLang, targetLang, sentence, pdfName);
         return result?.lastInsertRowid;
     });
 

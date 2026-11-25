@@ -10,6 +10,7 @@ import { getOcrMode, holdPage, ocrPage, setOcrMode, SCANNED_PAGE_CHARS, type Ocr
 import { SCRIPTS, type ScriptId } from '../../electron/ocr/types';
 import { createHighlighter } from '../lib/highlight';
 import { wordKey, cleanSelection, DEFAULT_LIST_COLOR } from '../lib/words';
+import { selectionContext } from '../lib/context';
 import { translateText, SUPPORTED_LANGUAGES } from '../services/translationService';
 import PageView from '../components/PageView';
 import WordCard, { type WordCardState } from '../components/WordCard';
@@ -292,12 +293,14 @@ export default function Reader() {
             setCard(null);
             return;
         }
-        const r = sel.getRangeAt(0).getBoundingClientRect();
+        const range = sel.getRangeAt(0);
+        const r = range.getBoundingClientRect();
+        const context = selectionContext(range);
         const seq = ++selectionSeq.current;
         const key = wordKey(text);
 
         setLevel(familiarity[key]?.level ?? 1);
-        setCard({ text, translation: '', loading: true, failed: false, anchor: { left: r.left, top: r.top, bottom: r.bottom, width: r.width } });
+        setCard({ text, translation: '', loading: true, failed: false, context, anchor: { left: r.left, top: r.top, bottom: r.bottom, width: r.width } });
 
         const [existing, result] = await Promise.allSettled([
             window.electronAPI.getWordByLower(key),
@@ -315,7 +318,7 @@ export default function Reader() {
         if (!card || card.loading || !card.translation) return;
         try {
             const key = wordKey(card.text);
-            const wordId = await window.electronAPI.addWord(card.text, card.translation, card.detectedLanguage || 'auto', targetLang, '', currentPdf?.name || '');
+            const wordId = await window.electronAPI.addWord(card.text, card.translation, card.detectedLanguage || 'auto', targetLang, card.context ?? '', currentPdf?.name || '');
             await window.electronAPI.addWordToList(wordId, listId);
             await window.electronAPI.setWordFamiliarity(key, level, card.translation);
             setFamiliarity(prev => ({ ...prev, [key]: { level, translation: card.translation } }));

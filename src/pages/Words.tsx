@@ -4,6 +4,7 @@ import { Plus, Search, X, MoreHorizontal, ArrowRightLeft, Trash2, Play } from 'l
 import type { Word, WordList } from '../types';
 import { useStore } from '../store/useStore';
 import { LEVELS, LIST_COLORS, DEFAULT_LIST_COLOR, wordKey } from '../lib/words';
+import { displayName } from '../lib/document';
 import Dialog, { ConfirmDialog } from '../components/Dialog';
 import ReviewSetup from '../components/ReviewSetup';
 
@@ -360,9 +361,12 @@ export default function Words() {
                                                 <tr key={w.id} className="group border-b hover:bg-[var(--surface)]" style={{ borderColor: 'var(--border)' }}>
                                                     <td className="py-2.5 pr-4 align-top">
                                                         <p className="serif text-[16px] leading-snug break-words">{w.word}</p>
-                                                        {w.pdf_name && <p className="text-[11.5px] faint mt-0.5 truncate max-w-[280px]" title={w.pdf_name}>{w.pdf_name.replace(/\.pdf$/i, '')}</p>}
+                                                        {w.pdf_name && <p className="text-[11.5px] faint mt-0.5 truncate max-w-[280px]" title={w.pdf_name}>{displayName(w.pdf_name)}</p>}
                                                     </td>
-                                                    <td className="py-2.5 pr-4 align-top muted break-words">{w.translation}</td>
+                                                    <td className="py-2.5 pr-4 align-top muted break-words">
+                                                        {w.translation}
+                                                        {w.sentence_context && <p className="serif italic text-[12.5px] faint mt-0.5 line-clamp-2" title={w.sentence_context}>{w.sentence_context}</p>}
+                                                    </td>
                                                     <td className="py-2.5 pr-4 align-top">
                                                         <span className="inline-flex items-center gap-1.5 text-[12.5px] muted">
                                                             <span className="w-3 h-[3px] rounded-full" style={{ background: lvl.color }} />

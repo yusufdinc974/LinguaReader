@@ -4,6 +4,8 @@ import { X, Check, ArrowRight } from 'lucide-react';
 import type { QuizQuestion, Word } from '../types';
 import type { ReviewConfig } from '../components/ReviewSetup';
 import { wordKey } from '../lib/words';
+import { splitAround } from '../lib/context';
+import { displayName } from '../lib/document';
 import { schedule, leavesSession, type Grade } from '../lib/srs';
 import { useStore } from '../store/useStore';
 
@@ -28,6 +30,34 @@ async function updateSRS(word: string, grade: Grade) {
     } catch (e) {
         console.error('Failed to update SRS:', e);
     }
+}
+
+/**
+ * The sentence the word was saved from, with the word marked, or blanked out
+ * when the word itself is the answer (Reverse, before answering).
+ */
+function Context({ word, blank }: { word: Word; blank: boolean }) {
+    const sentence = word.sentence_context?.trim();
+    if (!sentence) return null;
+    const parts = splitAround(sentence, word.word);
+    // Can't hide the word in this sentence: show it only after answering
+    if (blank && !parts) return null;
+    return (
+        <div className="mt-5 max-w-[520px] mx-auto anim-in">
+            <p className="serif text-[16.5px] leading-relaxed" style={{ color: 'var(--text-2)' }}>
+                {parts ? (
+                    <>
+                        {parts[0]}
+                        {blank
+                            ? <span className="inline-block align-baseline border-b-2 mx-0.5" style={{ borderColor: 'var(--border-strong)', width: `${Math.min(8, Math.max(2, parts[1].length * 0.6))}em` }} aria-label="hidden word" />
+                            : <mark className="rounded px-0.5" style={{ background: 'var(--accent-soft)', color: 'var(--text)' }}>{parts[1]}</mark>}
+                        {parts[2]}
+                    </>
+                ) : sentence}
+            </p>
+            {word.pdf_name && <p className="text-[11.5px] faint mt-1.5 truncate">{displayName(word.pdf_name)}</p>}
+        </div>
+    );
 }
 
 export default function Review() {
@@ -211,6 +241,7 @@ export default function Review() {
                             <p className="serif text-[40px] leading-tight font-semibold break-words">
                                 {mode === 'reverse' ? current.question.word.translation : current.question.word.word}
                             </p>
+                            <Context word={current.question.word} blank={mode === 'reverse' && !revealed} />
                         </div>
 
                         {mode === 'flashcard' ? (

@@ -10,6 +10,8 @@ export interface WordCardState {
     failed: boolean;
     source?: string;
     detectedLanguage?: string;
+    /** The sentence the selection is in, saved with the word. */
+    context?: string;
     anchor: { left: number; top: number; bottom: number; width: number };
 }
 
