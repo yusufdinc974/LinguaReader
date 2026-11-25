@@ -88,16 +88,15 @@ jobs:
             const fs = require("fs"), crypto = require("crypto");
             const code = process.argv[1], gz = code + ".db.gz", data = fs.readFileSync(gz);
             const meta = JSON.parse(fs.readFileSync(code + ".db.meta.json", "utf8"));
-            fs.writeFileSync(code + ".json", JSON.stringify({ lang: code, file: gz, bytes: data.length, sha256: crypto.createHash("sha256").update(data).digest("hex"), entries: meta.entries }));
+            fs.writeFileSync("manifest-" + code + ".json", JSON.stringify({ lang: code, file: gz, bytes: data.length, sha256: crypto.createHash("sha256").update(data).digest("hex"), entries: meta.entries }));
           ' "$code"
-          cat "$code.json"
+          cat "manifest-$code.json"
       - uses: actions/upload-artifact@v4
         with:
           name: dict-${{ strategy.job-index }}
           path: |
             *.db.gz
-            *.json
-            !package*.json
+            manifest-*.json
           retention-days: 3
 
   publish:
@@ -120,13 +119,13 @@ jobs:
             gh release create "$TAG" -R "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" --title "Dictionaries" \
               --notes "Offline dictionaries for LinguaReader (Settings → Dictionaries), built from English Wiktionary data via kaikki.org. Wiktionary content is available under CC BY-SA 4.0 and GFDL. Not an app release."
           # Merge with the languages already published, so a partial run keeps the rest
-          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p dictionaries.json -O old.json 2>/dev/null || echo '{"dictionaries":[]}' > old.json
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p dictionaries.json -O published.json 2>/dev/null || echo '{"dictionaries":[]}' > published.json
           node -e '
             const fs = require("fs");
-            const old = JSON.parse(fs.readFileSync("old.json", "utf8")).dictionaries || [];
-            const fresh = fs.readdirSync(".").filter(f => /^[a-z]{2,3}\.json$/.test(f)).map(f => JSON.parse(fs.readFileSync(f, "utf8")));
+            const old = JSON.parse(fs.readFileSync("published.json", "utf8")).dictionaries || [];
+            const fresh = fs.readdirSync(".").filter(f => /^manifest-[a-z]{2,3}\.json$/.test(f)).map(f => JSON.parse(fs.readFileSync(f, "utf8")));
             const by = new Map(old.map(d => [d.lang, d]));
-            for (const d of fresh) by.set(d.lang, d);
+            for (const d of fresh) if (d && d.lang) by.set(d.lang, d);
             fs.writeFileSync("dictionaries.json", JSON.stringify({ schema: 1, dictionaries: [...by.values()].sort((a, b) => a.lang.localeCompare(b.lang)) }, null, 1));
           '
           cat dictionaries.json
