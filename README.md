@@ -1,190 +1,193 @@
-# 📚 LinguaReader
-
-![LinguaReader Banner](assets/images/banner.png)
-
-> **A powerful, modern PDF reader designed for language learners.**  
-> *Read native content, translate instantly context-aware, and build your vocabulary seamlessly using Spaced Repetition.*
-
 <div align="center">
-  <h3>
-    <a href="https://lingua-reader-web.vercel.app/">🌐 Visit Official Website</a>
-  </h3>
+
+<img src="icon.png" alt="LinguaReader" width="96" height="96">
+
+# LinguaReader
+
+**Read real books, comics and scans in the language you're learning.<br>Select a word to translate it, save it, and review it before you forget it.**
+
+[![Latest release](https://img.shields.io/github/v/release/yusufdinc974/LinguaReader?style=flat-square&color=2f6f5e&label=release)](https://github.com/yusufdinc974/LinguaReader/releases/latest)
+[![Windows, macOS, Linux](https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-555?style=flat-square)](#download)
+[![MIT license](https://img.shields.io/github/license/yusufdinc974/LinguaReader?style=flat-square&color=555)](LICENSE)
+
+[**Download**](#download) · [Features](#features) · [Screenshots](#screenshots) · [Build from source](#build-from-source) · [Website](https://lingua-reader-web.vercel.app/)
+
+<br>
+
+<img src="docs/screenshots/reader.png" alt="Reading a French novel: one selected word shows its translation and a 'How well do you know it?' card" width="900">
+
 </div>
 
-[![Release](https://img.shields.io/github/v/release/yusufdinc974/LinguaReader?style=for-the-badge&color=38bdf8)](https://github.com/yusufdinc974/LinguaReader/releases)
-[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-gray?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/yusufdinc974/LinguaReader/releases)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+<br>
 
----
+## Features
 
-## ✨ Features
+### 📖 A reader made for learning
+- **Select any word or phrase** to translate it in context, then save it to a list with one click.
+- **Saved words stay highlighted** in every book, colored by list, so you notice them again while you read.
+- **Rate how well you know a word** right where you meet it: New, Seen, Learning, Familiar or Known.
+- **Picks up where you left off.** Every book reopens at the page you were on.
+- Single page, two-page spread or continuous scroll, zoom, and a distraction-free focus mode.
 
-### 📖 Smart PDF Reading
-*   **Resume Anywhere**: Automatically remembers your last page for every book.
-*   **Distraction Free**: Focus mode cleans up the interface for deep reading.
-*   **Fast Rendering**: Powered by optimized PDF.js for smooth scrolling.
+### 🖼️ Scans, manga and webtoons (OCR)
+- **Text in pictures becomes selectable.** Scanned PDFs, images (PNG, JPG, WebP, GIF, BMP, AVIF) and CBZ comics get a hidden text layer, so you can translate and save words from them like from any other page.
+- **Many alphabets.** Latin, Chinese and Japanese, Cyrillic, Korean, Arabic, Greek, Thai, Devanagari, Tamil and Telugu. The alphabet is detected automatically, or you can set it per book.
+- **Manga ready.** Vertical Japanese columns, speech bubbles read right to left, furigana skipped.
+- **Webtoon mode.** Long strips scroll as one continuous page.
+- **Offline and private.** Recognition runs on your computer with PaddleOCR models, and each page is read only once.
 
-### 🖼️ Scans, Manga and Webtoons
-*   **Text in Pictures**: Scanned PDFs, images (PNG, JPG, WebP…) and comic archives (CBZ) get selectable text through built-in OCR, so you can translate and save words from them like any other page.
-*   **Many Alphabets**: Latin (English, Turkish, German, French, Spanish…), Chinese, Japanese, Cyrillic, Korean, Arabic, Greek, Thai, Devanagari, Tamil and Telugu. The alphabet is detected automatically, or you can pick it per book.
-*   **Manga Ready**: Vertical Japanese columns, speech bubbles in right-to-left order, and furigana skipped.
-*   **Webtoon Mode**: Long strips scroll continuously.
-*   **Offline and Private**: Recognition runs on your computer (PaddleOCR models), and each page is read only once.
+### 🧠 Spaced-repetition review
+- **Three ways to practise:** Flashcards (recall the meaning and rate yourself), Choice (pick the right translation out of four) and Reverse (see the translation, find the word).
+- **Smart scheduling.** Words come back right before you'd forget them. Only your first answer in a session counts, and "Unsure" still counts as a pass.
+- **See what's coming.** The Words page shows what's due now and a 14-day forecast.
+- **Keyboard friendly.** Space to reveal, 1 / 2 / 3 to answer, Esc to leave.
 
-### 🌐 Instant Contextual Translation
-*   **Click-to-Translate**: Simply click any word to get its meaning instantly.
-*   **Sentence Context**: Translates whole sentences to help you grasp idioms and grammar.
-*   **Powered by AI**: Uses advanced translation models for high accuracy.
+### 🌐 Translation
+- Translate into 20 languages, including English, Turkish, German, French, Spanish, Russian, Ukrainian and Portuguese.
+- **Free out of the box** with MyMemory, or add your own **DeepL API key** for better translations.
+- Your DeepL key is **stored encrypted** with your system's keychain, and it never goes into backups or phone sync.
 
-### 🧠 Vocabulary Building (SRS)
-*   **One-Click Add**: Save interesting words to your custom lists instantly.
-*   **Spaced Repetition**: Built-in flashcard system (Anki-style) ensures you review words right before you forget them.
-*   **Smart Quizzes**: Test yourself with multiple-choice questions derived from your actual reading context.
+### 🔒 Your data stays yours
+- Everything is stored locally. No account, no tracking.
+- **Backup and restore** your lists, words and review progress as a JSON file.
+- **Phone sync** with LinguaReader for Android over your own Wi-Fi, paired with a one-time QR code.
+- Light and dark themes.
 
-### 🎨 Modern & Customizable
-*   **Theming**: Beautiful Dark and Light modes.
-*   **Visualization**: Track your daily progress with interactive charts.
-*   **Responsive**: Works great on any screen size.
+## Screenshots
 
----
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/library.png" alt="Library with a 'continue reading' card and recent books"></td>
+    <td width="50%"><img src="docs/screenshots/words.png" alt="Words page with lists, levels, next review dates and a 14-day forecast"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Library</b><br><sub>Continue where you stopped, see what's due.</sub></td>
+    <td align="center"><b>Words</b><br><sub>Lists, levels and the review forecast.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/ocr-manga.png" alt="Manga page: a vertical Japanese word is selected and translated"></td>
+    <td><img src="docs/screenshots/ocr-scan.jpg" alt="Scanned book page with the recognised text layer outlined"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Manga</b><br><sub>Select vertical Japanese like normal text.</sub></td>
+    <td align="center"><b>Scanned books</b><br><sub>The recognised text layer, made visible for this picture.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/review-setup.png" alt="Review setup: Flashcards, Choice or Reverse, due words or all words"></td>
+    <td><img src="docs/screenshots/review.png" alt="Flashcard review with Didn't know, Unsure and Knew it buttons"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Start a review</b><br><sub>Pick a mode, and due words or all of them.</sub></td>
+    <td align="center"><b>Flashcards</b><br><sub>Rate yourself with 1, 2 or 3.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/ocr-alphabets.png" alt="Text recognition menu with the list of alphabets"></td>
+    <td><img src="docs/screenshots/settings.png" alt="Settings: theme, encrypted DeepL key, backup and phone sync"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Text recognition</b><br><sub>When to read text in images, and which alphabet.</sub></td>
+    <td align="center"><b>Settings</b><br><sub>DeepL key, backups and phone sync.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/library-dark.png" alt="Library in dark theme"></td>
+    <td><img src="docs/screenshots/words-dark.png" alt="Words page in dark theme"></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><b>Dark theme</b></td>
+  </tr>
+</table>
 
-## 📸 Screenshots
+## Download
 
-| Reading Mode | Translation & Vocab |
-|:---:|:---:|
-| ![Reading Mode](assets/images/readingmode.png) | ![Translation](assets/images/translation.png) |
+Get the latest version from the **[Releases page](https://github.com/yusufdinc974/LinguaReader/releases/latest)**.
 
-| Vocabulary Dashboard | Flashcard Quiz |
-|:---:|:---:|
-| ![Dashboard](assets/images/vocabulary.png) | ![Quiz](assets/images/quiz.png) |
+| Platform | File | Notes |
+|---|---|---|
+| **Windows** (64-bit) | `LinguaReader-Setup-<version>.exe` | Installer |
+| | `LinguaReader-<version>-portable.exe` | Portable, nothing to install |
+| **macOS** (Apple Silicon) | `LinguaReader-<version>-arm64.dmg` | Drag to Applications |
+| **Linux** (x64) | `LinguaReader-<version>.AppImage` | Runs on most distributions |
+| | `linguareader_<version>_amd64.deb` | Debian, Ubuntu, Mint and others |
 
----
+<details>
+<summary><b>Windows</b>: "Windows protected your PC"</summary>
 
-## 🚀 Installation
+The app isn't code-signed yet, so SmartScreen may warn the first time. Click **More info**, then **Run anyway**.
+</details>
 
-### 🐧 Linux (Debian/Ubuntu/Mint)
-1.  **Download** the latest `.deb` file from the [Releases Page](https://github.com/yusufdinc974/LinguaReader/releases).
-2.  **Install**:
-    ```bash
-    sudo dpkg -i linguareader_*.deb
-    ```
-3.  Launch **LinguaReader** from your applications menu.
+<details>
+<summary><b>macOS</b>: "LinguaReader can't be opened"</summary>
 
-*(Note: An `AppImage` is also available if you prefer portable apps).*
+The app isn't signed or notarized yet, so Gatekeeper may block it the first time. Right-click LinguaReader in Applications, choose **Open**, then confirm. On recent macOS versions you may need to allow it under **System Settings → Privacy & Security** instead.
 
-### 🪟 Windows
-1.  **Download** the `.exe` installer from [Releases](https://github.com/yusufdinc974/LinguaReader/releases).
-2.  Run the installer.
-3.  *(If prompted by SmartScreen, click "More info" > "Run anyway" - this is normal for unsigned apps).*
+The macOS build is for Apple Silicon (M1 and later).
+</details>
 
-### 🍎 macOS
-1.  **Download** the `.dmg` file from [Releases](https://github.com/yusufdinc974/LinguaReader/releases).
-2.  Open the `.dmg` and drag **LinguaReader** to your Applications folder.
-3.  *(If blocked by Gatekeeper, right-click the app and select "Open", then confirm).*
+<details>
+<summary><b>Linux</b>: AppImage and .deb</summary>
 
----
-
-## 🛠️ Development
-
-Want to contribute? Check out our [Contributing Guidelines](CONTRIBUTING.md).
-
-### Prerequisites
-*   Node.js (v18 or later)
-*   NPM
-
-### Setup
+**AppImage**
 
 ```bash
-# 1. Clone the repository
+chmod +x LinguaReader-*.AppImage
+./LinguaReader-*.AppImage
+```
+
+On systems that block the Chromium sandbox for AppImages (such as Ubuntu 24.04), the AppImage runs without it.
+
+**.deb**
+
+```bash
+sudo apt install ./linguareader_*_amd64.deb
+```
+
+The .deb keeps the Chromium sandbox on. Launch LinguaReader from your applications menu.
+</details>
+
+### Updates
+
+LinguaReader checks for a new version at startup. On **Windows** and **Linux**, one click downloads it and it installs when you quit the app. On **macOS**, the app tells you about the new version and opens the Releases page for you to download it.
+
+## Using LinguaReader
+
+1. **Open a book.** Click **Open file** and pick a PDF, a CBZ comic or an image. You can also open a file with LinguaReader from your file manager.
+2. **Select a word or phrase.** Double-click a word, or drag across several. A card shows the translation.
+3. **Save it.** Choose how well you know it, then **Save to list**. You can make a new list from the same menu.
+4. **Review.** When words are due, the Library tells you. Click **Review now**, or start a review from the Words page.
+
+The translation target language is in the reader's toolbar. Add a DeepL key under **Settings → Translation**.
+
+## Build from source
+
+You need **Node.js 22** or later and npm.
+
+```bash
 git clone https://github.com/yusufdinc974/LinguaReader.git
 cd LinguaReader
-
-# 2. Install dependencies
 npm install
-
-# 3. Run development server (Vite + Electron)
-npm run dev
+npm run dev        # Vite + Electron with hot reload
 ```
 
-`npm run dev` and `npm run build` download the OCR models (about 96 MB) into `resources/ocr/` the first time, checking each file's SHA-256. To fetch them by hand: `npm run fetch-ocr-models`.
+The first `npm run dev` or `npm run build` downloads the OCR models (about 96 MB) into `resources/ocr/` and checks each file's SHA-256. To fetch them by hand, run `npm run fetch-ocr-models`.
 
-### Building
+| Command | What it does |
+|---|---|
+| `npm test` | Unit tests (review scheduling, OCR, security) |
+| `npm run build:win` | Windows installer and portable `.exe` |
+| `npm run build:mac` | macOS `.dmg` and `.zip` |
+| `npm run build:linux` | Linux `.AppImage` and `.deb` |
 
-```bash
-# Build for Linux
-npm run build:linux
+Installers land in `release/`. Built with Electron, React, TypeScript, Vite, Tailwind CSS, pdf.js, SQLite (better-sqlite3) and ONNX Runtime.
 
-# Build for Windows
-npm run build:win
+Want to help? See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-# Build for macOS
-npm run build:mac
-```
+## License
 
-
-## 🔄 Updates
-
-LinguaReader keeps itself up to date automatically to ensure you always have the latest features and bug fixes.
-
-### Windows & Linux
-*   **Automatic**: The app checks for updates on startup.
-*   **Seamless**: If an update is found, it downloads in the background. You'll see a notification when it's ready to install.
-*   **Restart**: Simply restart the app to apply the update.
-
-### macOS
-*   **Manual**: Due to Apple's security policies, auto-updates are disabled.
-*   **Notification**: You will be notified when a new version is available.
-*   **Action**: Click the notification to open the [Releases Page](https://github.com/yusufdinc974/LinguaReader/releases) and download the latest `.dmg` file manually.
-
----
-
-## 💾 Import / Export
-
-You can easily backup your data or import new word lists from other sources.
-
-### Backup & Restore
-*   **Export Data**: Generates a full JSON backup of all your word lists, words, progress, and settings.
-*   **Import Data**: Restores a previously exported backup file.
-
-### Custom Word Lists (JSON)
-You can create your own word lists externally and import them into LinguaReader. This is perfect for bulk importing vocabulary.
-
-**Format:**
-Create a `.json` file with the following structure:
-
-```json
-{
-  "listName": "My Custom List",
-  "listDescription": "Optional description for the list",
-  "words": [
-    {
-      "word": "bonjour",
-      "translation": "hello",
-      "source_language": "fr",
-      "target_language": "en"
-    },
-    {
-      "word": "merci",
-      "translation": "thank you"
-    }
-  ]
-}
-```
-
-*   **Required Fields**: `word`, `translation`
-*   **Optional Fields**: `listName`, `listDescription`, `source_language`, `target_language`
-
----
-
-
-## 📄 License
-
-Distributed under the MIT License. See `LICENSE` for more information.
+LinguaReader is released under the [MIT License](LICENSE).
 
 The bundled OCR models are [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) PP-OCRv6 and PP-OCRv5 models (Apache License 2.0), run with [ONNX Runtime](https://github.com/microsoft/onnxruntime) (MIT).
 
----
-
 <div align="center">
-  <p>Made with ❤️ by <a href="https://github.com/yusufdinc974">Yusuf Dinc</a></p>
+<br>
+<sub>Made with ❤️ by <a href="https://github.com/yusufdinc974">Yusuf Dinc</a></sub>
 </div>
