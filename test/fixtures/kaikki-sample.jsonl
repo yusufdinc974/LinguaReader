@@ -1,0 +1,8 @@
+{"word": "étal", "lang": "French", "lang_code": "fr", "pos": "noun", "sounds": [{"ipa": "/e.tal/"}], "forms": [{"form": "étals", "tags": ["plural"]}], "senses": [{"glosses": ["stall (stand in a market)"], "tags": ["masculine"], "examples": [{"text": "Les étals du marché étaient vides.", "english": "The market stalls were empty."}], "synonyms": [{"word": "éventaire"}]}, {"glosses": ["butcher's block"]}]}
+{"word": "manger", "lang": "French", "lang_code": "fr", "pos": "verb", "sounds": [{"ipa": "/mɑ̃.ʒe/"}], "forms": [{"form": "mangé", "tags": ["participle", "past"]}, {"form": "mangeons", "tags": ["first-person", "plural", "present"]}, {"form": "no-table-tags", "tags": ["table-tags"]}], "senses": [{"glosses": ["to eat"], "synonyms": [{"word": "bouffer"}, {"word": "dévorer"}]}], "antonyms": [{"word": "jeûner"}]}
+{"word": "mangé", "lang": "French", "lang_code": "fr", "pos": "verb", "senses": [{"glosses": ["past participle of manger"], "form_of": [{"word": "manger"}], "tags": ["form-of", "participle", "past"]}]}
+{"word": "Pomme", "lang": "French", "lang_code": "fr", "pos": "name", "senses": [{"glosses": ["a surname"]}]}
+{"word": "pomme", "lang": "French", "lang_code": "fr", "pos": "noun", "senses": [{"glosses": ["apple"]}]}
+{"word": "apple", "lang": "English", "lang_code": "en", "pos": "noun", "senses": [{"glosses": ["a fruit"]}]}
+not json
+{"word": "vide", "lang": "French", "lang_code": "fr", "pos": "adj", "senses": [{"tags": ["no-gloss"]}]}

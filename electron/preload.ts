@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { OcrPage, ScriptId } from './ocr/types';
 import type { CatalogVoice as TtsCatalogVoice } from './tts';
+import type { DictEntry, DictionaryInfo } from './dictionary';
 
 export interface PdfFile {
     name: string;
@@ -195,6 +196,18 @@ const electronAPI = {
         const handler = (_: unknown, data: any) => callback(data);
         ipcRenderer.on('tts-progress', handler);
         return () => ipcRenderer.removeListener('tts-progress', handler);
+    },
+
+    // Offline dictionaries (Wiktionary), downloaded per language
+    dictStatus: (): Promise<string[]> => ipcRenderer.invoke('dict-status'),
+    dictAvailable: (): Promise<DictionaryInfo[]> => ipcRenderer.invoke('dict-available'),
+    dictInstall: (lang: string): Promise<string[]> => ipcRenderer.invoke('dict-install', lang),
+    dictRemove: (lang: string): Promise<string[]> => ipcRenderer.invoke('dict-remove', lang),
+    dictLookup: (lang: string, text: string): Promise<DictEntry[] | null> => ipcRenderer.invoke('dict-lookup', lang, text),
+    onDictProgress: (callback: (p: { lang: string; got: number; total: number }) => void) => {
+        const handler = (_: unknown, data: any) => callback(data);
+        ipcRenderer.on('dict-progress', handler);
+        return () => ipcRenderer.removeListener('dict-progress', handler);
     },
 
     // Sync Server

@@ -3,6 +3,8 @@ import { X, Plus, Check, Loader2, ChevronDown } from 'lucide-react';
 import type { WordList } from '../types';
 import { LEVELS, DEFAULT_LIST_COLOR } from '../lib/words';
 import SpeakButton from './SpeakButton';
+import DictionaryPanel from './DictionaryPanel';
+import { speechLang } from '../lib/speech';
 
 export interface WordCardState {
     text: string;
@@ -94,6 +96,7 @@ export default function WordCard({ card, level, onLevel, lists, saved, onSave, o
                 {card.source && !card.loading && !card.failed && (
                     <p className="text-[11px] faint mt-1.5">via {card.source}</p>
                 )}
+                {!card.loading && <DictionaryPanel text={card.text} lang={speechLang(card.text, card.detectedLanguage, bookLang)} />}
             </div>
 
             <div className="px-4 py-3 border-t" style={{ borderColor: 'var(--border)' }}>

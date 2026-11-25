@@ -59,3 +59,26 @@ export interface QuizQuestion {
     options?: string[];
     correctAnswer: string;
 }
+
+/** A dictionary entry (see electron/dictLookup.ts). */
+export interface DictSense {
+    /** Definition */
+    g: string;
+    /** Labels: "masculine", "informal"… */
+    t?: string[];
+    /** Examples with their English translation */
+    e?: { x: string; tr?: string }[];
+    /** Synonyms of this sense */
+    y?: string[];
+}
+
+export interface DictEntry {
+    word: string;
+    pos: string;
+    ipa?: string;
+    senses: DictSense[];
+    synonyms?: string[];
+    antonyms?: string[];
+    formOf?: string[];
+    viaForm?: string;
+}
