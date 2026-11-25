@@ -83,6 +83,9 @@ jobs:
     env:
       # No signing certificate here; the app is ad-hoc signed.
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      # electron-builder skips signing on pull requests unless this is set. Ad-hoc
+      # signing uses no secrets, and the test must check the app as released.
+      CSC_FOR_PULL_REQUEST: 'true'
     steps:
       - uses: actions/checkout@v4
 
