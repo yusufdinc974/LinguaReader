@@ -11,6 +11,7 @@
 
 import { pdfjsLib } from './pdf';
 import type { Highlighter } from './highlight';
+import { collectGlyphWidths, glyphAdvances, type GlyphFont } from './glyphWidths';
 
 type PDFPage = pdfjsLib.PDFPageProxy;
 type PageViewport = ReturnType<PDFPage['getViewport']>;
@@ -57,7 +58,11 @@ export async function renderTextLayer(opts: RenderTextLayerOptions): Promise<num
 
     if (strategy === 'pdfjs') await renderPdfjs(opts, content);
     else if (strategy === 'legacy') renderLegacy(opts, content.items as TextItem[]);
-    else renderGlyph(opts, content.items as TextItem[], content.styles as Record<string, Style>);
+    else {
+        const fonts = await pageGlyphWidths(page);
+        if (opts.isCancelled?.()) return 0;
+        renderGlyph(opts, content.items as TextItem[], content.styles as Record<string, Style>, fonts);
+    }
     return chars;
 }
 
@@ -103,48 +108,39 @@ async function renderPdfjs({ viewport, container, highlighter }: RenderTextLayer
 
 // ---------------------------------------------------------------- glyph
 interface FontInfo {
-    widths: Record<number, number> | null;
+    glyphs: GlyphFont;
     scale: number; // fontMatrix[0]
-    defaultWidth: number;
-    inverse: Map<string, number>; // unicode → char code
-    maxKey: number;
 }
 
-const fontCache = new WeakMap<object, FontInfo | null>();
+const pageFonts = new WeakMap<object, Promise<Map<string, GlyphFont>>>();
 
-function fontInfo(page: PDFPage, fontName: string): FontInfo | null {
+/** Glyph widths of every font the page draws with (empty if the operator list can't be read). */
+function pageGlyphWidths(page: PDFPage): Promise<Map<string, GlyphFont>> {
+    let p = pageFonts.get(page);
+    if (!p) {
+        p = page
+            .getOperatorList()
+            .then((ol) => collectGlyphWidths(ol.fnArray, ol.argsArray, pdfjsLib.OPS))
+            .catch(() => new Map<string, GlyphFont>());
+        pageFonts.set(page, p);
+    }
+    return p;
+}
+
+function fontInfo(page: PDFPage, fontName: string, fonts: Map<string, GlyphFont>): FontInfo | null {
+    const glyphs = fonts.get(fontName);
+    if (!glyphs || glyphs.widths.size === 0) return null;
     let font: any;
     try {
-        if (!page.commonObjs.has(fontName)) return null;
-        font = page.commonObjs.get(fontName);
+        font = page.commonObjs.has(fontName) ? page.commonObjs.get(fontName) : null;
     } catch {
-        return null;
+        font = null;
     }
-    if (!font || typeof font !== 'object') return null;
-    if (fontCache.has(font)) return fontCache.get(font)!;
-
-    let info: FontInfo | null = null;
-    const widths = font.widths as Record<number, number> | undefined;
-    const fm = font.fontMatrix as number[] | undefined;
-    const tu = font.toUnicode as any;
-    if (widths && fm && !font.isType3Font && !font.vertical && tu) {
-        const inverse = new Map<string, number>();
-        let maxKey = 1;
-        if (Array.isArray(tu._map)) {
-            tu._map.forEach((u: string | undefined, code: number) => {
-                if (typeof u !== 'string' || !u) return;
-                if (!inverse.has(u)) inverse.set(u, code);
-                maxKey = Math.max(maxKey, u.length);
-            });
-        } else if (typeof tu.firstChar === 'number') {
-            for (let c = tu.firstChar; c <= tu.lastChar; c++) inverse.set(String.fromCharCode(c), c);
-        }
-        if (inverse.size > 0) {
-            info = { widths, scale: fm[0], defaultWidth: font.defaultWidth || 0, inverse, maxKey: Math.min(maxKey, 4) };
-        }
-    }
-    fontCache.set(font, info);
-    return info;
+    // Type3 glyphs live in their own coordinate system; vertical fonts advance downwards.
+    if (font?.isType3Font || font?.vertical) return null;
+    const fm = font?.fontMatrix as number[] | undefined;
+    const scale = Array.isArray(fm) && fm[0] ? fm[0] : 0.001;
+    return { glyphs, scale };
 }
 
 let measureCtx: CanvasRenderingContext2D | null = null;
@@ -157,38 +153,7 @@ export function measure(text: string, fontFamily: string, sizePx: number) {
 
 const isSpace = (ch: string) => ch === ' ' || ch === ' ' || ch === '\t';
 
-/**
- * Advance of each character of `str` in px, from the font's own widths.
- * Characters the font map can't explain get NaN (filled in by the caller).
- */
-function glyphAdvances(str: string, info: FontInfo, pxPerUnit: number): number[] {
-    const out = new Array<number>(str.length).fill(NaN);
-    let i = 0;
-    while (i < str.length) {
-        let matched = 0;
-        let code = -1;
-        for (let len = Math.min(info.maxKey, str.length - i); len >= 1; len--) {
-            const c = info.inverse.get(str.slice(i, i + len));
-            if (c !== undefined) {
-                matched = len;
-                code = c;
-                break;
-            }
-        }
-        if (matched === 0) {
-            i++;
-            continue;
-        }
-        const w = info.widths![code] ?? info.defaultWidth;
-        const adv = (w || 0) * info.scale * pxPerUnit;
-        // A ligature glyph ("ﬁ" → "fi") covers several characters: split evenly
-        for (let k = 0; k < matched; k++) out[i + k] = adv / matched;
-        i += matched;
-    }
-    return out;
-}
-
-function renderGlyph({ page, viewport, container, highlighter }: RenderTextLayerOptions, items: TextItem[], styles: Record<string, Style>) {
+function renderGlyph({ page, viewport, container, highlighter }: RenderTextLayerOptions, items: TextItem[], styles: Record<string, Style>, fonts: Map<string, GlyphFont>) {
     container.classList.add('glyph-layer');
     const frag = document.createDocumentFragment();
 
@@ -229,8 +194,9 @@ function renderGlyph({ page, viewport, container, highlighter }: RenderTextLayer
         const top = tx[5] - fontHeight * ascent;
 
         // 1. Natural advance per character: real glyph widths, else fallback font
-        const info = fontInfo(page, item.fontName);
-        const adv = info ? glyphAdvances(str, info, Math.abs(tx[0])) : new Array<number>(str.length).fill(NaN);
+        const info = fontInfo(page, item.fontName, fonts);
+        const pxPerUnit = info ? info.scale * Math.abs(tx[0]) : 0;
+        const adv = info ? glyphAdvances(str, info.glyphs).map((w) => w * pxPerUnit) : new Array<number>(str.length).fill(NaN);
         for (let i = 0; i < str.length; i++) {
             if (Number.isNaN(adv[i])) adv[i] = isSpace(str[i]) ? NaN : measure(str[i], fontFamily, fontHeight);
         }
