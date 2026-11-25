@@ -28,9 +28,6 @@ export function openPdf(bytes: Uint8Array) {
         standardFontDataUrl: asset('standard_fonts'),
         wasmUrl: asset('wasm'),
         iccUrl: asset('iccs'),
-        // fontExtraProperties keeps each font's glyph widths and unicode map on the
-        // main thread; the text layer uses them to place every word exactly.
-        fontExtraProperties: true,
         // A PDF is untrusted input: don't render XFA forms (HTML built from the file).
         enableXfa: false,
     }).promise;
