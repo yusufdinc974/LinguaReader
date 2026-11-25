@@ -6,6 +6,7 @@ import type { ReviewConfig } from '../components/ReviewSetup';
 import { wordKey } from '../lib/words';
 import { splitAround } from '../lib/context';
 import { displayName } from '../lib/document';
+import SpeakButton, { SPEAK_EVENT } from '../components/SpeakButton';
 import { schedule, leavesSession, type Grade } from '../lib/srs';
 import { useStore } from '../store/useStore';
 
@@ -55,7 +56,10 @@ function Context({ word, blank }: { word: Word; blank: boolean }) {
                     </>
                 ) : sentence}
             </p>
-            {word.pdf_name && <p className="text-[11.5px] faint mt-1.5 truncate">{displayName(word.pdf_name)}</p>}
+            <div className="flex items-center justify-center gap-1 mt-1">
+                {word.pdf_name && <p className="text-[11.5px] faint truncate">{displayName(word.pdf_name)}</p>}
+                {!blank && <SpeakButton text={sentence} langs={[word.source_language]} size={13} className="w-6 h-6" />}
+            </div>
         </div>
     );
 }
@@ -171,6 +175,10 @@ export default function Review() {
         const onKey = (e: KeyboardEvent) => {
             if (e.key === 'Escape') return exit();
             if (status !== 'active' || !current) return;
+            if (e.key === 'p' || e.key === 'P') {
+                window.dispatchEvent(new Event(SPEAK_EVENT));
+                return;
+            }
             if (mode === 'flashcard') {
                 if (!revealed && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); setRevealed(true); }
                 else if (revealed && ['1', '2', '3'].includes(e.key)) gradeFlashcard(Number(e.key));
@@ -238,9 +246,14 @@ export default function Review() {
                                 {mode === 'reverse' ? 'Which word means' : 'Translate'}
                                 {current.attempts > 0 && <span className="ml-2 normal-case tracking-normal" style={{ color: 'var(--warn)' }}>· again</span>}
                             </p>
-                            <p className="serif text-[40px] leading-tight font-semibold break-words">
-                                {mode === 'reverse' ? current.question.word.translation : current.question.word.word}
-                            </p>
+                            <div className="flex items-center justify-center gap-2">
+                                <p className="serif text-[40px] leading-tight font-semibold break-words">
+                                    {mode === 'reverse' ? current.question.word.translation : current.question.word.word}
+                                </p>
+                                {(mode !== 'reverse' || revealed) && (
+                                    <SpeakButton text={current.question.word.word} langs={[current.question.word.source_language]} size={18} shortcut="P" />
+                                )}
+                            </div>
                             <Context word={current.question.word} blank={mode === 'reverse' && !revealed} />
                         </div>
 

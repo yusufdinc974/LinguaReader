@@ -42,7 +42,11 @@
 - **Words in context.** Each saved word keeps the sentence you found it in, and review cards show it (with the word blanked out in Reverse mode).
 - **Smart scheduling.** Words come back right before you'd forget them. Only your first answer in a session counts, and "Unsure" still counts as a pass.
 - **See what's coming.** The Words page shows what's due now and a 14-day forecast.
-- **Keyboard friendly.** Space to reveal, 1 / 2 / 3 to answer, Esc to leave.
+- **Keyboard friendly.** Space to reveal, 1 / 2 / 3 to answer, P to listen, Esc to leave.
+
+### 🔊 Pronunciation
+- **Hear any word or sentence** with the speaker button on the word card, in reviews (or press P) and on the Words page.
+- Uses your computer's own voices, or **download a natural-sounding voice** for your language from the free [Piper](https://github.com/rhasspy/piper) project (Windows and Linux). It works offline once downloaded.
 
 ### 🌐 Translation
 - Translate into 20 languages, including English, Turkish, German, French, Spanish, Russian, Ukrainian and Portuguese.

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { X, Check, AlertCircle, Loader2 } from 'lucide-react';
 import type { Theme } from '../lib/theme';
+import PronunciationSettings from './PronunciationSettings';
 
 interface Props {
     open: boolean;
@@ -204,6 +205,10 @@ export default function SettingsPanel({ open, onClose, theme, onThemeChange }: P
                             )}
                         </div>
                         <p className="text-[12px] faint mt-1.5">Stored encrypted on this computer. Never included in backups or phone sync.</p>
+                    </Section>
+
+                    <Section title="Pronunciation" description="Read words aloud with your computer's voices or a downloaded natural voice.">
+                        <PronunciationSettings />
                     </Section>
 
                     <Section title="Backup" description="Lists, words and review progress as a JSON file.">

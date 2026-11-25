@@ -377,7 +377,7 @@ export default function Reader() {
         if (!card || card.loading || !card.translation) return;
         try {
             const key = wordKey(card.text);
-            const wordId = await window.electronAPI.addWord(card.text, card.translation, card.detectedLanguage || 'auto', targetLang, card.context ?? '', currentPdf?.name || '');
+            const wordId = await window.electronAPI.addWord(card.text, card.translation, card.detectedLanguage || (doc?.kind === 'epub' && doc.book.language) || 'auto', targetLang, card.context ?? '', currentPdf?.name || '');
             await window.electronAPI.addWordToList(wordId, listId);
             await window.electronAPI.setWordFamiliarity(key, level, card.translation);
             setFamiliarity(prev => ({ ...prev, [key]: { level, translation: card.translation } }));
@@ -673,6 +673,7 @@ export default function Reader() {
                     onCreateList={createListAndSave}
                     onRemove={removeWord}
                     onClose={() => setCard(null)}
+                    bookLang={doc?.kind === 'epub' ? doc.book.language : undefined}
                 />
             )}
         </div>

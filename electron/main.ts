@@ -6,6 +6,7 @@ import { autoUpdater } from 'electron-updater';
 import { SyncServer } from './sync_server';
 import { wordKey, legacyKeys } from './wordKey';
 import { setupOcr } from './ocrService';
+import { setupTts } from './tts';
 import { configureSandbox, guardIpc, lockDownWebContents, makeAppUrlCheck, restrictRequests, FileGrants, filesFromArgv } from './security';
 import { deeplKeyStatus, getDeeplKey, isPlausibleDeeplKey, portableSettings, PORTABLE_SETTINGS, RENDERER_SETTINGS, setDeeplKey } from './secrets';
 import { isNewerVersion } from './version';
@@ -1312,6 +1313,7 @@ app.whenReady().then(async () => {
     }
     setupIpcHandlers();
     setupOcr(() => db);
+    setupTts();
     createWindow();
 
     // Setup auto-updater (only for Windows and Linux)

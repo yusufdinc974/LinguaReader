@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { X, Plus, Check, Loader2, ChevronDown } from 'lucide-react';
 import type { WordList } from '../types';
 import { LEVELS, DEFAULT_LIST_COLOR } from '../lib/words';
+import SpeakButton from './SpeakButton';
 
 export interface WordCardState {
     text: string;
@@ -25,12 +26,14 @@ interface Props {
     onCreateList: (name: string) => void;
     onRemove: () => void;
     onClose: () => void;
+    /** Language of the book, if it says (EPUB), for reading the word aloud. */
+    bookLang?: string;
 }
 
 const W = 320;
 const GAP = 10;
 
-export default function WordCard({ card, level, onLevel, lists, saved, onSave, onCreateList, onRemove, onClose }: Props) {
+export default function WordCard({ card, level, onLevel, lists, saved, onSave, onCreateList, onRemove, onClose, bookLang }: Props) {
     const ref = useRef<HTMLDivElement>(null);
     const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
     const [menu, setMenu] = useState(false);
@@ -71,6 +74,7 @@ export default function WordCard({ card, level, onLevel, lists, saved, onSave, o
             <div className="p-4 pb-3">
                 <div className="flex items-start gap-2">
                     <p className="serif text-[19px] font-semibold leading-snug flex-1 min-w-0 break-words">{card.text}</p>
+                    <SpeakButton text={card.text} langs={[card.detectedLanguage, bookLang]} className="-mt-1 shrink-0" />
                     <button className="icon-btn -mr-2 -mt-1 shrink-0" onClick={onClose} aria-label="Close">
                         <X size={15} />
                     </button>
