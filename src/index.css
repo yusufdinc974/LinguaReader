@@ -471,3 +471,113 @@ textarea {
     animation: none;
   }
 }
+
+/* ------------------------------------------------------------------
+   EPUB chapters: reflowed text in a book-width column
+------------------------------------------------------------------- */
+.epub-chapter {
+  width: 100%;
+  max-width: 38em;
+  padding: 3em 3.2em 2.5em;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-page);
+  border-radius: 4px;
+  font-family: var(--font-serif);
+  line-height: 1.7;
+  overflow-wrap: break-word;
+  cursor: text;
+}
+
+.epub-chapter p {
+  margin: 0 0 0.9em;
+}
+
+.epub-chapter h1,
+.epub-chapter h2,
+.epub-chapter h3,
+.epub-chapter h4,
+.epub-chapter h5,
+.epub-chapter h6 {
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 1.4em 0 0.7em;
+}
+
+.epub-chapter h1 { font-size: 1.6em; }
+.epub-chapter h2 { font-size: 1.35em; }
+.epub-chapter h3 { font-size: 1.15em; }
+
+.epub-chapter em,
+.epub-chapter i,
+.epub-chapter cite { font-style: italic; }
+.epub-chapter b,
+.epub-chapter strong { font-weight: 600; }
+.epub-chapter sup,
+.epub-chapter sub { font-size: 0.7em; }
+
+.epub-chapter blockquote {
+  margin: 1em 0;
+  padding-left: 1.2em;
+  border-left: 2px solid var(--border-strong);
+  color: var(--text-2);
+}
+
+.epub-chapter ul,
+.epub-chapter ol {
+  margin: 0 0 0.9em;
+  padding-left: 1.6em;
+}
+.epub-chapter ul { list-style: disc; }
+.epub-chapter ol { list-style: decimal; }
+
+.epub-chapter table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 0.9em;
+}
+.epub-chapter td,
+.epub-chapter th {
+  border: 1px solid var(--border);
+  padding: 0.3em 0.6em;
+}
+
+.epub-chapter hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 1.6em 25%;
+}
+
+.epub-chapter img {
+  display: block;
+  max-width: 100%;
+  max-height: 80vh;
+  height: auto;
+  margin: 1em auto;
+}
+
+.epub-chapter pre {
+  white-space: pre-wrap;
+  font-size: 0.85em;
+}
+
+.epub-chapter .epub-link[data-chapter] {
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.epub-chapter mark {
+  color: inherit;
+  border-radius: 2px;
+}
+
+.epub-next {
+  margin: 2.5em auto 0;
+  display: flex;
+  max-width: 100%;
+  font-family: var(--font-ui);
+  font-size: 13px;
+}

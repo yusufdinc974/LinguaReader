@@ -22,9 +22,11 @@ function relativeDate(iso: string) {
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: days > 300 ? 'numeric' : undefined });
 }
 
-function progressLabel(pdf: { last_page?: number | null; page_count?: number | null }) {
+function progressLabel(pdf: { name?: string; last_page?: number | null; page_count?: number | null }) {
     if (!pdf.page_count) return null;
-    return `Page ${pdf.last_page ?? 1} of ${pdf.page_count}`;
+    // EPUBs are read a chapter at a time
+    const unit = /\.epub$/i.test(pdf.name ?? '') ? 'Chapter' : 'Page';
+    return `${unit} ${pdf.last_page ?? 1} of ${pdf.page_count}`;
 }
 
 function Cover({ path, name }: { path: string; name: string }) {
@@ -137,10 +139,10 @@ export default function Library({ dueCount }: { dueCount: number }) {
                             </div>
                         </div>
                         <h2 className="serif text-[20px] font-semibold">Nothing here yet</h2>
-                        <p className="muted mt-1.5 max-w-[340px]">Open a PDF in the language you're learning. Select a word to see its translation and save it to a list.</p>
+                        <p className="muted mt-1.5 max-w-[340px]">Open a book, PDF or comic in the language you're learning. Select a word to see its translation and save it to a list.</p>
                         <button className="btn btn-outline btn-lg mt-6" onClick={openFile}>
                             <FolderOpen size={16} />
-                            Choose a PDF…
+                            Choose a file…
                         </button>
                     </div>
                 ) : (

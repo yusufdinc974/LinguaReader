@@ -4,7 +4,7 @@
 
 # LinguaReader
 
-**Read real books, comics and scans in the language you're learning.<br>Select a word to translate it, save it, and review it before you forget it.**
+**Read real books, ebooks, comics and scans in the language you're learning.<br>Select a word to translate it, save it, and review it before you forget it.**
 
 [![Latest release](https://img.shields.io/github/v/release/yusufdinc974/LinguaReader?style=flat-square&color=2f6f5e&label=release)](https://github.com/yusufdinc974/LinguaReader/releases/latest)
 [![Windows, macOS, Linux](https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-555?style=flat-square)](#download)
@@ -26,7 +26,8 @@
 - **Select any word or phrase** to translate it in context, then save it to a list with one click.
 - **Saved words stay highlighted** in every book, colored by list, so you notice them again while you read.
 - **Rate how well you know a word** right where you meet it: New, Seen, Learning, Familiar or Known.
-- **Picks up where you left off.** Every book reopens at the page you were on.
+- **EPUB books** open as clean, reflowing text with their table of contents, in light or dark.
+- **Picks up where you left off.** Every book reopens at the page you were on, and EPUBs at the very spot in the chapter.
 - Single page, two-page spread or continuous scroll, zoom, and a distraction-free focus mode.
 
 ### 🖼️ Scans, manga and webtoons (OCR)
@@ -38,6 +39,7 @@
 
 ### 🧠 Spaced-repetition review
 - **Three ways to practise:** Flashcards (recall the meaning and rate yourself), Choice (pick the right translation out of four) and Reverse (see the translation, find the word).
+- **Words in context.** Each saved word keeps the sentence you found it in, and review cards show it (with the word blanked out in Reverse mode).
 - **Smart scheduling.** Words come back right before you'd forget them. Only your first answer in a session counts, and "Unsure" still counts as a pass.
 - **See what's coming.** The Words page shows what's due now and a 14-day forecast.
 - **Keyboard friendly.** Space to reveal, 1 / 2 / 3 to answer, Esc to leave.
@@ -156,7 +158,7 @@ LinguaReader checks for a new version at startup. On **Windows** and **Linux**, 
 
 ## Using LinguaReader
 
-1. **Open a book.** Click **Open file** and pick a PDF, a CBZ comic or an image. You can also open a file with LinguaReader from your file manager.
+1. **Open a book.** Click **Open file** and pick a PDF, an EPUB book, a CBZ comic or an image. You can also open a file with LinguaReader from your file manager.
 2. **Select a word or phrase.** Double-click a word, or drag across several. A card shows the translation.
 3. **Save it.** Choose how well you know it, then **Save to list**. You can make a new list from the same menu.
 4. **Review.** When words are due, the Library tells you. Click **Review now**, or start a review from the Words page.
@@ -217,7 +219,7 @@ Every pull request builds and installs the app on Windows and macOS and checks t
 |---|---|
 | `src/pages/` | The four screens: Library, Reader, Words, Review |
 | `src/components/` | Sidebar, settings, word card, page view and other UI pieces |
-| `src/lib/` | Reader logic: PDF and comic loading, text layer, highlights, OCR layer, spaced repetition |
+| `src/lib/` | Reader logic: PDF, EPUB and comic loading, text layer, highlights, OCR layer, spaced repetition |
 | `electron/` | Main process: database, IPC, file access, updates, phone sync, DeepL key storage |
 | `electron/ocr/` | The OCR worker (PaddleOCR models on ONNX Runtime) |
 | `test/` | Unit tests, fixtures and the end-to-end OCR check |

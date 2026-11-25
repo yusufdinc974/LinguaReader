@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader2, ScanText } from 'lucide-react';
 import type { OcrPage } from '../../electron/ocr/types';
-import { imageSize, imageUrl, pageSize, type ReaderDoc } from '../lib/document';
+import { imageSize, imageUrl, pageSize, type ImageReaderDoc, type PdfReaderDoc } from '../lib/document';
 import type { PDFDoc } from '../lib/pdf';
 import type { Highlighter } from '../lib/highlight';
 import { renderTextLayer } from '../lib/textLayer';
@@ -11,7 +11,8 @@ import { holdPage, isCancelled, ocrAvailable, ocrPage, SCANNED_PAGE_CHARS, type 
 type PDFPage = Awaited<ReturnType<PDFDoc['getPage']>>;
 
 interface Props {
-    doc: ReaderDoc;
+    /** PDFs and images; EPUB chapters are shown by EpubView. */
+    doc: PdfReaderDoc | ImageReaderDoc;
     pageNum: number;
     scale: number;
     highlighter: Highlighter;
