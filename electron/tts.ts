@@ -284,7 +284,7 @@ function synthesize(key: string, text: string): Promise<Buffer> {
     return new Promise((resolve, reject) => {
         // Paths relative to the piper folder: the engine reads its arguments as
         // narrow strings, which can't hold a non-ASCII user name on Windows.
-        const proc = spawn(exe, ['--model', `../../voices/${key}.onnx`, '--output_raw', '--espeak_data', 'espeak-ng-data'], {
+        const proc = spawn(exe, ['--model', `../../voices/${key}.onnx`, '--output_raw', '--espeak_data', 'espeak-ng-data', '--quiet'], {
             cwd: dir,
             env: { ...process.env, LD_LIBRARY_PATH: [dir, process.env.LD_LIBRARY_PATH].filter(Boolean).join(':') },
             windowsHide: true,
