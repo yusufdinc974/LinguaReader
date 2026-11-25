@@ -134,7 +134,7 @@ export function guardIpc(isAppUrl: (url: string) => boolean) {
 
 // ---------------------------------------------------------------- file access
 
-const OPENABLE = new Set(['.pdf', '.cbz', '.zip', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.avif']);
+const OPENABLE = new Set(['.pdf', '.epub', '.cbz', '.zip', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.avif']);
 
 /**
  * The files the renderer may read: ones the user picked in the open dialog,

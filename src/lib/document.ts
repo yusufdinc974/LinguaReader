@@ -1,9 +1,10 @@
-// A document the reader can show: a PDF, a single image, or a comic archive
+// A document the reader can show: a PDF, an EPUB book, a single image, or a comic archive
 // (CBZ: a zip of page images). Image pages are shown as <img> (no canvas size
 // limits for long webtoon strips) and read with OCR.
 
 import { unzipSync } from 'fflate';
 import { base64ToBytes, openPdf, type PDFDoc } from './pdf';
+import { closeEpub, openEpub, type EpubBook } from './epub';
 
 export interface ImagePageSrc {
     name: string;
@@ -30,7 +31,13 @@ export interface ImageReaderDoc extends Base {
     unit: number;
 }
 
-export type ReaderDoc = PdfReaderDoc | ImageReaderDoc;
+/** A reflowable book: each spine chapter is one "page" of the reader. */
+export interface EpubReaderDoc extends Base {
+    kind: 'epub';
+    book: EpubBook;
+}
+
+export type ReaderDoc = PdfReaderDoc | ImageReaderDoc | EpubReaderDoc;
 
 const IMAGE_EXT = /\.(png|jpe?g|webp|gif|bmp|avif)$/i;
 const MIME: Record<string, string> = {
@@ -46,13 +53,16 @@ export function isImageName(name: string) {
 
 /** File name without its extension, for titles. */
 export function displayName(name: string) {
-    return name.replace(/\.(pdf|cbz|zip|png|jpe?g|webp|gif|bmp|avif)$/i, '');
+    return name.replace(/\.(pdf|epub|cbz|zip|png|jpe?g|webp|gif|bmp|avif)$/i, '');
 }
 
-function sniff(bytes: Uint8Array): 'pdf' | 'zip' | 'image' | null {
+function sniff(bytes: Uint8Array): 'pdf' | 'epub' | 'zip' | 'image' | null {
     const head = String.fromCharCode(...bytes.subarray(0, 8));
     if (head.startsWith('%PDF') || String.fromCharCode(...bytes.subarray(0, 1024)).includes('%PDF')) return 'pdf';
-    if (head.startsWith('PK\x03\x04')) return 'zip';
+    if (head.startsWith('PK\x03\x04')) {
+        // EPUBs start with an uncompressed "mimetype" entry holding application/epub+zip
+        return String.fromCharCode(...bytes.subarray(30, 128)).includes('application/epub+zip') ? 'epub' : 'zip';
+    }
     if (head.startsWith('\x89PNG') || head.startsWith('\xFF\xD8\xFF') || head.startsWith('GIF8') || head.startsWith('BM')) return 'image';
     if (head.startsWith('RIFF') && String.fromCharCode(...bytes.subarray(8, 12)) === 'WEBP') return 'image';
     if (String.fromCharCode(...bytes.subarray(4, 12)).startsWith('ftypavi')) return 'image';
@@ -74,6 +84,10 @@ export async function openReaderDoc(file: { name: string; data: string }): Promi
     if (kind === 'pdf') {
         const pdf = await openPdf(bytes);
         return { kind: 'pdf', pdf, numPages: pdf.numPages, hash };
+    }
+    if (kind === 'epub' || (kind === 'zip' && /\.epub$/i.test(file.name))) {
+        const book = openEpub(bytes);
+        return { kind: 'epub', book, numPages: book.chapters.length, hash };
     }
 
     let pages: ImagePageSrc[];
@@ -99,6 +113,7 @@ export async function openReaderDoc(file: { name: string; data: string }): Promi
 export function destroyDoc(doc: ReaderDoc | null) {
     if (!doc) return;
     if (doc.kind === 'pdf') doc.pdf.loadingTask.destroy();
+    else if (doc.kind === 'epub') closeEpub(doc.book);
     else for (const p of doc.pages) if (p.url) URL.revokeObjectURL(p.url);
 }
 
@@ -122,6 +137,8 @@ export async function pageSize(doc: ReaderDoc, n: number) {
         const vp = (await doc.pdf.getPage(n)).getViewport({ scale: 1 });
         return { width: vp.width, height: vp.height };
     }
+    // Reflowable: a book-page-sized box (only used for fit-to-width)
+    if (doc.kind === 'epub') return { width: 600, height: 800 };
     const s = await imageSize(doc.pages[n - 1]);
     return { width: s.width * doc.unit, height: s.height * doc.unit };
 }
@@ -134,6 +151,7 @@ const OCR_MAX_PIXELS = 40e6;
 /** The page as RGBA pixels for text recognition. */
 export async function pageImage(doc: ReaderDoc, n: number): Promise<{ data: Uint8Array; width: number; height: number }> {
     let source: ImageBitmap | HTMLCanvasElement;
+    if (doc.kind === 'epub') throw new Error('EPUB chapters are text, not images.');
     if (doc.kind === 'pdf') {
         const page = await doc.pdf.getPage(n);
         const base = page.getViewport({ scale: 1 });
@@ -191,7 +209,16 @@ export function getThumbnail(path: string, width = 220): Promise<string | null> 
             if (!file) throw new Error('missing');
             doc = await openReaderDoc(file);
             const canvas = document.createElement('canvas');
-            if (doc.kind === 'pdf') {
+            if (doc.kind === 'epub') {
+                const cover = doc.book.cover && doc.book.files[doc.book.cover];
+                if (!cover) throw new Error('no cover');
+                const bmp = await createImageBitmap(new Blob([cover as BlobPart], { type: doc.book.types[doc.book.cover!] || '' }));
+                const k = (width * 2) / bmp.width;
+                canvas.width = Math.round(bmp.width * k);
+                canvas.height = Math.round(Math.min(bmp.height, bmp.width * 1.6) * k);
+                canvas.getContext('2d')!.drawImage(bmp, 0, 0, canvas.width, Math.round(bmp.height * k));
+                bmp.close();
+            } else if (doc.kind === 'pdf') {
                 const page = await doc.pdf.getPage(1);
                 const base = page.getViewport({ scale: 1 });
                 const viewport = page.getViewport({ scale: (width * 2) / base.width });

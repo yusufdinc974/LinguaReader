@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     FolderOpen, ChevronLeft, ChevronRight, Minus, Plus, Columns2, Maximize2, Minimize2, Highlighter, Languages, Loader2, Library,
-    ScanText, GalleryVertical,
+    ScanText, GalleryVertical, ListTree,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { destroyDoc, displayName, openReaderDoc, pageSize, type ReaderDoc } from '../lib/document';
@@ -13,6 +13,7 @@ import { wordKey, cleanSelection, DEFAULT_LIST_COLOR } from '../lib/words';
 import { selectionContext } from '../lib/context';
 import { translateText, SUPPORTED_LANGUAGES } from '../services/translationService';
 import PageView from '../components/PageView';
+import EpubView from '../components/EpubView';
 import WordCard, { type WordCardState } from '../components/WordCard';
 import type { WordList } from '../types';
 
@@ -43,6 +44,7 @@ export default function Reader() {
     const [filterOpen, setFilterOpen] = useState(false);
     const [langOpen, setLangOpen] = useState(false);
     const [ocrOpen, setOcrOpen] = useState(false);
+    const [tocOpen, setTocOpen] = useState(false);
     const [ocrMode, setOcrModeState] = useState<OcrMode>(getOcrMode);
     // The document's OCR script: null = detect automatically
     const [docScript, setDocScript] = useState<{ script: ScriptId; chosen: boolean } | null>(null);
@@ -59,6 +61,9 @@ export default function Reader() {
     const selectionSeq = useRef(0);
     /** Path whose saved page has been applied; saving waits for this. */
     const restoredFor = useRef<string | null>(null);
+    /** EPUB: where to scroll once the chapter is in the page. */
+    const pendingScroll = useRef<{ fraction?: number; fragment?: string } | null>(null);
+    const posTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => localStorage.setItem('readerScale', String(scale)), [scale]);
     useEffect(() => localStorage.setItem('readerSpread', spread ? '1' : '0'), [spread]);
@@ -115,8 +120,13 @@ export default function Reader() {
                 setContinuous(stored !== null ? stored === '1' : first.height > first.width * 2);
             } else setContinuous(false);
             // Resume where the reader left off (bookmark), clamped in case the file changed
-            const saved = progress?.last_page ?? 1;
-            setCurrentPage(Math.min(Math.max(1, saved), next.numPages));
+            const saved = Math.min(Math.max(1, progress?.last_page ?? 1), next.numPages);
+            if (next.kind === 'epub') {
+                // Within a chapter: the scroll position, kept per book
+                const [ch, frac] = (localStorage.getItem(`epubpos:${next.hash}`) ?? '').split(':').map(Number);
+                pendingScroll.current = { fraction: ch === saved && frac > 0 && frac <= 1 ? frac : 0 };
+            }
+            setCurrentPage(saved);
             restoredFor.current = file.path;
         } catch (e) {
             console.error('Failed to load document:', e);
@@ -158,21 +168,36 @@ export default function Reader() {
     };
 
     // ---------- navigation ----------
-    const step = spread && !continuous ? 2 : 1;
+    const isEpub = doc?.kind === 'epub';
+    const step = spread && !continuous && !isEpub ? 2 : 1;
     const goTo = useCallback((p: number) => {
         if (!totalPages) return;
         const next = Math.max(1, Math.min(totalPages, p));
         setCurrentPage(next);
         setCard(null);
+        if (doc?.kind === 'epub') {
+            pendingScroll.current = { fraction: 0 };
+            if (next === currentPage) scrollRef.current?.scrollTo({ top: 0 });
+            return;
+        }
         if (continuous) {
             const el = scrollRef.current?.querySelector<HTMLElement>(`[data-page="${next}"]`);
             if (el && scrollRef.current) scrollRef.current.scrollTo({ top: el.offsetTop - 16 });
         } else scrollRef.current?.scrollTo({ top: 0 });
-    }, [totalPages, setCurrentPage, continuous]);
+    }, [totalPages, setCurrentPage, continuous, doc, currentPage]);
 
     // Continuous mode: the current page is the one at the top of the view
     const onScrollPages = () => {
         if (card) setCard(null);
+        if (doc?.kind === 'epub' && scrollRef.current) {
+            const box = scrollRef.current;
+            const max = box.scrollHeight - box.clientHeight;
+            const key = `epubpos:${doc.hash}`;
+            const value = `${currentPage}:${max > 0 ? (box.scrollTop / max).toFixed(4) : 0}`;
+            if (posTimer.current) clearTimeout(posTimer.current);
+            posTimer.current = setTimeout(() => localStorage.setItem(key, value), 250);
+            return;
+        }
         if (!continuous || !scrollRef.current) return;
         const box = scrollRef.current;
         const mid = box.scrollTop + box.clientHeight * 0.3;
@@ -182,6 +207,37 @@ export default function Reader() {
             else break;
         }
         if (page !== currentPage) setCurrentPage(page);
+    };
+
+    // EPUB: a link to another chapter (or a place in this one)
+    const openInBook = useCallback((chapter: number, fragment?: string) => {
+        if (!doc || doc.kind !== 'epub') return;
+        setCard(null);
+        setTocOpen(false);
+        const next = Math.max(1, Math.min(totalPages, chapter));
+        pendingScroll.current = fragment ? { fragment } : { fraction: 0 };
+        if (next === currentPage) applyPendingScroll();
+        else setCurrentPage(next);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [doc, totalPages, currentPage, setCurrentPage]);
+
+    const applyPendingScroll = () => {
+        const box = scrollRef.current;
+        const p = pendingScroll.current;
+        if (!box || !p) return;
+        pendingScroll.current = null;
+        if (p.fragment) {
+            const el = box.querySelector<HTMLElement>(`#${CSS.escape(`epub-${p.fragment}`)}`);
+            if (el) {
+                box.scrollTo({ top: el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 24 });
+                return;
+            }
+        }
+        const frac = p.fraction ?? 0;
+        // Images may still be loading; a second pass after layout settles keeps the place
+        const go = () => box.scrollTo({ top: frac * (box.scrollHeight - box.clientHeight) });
+        go();
+        if (frac > 0) setTimeout(go, 300);
     };
 
     // After a jump into a continuous document (resume), bring the page into view
@@ -198,7 +254,7 @@ export default function Reader() {
 
     // Read the next page's text ahead of time, so turning the page finds it ready
     useEffect(() => {
-        if (!doc || ocrMode === 'off' || continuous) return;
+        if (!doc || doc.kind === 'epub' || ocrMode === 'off' || continuous) return;
         const n = currentPage + step;
         if (n > totalPages) return;
         let alive = true;
@@ -245,6 +301,7 @@ export default function Reader() {
 
     const fitWidth = async () => {
         if (!doc || !scrollRef.current) return;
+        if (doc.kind === 'epub') return setScale(1.4);
         const base = (await pageSize(doc, currentPage)).width;
         const two = spread && !continuous;
         const avail = scrollRef.current.clientWidth - 64 - (two ? 24 : 0);
@@ -262,8 +319,10 @@ export default function Reader() {
                 return;
             }
             if (!doc) return;
-            if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); goTo(currentPage + step); }
-            else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); goTo(currentPage - step); }
+            // EPUB chapters scroll: Page Up/Down and Space move within the chapter
+            const paged = doc.kind !== 'epub';
+            if (e.key === 'ArrowRight' || (paged && e.key === 'PageDown')) { e.preventDefault(); goTo(currentPage + step); }
+            else if (e.key === 'ArrowLeft' || (paged && e.key === 'PageUp')) { e.preventDefault(); goTo(currentPage - step); }
             else if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); zoom(ZOOM_STEP); }
             else if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); zoom(-ZOOM_STEP); }
         };
@@ -380,7 +439,7 @@ export default function Reader() {
     return (
         <div className="h-full flex flex-col" onMouseDown={e => {
             const t = e.target as HTMLElement;
-            if (!t.closest('[data-popover]')) { setFilterOpen(false); setLangOpen(false); setOcrOpen(false); }
+            if (!t.closest('[data-popover]')) { setFilterOpen(false); setLangOpen(false); setOcrOpen(false); setTocOpen(false); }
         }}>
             <header
                 className="h-12 shrink-0 flex items-center gap-1 px-3 border-b drag-region"
@@ -399,7 +458,7 @@ export default function Reader() {
 
                 {doc && (
                     <div className="flex items-center gap-0.5 no-drag">
-                        <button className="icon-btn" onClick={() => goTo(currentPage - step)} disabled={currentPage <= 1} aria-label="Previous page">
+                        <button className="icon-btn" onClick={() => goTo(currentPage - step)} disabled={currentPage <= 1} aria-label={isEpub ? 'Previous chapter' : 'Previous page'} title={isEpub ? 'Previous chapter' : undefined}>
                             <ChevronLeft size={17} />
                         </button>
                         <div className="flex items-center gap-1 text-[12.5px] muted tabular-nums">
@@ -409,11 +468,12 @@ export default function Reader() {
                                 onChange={e => setPageInput(e.target.value.replace(/\D/g, ''))}
                                 onKeyDown={e => e.key === 'Enter' && goTo(Number(pageInput) || 1)}
                                 onBlur={() => setPageInput(String(currentPage))}
-                                aria-label="Page number"
+                                aria-label={isEpub ? 'Chapter' : 'Page number'}
+                                title={isEpub ? 'Chapter' : undefined}
                             />
                             <span>/ {totalPages}</span>
                         </div>
-                        <button className="icon-btn" onClick={() => goTo(currentPage + step)} disabled={currentPage + step > totalPages} aria-label="Next page">
+                        <button className="icon-btn" onClick={() => goTo(currentPage + step)} disabled={currentPage + step > totalPages} aria-label={isEpub ? 'Next chapter' : 'Next page'} title={isEpub ? 'Next chapter' : undefined}>
                             <ChevronRight size={17} />
                         </button>
 
@@ -436,13 +496,33 @@ export default function Reader() {
                                 <GalleryVertical size={16} />
                             </button>
                         )}
-                        {!continuous && (
+                        {isEpub && doc.kind === 'epub' && doc.book.toc.length > 0 && (
+                            <div className="relative" data-popover>
+                                <button className="icon-btn" data-active={tocOpen} onClick={() => setTocOpen(o => !o)} title="Contents" aria-label="Contents">
+                                    <ListTree size={16} />
+                                </button>
+                                {tocOpen && (
+                                    <div className="popover absolute right-0 top-full mt-1.5 w-80 p-1 z-50 anim-in">
+                                        <p className="label px-2 pt-1.5 pb-1">Contents</p>
+                                        <div className="max-h-80 overflow-auto">
+                                            {doc.book.toc.map((t, i) => (
+                                                <button key={i} className="menu-item justify-between" style={{ paddingLeft: 8 + t.depth * 14 }} onClick={() => openInBook(t.chapter + 1, t.fragment)}>
+                                                    <span className="truncate">{t.title}</span>
+                                                    {t.chapter + 1 === currentPage && !t.fragment && <span className="dot" style={{ background: 'var(--accent)', width: 6, height: 6 }} />}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        {!continuous && !isEpub && (
                             <button className="icon-btn" data-active={spread} onClick={() => { setSpread(s => !s); setCard(null); }} title="Two pages" aria-label="Two-page view">
                                 <Columns2 size={16} />
                             </button>
                         )}
 
-                        <div className="relative" data-popover>
+                        {!isEpub && <div className="relative" data-popover>
                             <button className="icon-btn relative" data-active={ocrOpen} onClick={() => {
                                 if (!ocrOpen && doc) window.electronAPI.ocrGetDoc(doc.hash).then(setDocScript).catch(() => { });
                                 setOcrOpen(o => !o);
@@ -478,7 +558,7 @@ export default function Reader() {
                                     </div>
                                 </div>
                             )}
-                        </div>
+                        </div>}
 
                         <div className="relative" data-popover>
                             <button className="icon-btn relative" data-active={filterOpen || filterActive} onClick={() => setFilterOpen(o => !o)} title="Highlighted lists" aria-label="Highlighted lists">
@@ -534,7 +614,7 @@ export default function Reader() {
                         {focus ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                     </button>
                 )}
-                <button className="icon-btn no-drag" onClick={openFile} title="Open a PDF, comic or image" aria-label="Open file">
+                <button className="icon-btn no-drag" onClick={openFile} title="Open a PDF, EPUB, comic or image" aria-label="Open file">
                     <FolderOpen size={16} />
                 </button>
             </header>
@@ -551,7 +631,11 @@ export default function Reader() {
                         <Loader2 size={22} className="animate-spin faint" />
                     </div>
                 ) : doc ? (
-                    continuous ? (
+                    doc.kind === 'epub' ? (
+                        <div className="min-h-full flex justify-center px-8 py-10">
+                            <EpubView doc={doc} chapter={currentPage} scale={scale} highlighter={highlighter} onNavigate={openInBook} onRendered={applyPendingScroll} />
+                        </div>
+                    ) : continuous ? (
                         <div className="min-w-full w-max min-h-full flex flex-col items-center p-8">
                             {pages.map(p => (
                                 <PageView key={`${doc.hash}-${p}`} doc={doc} pageNum={p} scale={scale} highlighter={highlighter} ocrMode={ocrMode} ocrVersion={ocrVersion} lazy seamless />
@@ -567,7 +651,7 @@ export default function Reader() {
                 ) : (
                     <div className="h-full flex flex-col items-center justify-center text-center px-6">
                         <h2 className="serif text-[22px] font-semibold">{loadError ?? 'No document open'}</h2>
-                        <p className="muted mt-1.5 max-w-[320px]">Open a PDF, comic (CBZ) or image, then select any word or phrase to translate it.</p>
+                        <p className="muted mt-1.5 max-w-[320px]">Open a PDF, EPUB book, comic (CBZ) or image, then select any word or phrase to translate it.</p>
                         <div className="flex gap-2 mt-6">
                             <button className="btn btn-primary btn-lg" onClick={openFile}>
                                 <FolderOpen size={16} /> Open file

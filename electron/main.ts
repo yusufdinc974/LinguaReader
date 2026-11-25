@@ -349,13 +349,14 @@ function createWindow(): void {
 
 // IPC Handlers
 function setupIpcHandlers(): void {
-    // File dialog: PDFs, images and comic archives
+    // File dialog: PDFs, EPUBs, images and comic archives
     ipcMain.handle('open-pdf-dialog', async () => {
         const result = await dialog.showOpenDialog({
             properties: ['openFile'],
             filters: [
-                { name: 'Books, comics and images', extensions: ['pdf', 'cbz', 'zip', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'] },
+                { name: 'Books, comics and images', extensions: ['pdf', 'epub', 'cbz', 'zip', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'] },
                 { name: 'PDF', extensions: ['pdf'] },
+                { name: 'EPUB', extensions: ['epub'] },
                 { name: 'Comics (CBZ)', extensions: ['cbz', 'zip'] },
                 { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'] },
             ],

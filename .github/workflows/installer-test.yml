@@ -58,6 +58,9 @@ jobs:
       - name: Read text in the installed app
         run: node test/e2e/ocr-smoke.mjs "$env:APP_EXE" e2e-out
 
+      - name: Read an EPUB in the installed app
+        run: node test/e2e/epub-smoke.mjs "$env:APP_EXE" e2e-out
+
       - name: Uninstall
         if: always() && env.APP_EXE != ''
         shell: pwsh
@@ -123,6 +126,9 @@ jobs:
 
       - name: Read text in the installed app
         run: node test/e2e/ocr-smoke.mjs "$APP_EXE" e2e-out
+
+      - name: Read an EPUB in the installed app
+        run: node test/e2e/epub-smoke.mjs "$APP_EXE" e2e-out
 
       - name: Upload screenshots
         if: always()
