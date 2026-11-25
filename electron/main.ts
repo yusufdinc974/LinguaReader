@@ -1321,15 +1321,22 @@ app.whenReady().then(async () => {
 });
 
 // Auto-updater setup
+let silentUpdateCheck = false;
+
 function setupAutoUpdater() {
     // Disable auto-download, we'll do it on user request
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
 
-    // Check for updates after a short delay
+    // Check for updates after a short delay. This background check stays
+    // quiet when it fails (e.g. offline): only a check the user started
+    // shows an error.
     setTimeout(() => {
+        silentUpdateCheck = true;
         autoUpdater.checkForUpdates().catch(err => {
             console.error('Auto-update check failed:', err);
+        }).finally(() => {
+            silentUpdateCheck = false;
         });
     }, 5000);
 
@@ -1366,6 +1373,7 @@ function setupAutoUpdater() {
     });
 
     autoUpdater.on('error', (err) => {
+        if (silentUpdateCheck) return;
         mainWindow?.webContents.send('update-status', { status: 'error', message: err.message });
     });
 }
