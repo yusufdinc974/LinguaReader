@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Plus, Search, X, MoreHorizontal, ArrowRightLeft, Trash2, Play } from 'lucide-react';
+import { Plus, Search, X, MoreHorizontal, ArrowRightLeft, Trash2, Play, Import } from 'lucide-react';
 import type { Word, WordList } from '../types';
 import { useStore } from '../store/useStore';
 import { LEVELS, LIST_COLORS, DEFAULT_LIST_COLOR, wordKey } from '../lib/words';
@@ -8,6 +8,8 @@ import { displayName } from '../lib/document';
 import SpeakButton from '../components/SpeakButton';
 import Dialog, { ConfirmDialog } from '../components/Dialog';
 import ReviewSetup from '../components/ReviewSetup';
+import AnkiImportDialog from '../components/AnkiImportDialog';
+import type { AnkiOpenResult } from '../../electron/ankiTypes';
 
 interface Schedule {
     overdue: number;
@@ -87,6 +89,7 @@ export default function Words() {
     const [rowMenu, setRowMenu] = useState<number | null>(null);
     const [confirm, setConfirm] = useState<{ title: string; message: string; label: string; run: () => void } | null>(null);
     const [toast, setToast] = useState<string | null>(null);
+    const [ankiDeck, setAnkiDeck] = useState<AnkiOpenResult | null>(null);
 
     const selected = lists?.find(l => l.id === selectedId) ?? null;
 
@@ -179,6 +182,20 @@ export default function Words() {
         else if (r.error) flash(r.error);
     };
 
+    const exportFile = async (format: 'apkg' | 'csv') => {
+        if (!selected) return;
+        setListMenu(false);
+        const r = await window.electronAPI.exportListFile(selected.id, format);
+        if (r.success) flash(format === 'apkg' ? `Exported ${r.wordCount} words. Open the file with Anki to add the deck.` : `Exported ${r.wordCount} words.`);
+        else if (r.error) flash(r.error);
+    };
+
+    const openAnki = async () => {
+        const r = await window.electronAPI.ankiOpen();
+        if (r.success) setAnkiDeck(r);
+        else if (r.error) flash(r.error);
+    };
+
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
         if (!q) return words;
@@ -238,9 +255,14 @@ export default function Words() {
 
                 <div className="flex items-center justify-between px-5 pt-4 pb-2">
                     <span className="label">Lists</span>
-                    <button className="icon-btn w-7 h-7 -mr-1.5" onClick={() => setCreating(true)} title="New list" aria-label="New list">
-                        <Plus size={15} />
-                    </button>
+                    <div className="flex items-center -mr-1.5">
+                        <button className="icon-btn w-7 h-7" onClick={openAnki} title="Import an Anki deck" aria-label="Import an Anki deck">
+                            <Import size={15} />
+                        </button>
+                        <button className="icon-btn w-7 h-7" onClick={() => setCreating(true)} title="New list" aria-label="New list">
+                            <Plus size={15} />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-auto px-2 pb-4">
@@ -248,6 +270,7 @@ export default function Words() {
                         <div className="px-3 py-2">
                             <p className="text-[12.5px] faint">No lists yet.</p>
                             <button className="btn btn-outline mt-3" onClick={() => setCreating(true)}><Plus size={14} /> New list</button>
+                            <button className="btn btn-ghost mt-1.5" onClick={openAnki}><Import size={14} /> Import an Anki deck</button>
                         </div>
                     )}
                     {lists?.map(list => {
@@ -308,8 +331,11 @@ export default function Words() {
                                         </button>
                                         {listMenu && (
                                             <div className="popover absolute right-0 top-full mt-1.5 w-56 p-1 z-50 anim-in">
-                                                <button className="menu-item" onClick={() => exportList(true)}>Export with progress</button>
-                                                <button className="menu-item" onClick={() => exportList(false)}>Export words only</button>
+                                                <button className="menu-item" disabled={words.length === 0} onClick={() => exportFile('apkg')}>Export to Anki (.apkg)</button>
+                                                <button className="menu-item" disabled={words.length === 0} onClick={() => exportFile('csv')}>Export as CSV</button>
+                                                <div className="h-px my-1" style={{ background: 'var(--border)' }} />
+                                                <button className="menu-item" onClick={() => exportList(true)}>Export with progress (JSON)</button>
+                                                <button className="menu-item" onClick={() => exportList(false)}>Export words only (JSON)</button>
                                                 <div className="h-px my-1" style={{ background: 'var(--border)' }} />
                                                 <button className="menu-item" style={{ color: 'var(--danger)' }} onClick={() => { setListMenu(false); deleteList(selected); }}>
                                                     Delete list…
@@ -417,6 +443,7 @@ export default function Words() {
                         <p className="serif text-[22px] font-semibold">Make your first list</p>
                         <p className="muted mt-1.5 max-w-[340px]">Lists group the words you save while reading, and each one gets its own highlight color.</p>
                         <button className="btn btn-primary btn-lg mt-6" onClick={() => setCreating(true)}><Plus size={15} /> New list</button>
+                        <button className="btn btn-ghost mt-2" onClick={openAnki}><Import size={14} /> Or import an Anki deck</button>
                     </div>
                 ) : null}
             </section>
@@ -449,6 +476,20 @@ export default function Words() {
                         ))}
                     </div>
                 </Dialog>
+            )}
+
+            {ankiDeck && (
+                <AnkiImportDialog
+                    deck={ankiDeck}
+                    lists={lists ?? []}
+                    onClose={() => setAnkiDeck(null)}
+                    onDone={(listId, msg) => {
+                        setAnkiDeck(null);
+                        setSelectedId(listId);
+                        bumpData();
+                        flash(msg);
+                    }}
+                />
             )}
 
             {confirm && (

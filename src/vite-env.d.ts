@@ -204,6 +204,9 @@ interface Window {
             wordCount?: number;
             error?: string;
         }>;
+        exportListFile: (listId: number, format: 'apkg' | 'csv') => Promise<{ success: boolean; cancelled?: boolean; path?: string; wordCount?: number; error?: string }>;
+        ankiOpen: () => Promise<import('../electron/ankiTypes').AnkiOpenResult>;
+        ankiImport: (opts: import('../electron/ankiTypes').AnkiImportOptions) => Promise<{ success: boolean; added?: number; existing?: number; progress?: number; listId?: number; error?: string }>;
 
         // Auto-update
         checkForUpdates: () => Promise<{

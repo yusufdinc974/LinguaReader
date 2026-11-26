@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { OcrPage, ScriptId } from './ocr/types';
 import type { CatalogVoice as TtsCatalogVoice } from './tts';
 import type { DictEntry, DictionaryInfo } from './dictionary';
+import type { AnkiOpenResult, AnkiImportOptions } from './ankiTypes';
 
 export interface PdfFile {
     name: string;
@@ -177,6 +178,11 @@ const electronAPI = {
         wordCount?: number;
         error?: string;
     }> => ipcRenderer.invoke('export-list', listId, includeProgress),
+    exportListFile: (listId: number, format: 'apkg' | 'csv'): Promise<{ success: boolean; cancelled?: boolean; path?: string; wordCount?: number; error?: string }> =>
+        ipcRenderer.invoke('export-list-file', listId, format),
+    ankiOpen: (): Promise<AnkiOpenResult> => ipcRenderer.invoke('anki-open'),
+    ankiImport: (opts: AnkiImportOptions): Promise<{ success: boolean; added?: number; existing?: number; progress?: number; listId?: number; error?: string }> =>
+        ipcRenderer.invoke('anki-import', opts),
 
     // Text recognition (OCR) for scanned pages and images
     ocrAvailable: (): Promise<boolean> => ipcRenderer.invoke('ocr-available'),
