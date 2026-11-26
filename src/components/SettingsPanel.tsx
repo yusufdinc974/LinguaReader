@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Check, AlertCircle, Loader2 } from 'lucide-react';
 import type { Theme } from '../lib/theme';
 import PronunciationSettings from './PronunciationSettings';
@@ -30,6 +31,7 @@ function Section({ title, description, children }: { title: string; description?
 }
 
 export default function SettingsPanel({ open, onClose, theme, onThemeChange }: Props) {
+    const navigate = useNavigate();
     // The saved key never comes back to this page: only whether one is saved and its last 4 characters.
     const [apiKey, setApiKey] = useState('');
     const [keyStatus, setKeyStatus] = useState<{ saved: boolean; hint: string }>({ saved: false, hint: '' });
@@ -99,32 +101,6 @@ export default function SettingsPanel({ open, onClose, theme, onThemeChange }: P
             flash({ type: 'ok', text: key ? 'DeepL key saved.' : 'DeepL key removed.' });
         } catch {
             flash({ type: 'error', text: key ? "Could not save the key. Check that it's a DeepL API key." : 'Could not remove the key.' });
-        } finally {
-            setBusy(null);
-        }
-    };
-
-    const doExport = async () => {
-        setBusy('export');
-        try {
-            const r = await window.electronAPI.exportData();
-            if (r.success) flash({ type: 'ok', text: `Backup saved to ${r.path}` });
-            else if (r.error) flash({ type: 'error', text: r.error });
-        } catch {
-            flash({ type: 'error', text: 'Export failed.' });
-        } finally {
-            setBusy(null);
-        }
-    };
-
-    const doImport = async () => {
-        setBusy('import');
-        try {
-            const r = await window.electronAPI.importData();
-            if (r.success) flash({ type: 'ok', text: `Imported ${r.imported?.words ?? 0} words in ${r.imported?.lists ?? 0} lists.` });
-            else if (r.error && r.error !== 'Import cancelled') flash({ type: 'error', text: r.error });
-        } catch {
-            flash({ type: 'error', text: 'Import failed.' });
         } finally {
             setBusy(null);
         }
@@ -216,17 +192,10 @@ export default function SettingsPanel({ open, onClose, theme, onThemeChange }: P
                         <DictionarySettings />
                     </Section>
 
-                    <Section title="Backup" description="Lists, words and review progress as a JSON file.">
-                        <div className="flex gap-2">
-                            <button className="btn btn-outline" onClick={doExport} disabled={busy !== null}>
-                                {busy === 'export' && <Loader2 size={14} className="animate-spin" />}
-                                Export backup
-                            </button>
-                            <button className="btn btn-outline" onClick={doImport} disabled={busy !== null}>
-                                {busy === 'import' && <Loader2 size={14} className="animate-spin" />}
-                                Import…
-                            </button>
-                        </div>
+                    <Section title="Import and export" description="Backups, Anki decks and CSV files, all in one place on the Words page.">
+                        <button className="btn btn-outline" onClick={() => { onClose(); navigate('/words', { state: { importExport: true } }); }}>
+                            Open Import / Export
+                        </button>
                     </Section>
 
                     <Section title="Phone sync" description="Both devices need to be on the same Wi-Fi.">

@@ -57,6 +57,7 @@
 ### 🔒 Your data stays yours
 - Everything is stored locally. No account, no tracking.
 - **Backup and restore** your lists, words and review progress as a JSON file.
+- **Anki and CSV.** Everything is under **Import / Export** on the Words page. Export any list as an Anki deck (.apkg), with its review progress, or as a CSV spreadsheet. Import an Anki deck into a list, choosing which fields hold the word, the translation and the example sentence.
 - **Phone sync** with LinguaReader for Android over your own Wi-Fi, paired with a one-time QR code.
 - Light and dark themes.
 

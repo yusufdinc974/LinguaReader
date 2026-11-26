@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Plus, Search, X, MoreHorizontal, ArrowRightLeft, Trash2, Play } from 'lucide-react';
+import { Plus, Search, X, MoreHorizontal, ArrowRightLeft, Trash2, Play, ArrowDownUp } from 'lucide-react';
 import type { Word, WordList } from '../types';
 import { useStore } from '../store/useStore';
 import { LEVELS, LIST_COLORS, DEFAULT_LIST_COLOR, wordKey } from '../lib/words';
@@ -8,6 +8,9 @@ import { displayName } from '../lib/document';
 import SpeakButton from '../components/SpeakButton';
 import Dialog, { ConfirmDialog } from '../components/Dialog';
 import ReviewSetup from '../components/ReviewSetup';
+import AnkiImportDialog from '../components/AnkiImportDialog';
+import ImportExportDialog from '../components/ImportExportDialog';
+import type { AnkiOpenResult } from '../../electron/ankiTypes';
 
 interface Schedule {
     overdue: number;
@@ -87,6 +90,15 @@ export default function Words() {
     const [rowMenu, setRowMenu] = useState<number | null>(null);
     const [confirm, setConfirm] = useState<{ title: string; message: string; label: string; run: () => void } | null>(null);
     const [toast, setToast] = useState<string | null>(null);
+    const [ankiDeck, setAnkiDeck] = useState<AnkiOpenResult | null>(null);
+    const [io, setIo] = useState(false);
+    // Settings → "Import and export" opens it here
+    useEffect(() => {
+        if ((location.state as { importExport?: boolean } | null)?.importExport) {
+            setIo(true);
+            navigate('.', { replace: true, state: null });
+        }
+    }, [location.state, navigate]);
 
     const selected = lists?.find(l => l.id === selectedId) ?? null;
 
@@ -171,14 +183,6 @@ export default function Words() {
         } else flash(r.message || 'Could not move the word.');
     };
 
-    const exportList = async (includeProgress: boolean) => {
-        if (!selected) return;
-        setListMenu(false);
-        const r = await window.electronAPI.exportList(selected.id, includeProgress);
-        if (r.success) flash(`Exported ${r.wordCount} words.`);
-        else if (r.error) flash(r.error);
-    };
-
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
         if (!q) return words;
@@ -201,7 +205,12 @@ export default function Words() {
             {/* ---------- left column ---------- */}
             <aside className="w-[260px] shrink-0 flex flex-col border-r" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
                 <div className="px-5 pt-6 pb-5 border-b" style={{ borderColor: 'var(--border)' }}>
-                    <h1 className="serif text-[24px] font-semibold leading-none">Words</h1>
+                    <div className="flex items-center justify-between">
+                        <h1 className="serif text-[24px] font-semibold leading-none">Words</h1>
+                        <button className="btn btn-ghost h-7 px-2 text-[12.5px] gap-1 -mr-2" onClick={() => setIo(true)} title="Import and export (Anki, CSV, backups)">
+                            <ArrowDownUp size={13} /> Import / Export
+                        </button>
+                    </div>
 
                     {schedule && totalWords > 0 && (
                         <>
@@ -248,6 +257,7 @@ export default function Words() {
                         <div className="px-3 py-2">
                             <p className="text-[12.5px] faint">No lists yet.</p>
                             <button className="btn btn-outline mt-3" onClick={() => setCreating(true)}><Plus size={14} /> New list</button>
+
                         </div>
                     )}
                     {lists?.map(list => {
@@ -308,8 +318,7 @@ export default function Words() {
                                         </button>
                                         {listMenu && (
                                             <div className="popover absolute right-0 top-full mt-1.5 w-56 p-1 z-50 anim-in">
-                                                <button className="menu-item" onClick={() => exportList(true)}>Export with progress</button>
-                                                <button className="menu-item" onClick={() => exportList(false)}>Export words only</button>
+                                                <button className="menu-item" onClick={() => { setListMenu(false); setIo(true); }}>Export this list…</button>
                                                 <div className="h-px my-1" style={{ background: 'var(--border)' }} />
                                                 <button className="menu-item" style={{ color: 'var(--danger)' }} onClick={() => { setListMenu(false); deleteList(selected); }}>
                                                     Delete list…
@@ -417,6 +426,7 @@ export default function Words() {
                         <p className="serif text-[22px] font-semibold">Make your first list</p>
                         <p className="muted mt-1.5 max-w-[340px]">Lists group the words you save while reading, and each one gets its own highlight color.</p>
                         <button className="btn btn-primary btn-lg mt-6" onClick={() => setCreating(true)}><Plus size={15} /> New list</button>
+                        <button className="btn btn-ghost mt-2" onClick={() => setIo(true)}><ArrowDownUp size={14} /> Or import an Anki deck or a backup</button>
                     </div>
                 ) : null}
             </section>
@@ -449,6 +459,31 @@ export default function Words() {
                         ))}
                     </div>
                 </Dialog>
+            )}
+
+            {io && (
+                <ImportExportDialog
+                    lists={lists ?? []}
+                    selectedId={selectedId}
+                    onClose={() => setIo(false)}
+                    onAnki={deck => { setIo(false); setAnkiDeck(deck); }}
+                    onImported={bumpData}
+                    flash={flash}
+                />
+            )}
+
+            {ankiDeck && (
+                <AnkiImportDialog
+                    deck={ankiDeck}
+                    lists={lists ?? []}
+                    onClose={() => setAnkiDeck(null)}
+                    onDone={(listId, msg) => {
+                        setAnkiDeck(null);
+                        setSelectedId(listId);
+                        bumpData();
+                        flash(msg);
+                    }}
+                />
             )}
 
             {confirm && (

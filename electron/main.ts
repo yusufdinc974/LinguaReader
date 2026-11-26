@@ -12,6 +12,8 @@ import { configureSandbox, guardIpc, lockDownWebContents, makeAppUrlCheck, restr
 import { deeplKeyStatus, getDeeplKey, isPlausibleDeeplKey, portableSettings, PORTABLE_SETTINGS, RENDERER_SETTINGS, setDeeplKey } from './secrets';
 import { isNewerVersion } from './version';
 import { parseBackup, type Backup } from './backup';
+import { buildApkg, readApkg, guessFields, wordsFrom, ankiText, wordsCsv, type AnkiPackage, type FieldMap } from './anki';
+import type { AnkiOpenResult } from './ankiTypes';
 
 let mainWindow: BrowserWindow | null = null;
 let db: Database.Database | null = null;
@@ -925,12 +927,20 @@ function setupIpcHandlers(): void {
         try {
             const result = await dialog.showOpenDialog({
                 title: 'Import LinguaReader Data',
-                filters: [{ name: 'JSON Files', extensions: ['json'] }],
+                filters: [
+                    { name: 'LinguaReader backup or Anki deck', extensions: ['json', 'apkg', 'colpkg'] },
+                    { name: 'All files', extensions: ['*'] },
+                ],
                 properties: ['openFile'],
             });
 
             if (result.canceled || result.filePaths.length === 0) {
                 return { success: false, error: 'Import cancelled' };
+            }
+            // An Anki deck goes on to the Anki import on the Words page
+            if (!/\.json$/i.test(result.filePaths[0])) {
+                const anki = openAnkiFile(result.filePaths[0]);
+                return anki.success ? { success: false, anki } : { success: false, error: anki.error };
             }
 
             const fileContent = fs.readFileSync(result.filePaths[0], 'utf-8');
@@ -1292,6 +1302,171 @@ function setupIpcHandlers(): void {
         } catch (error) {
             console.error('Export list error:', error);
             return { success: false, error: String(error) };
+        }
+    });
+
+    // ---- Anki and CSV ----
+
+    /** A list's words with their progress, for the Anki and CSV exports. */
+    const exportRows = (listId: number) => db?.prepare(`
+        SELECT w.word, w.translation, w.sentence_context, w.source_language, w.target_language, w.pdf_name, w.created_at,
+               wf.familiarity_level, wf.easiness_factor, wf.interval, wf.repetitions, wf.next_review_date
+        FROM words w
+        JOIN word_list_items wli ON w.id = wli.word_id
+        LEFT JOIN word_familiarity wf ON wf.word_lower = word_key(w.word)
+        WHERE wli.word_list_id = ?
+        ORDER BY wli.added_at
+    `).all(listId) as Array<{
+        word: string; translation: string; sentence_context: string | null; source_language: string; target_language: string;
+        pdf_name: string | null; created_at: string; familiarity_level: number | null; easiness_factor: number | null;
+        interval: number | null; repetitions: number | null; next_review_date: string | null;
+    }> ?? [];
+
+    const safeFileName = (name: string) => name.replace(/[\\/:*?"<>|\x00-\x1f]+/g, '_').trim() || 'words';
+
+    ipcMain.handle('export-list-file', async (_, listId: number, format: 'apkg' | 'csv') => {
+        try {
+            if (!Number.isInteger(listId) || (format !== 'apkg' && format !== 'csv')) return { success: false, error: 'Invalid request' };
+            const list = db?.prepare('SELECT name FROM word_lists WHERE id = ?').get(listId) as { name: string } | undefined;
+            if (!list) return { success: false, error: 'List not found' };
+            const rows = exportRows(listId);
+            const apkg = format === 'apkg';
+            const result = await dialog.showSaveDialog({
+                title: apkg ? `Export "${list.name}" to Anki` : `Export "${list.name}" as CSV`,
+                defaultPath: `${safeFileName(list.name)}.${apkg ? 'apkg' : 'csv'}`,
+                filters: [apkg ? { name: 'Anki deck', extensions: ['apkg'] } : { name: 'CSV file', extensions: ['csv'] }],
+            });
+            if (result.canceled || !result.filePath) return { success: false, cancelled: true };
+            if (apkg) {
+                const file = buildApkg(list.name, rows.map(r => ({
+                    word: r.word,
+                    translation: r.translation,
+                    sentence: r.sentence_context,
+                    source: r.pdf_name && r.pdf_name !== 'imported' ? r.pdf_name.replace(/\.(pdf|epub|cbz|zip|png|jpe?g|webp|gif|bmp|avif)$/i, '') : '',
+                    lang: r.source_language,
+                    interval: r.interval,
+                    easinessFactor: r.easiness_factor,
+                    repetitions: r.repetitions,
+                    nextReview: r.next_review_date,
+                })));
+                fs.writeFileSync(result.filePath, file);
+            } else {
+                fs.writeFileSync(result.filePath, wordsCsv(rows), 'utf-8');
+            }
+            return { success: true, path: result.filePath, wordCount: rows.length };
+        } catch (error) {
+            console.error('Export list file error:', error);
+            return { success: false, error: String((error as Error)?.message ?? error) };
+        }
+    });
+
+    // The deck being imported, between choosing the file and confirming
+    let ankiPending: { pkg: AnkiPackage; file: string } | null = null;
+
+    /** Reads a deck and keeps it for anki-import; the summary is for the import dialog. */
+    function openAnkiFile(file: string): AnkiOpenResult {
+        try {
+            const pkg = readApkg(fs.readFileSync(file));
+            if (pkg.notes.length === 0) return { success: false, error: 'This deck has no cards.' };
+            ankiPending = { pkg, file };
+            return {
+                success: true,
+                fileName: path.basename(file).replace(/(\.(apkg|colpkg|anki2|anki21|zip))+$/i, ''),
+                decks: pkg.decks,
+                noteTypes: pkg.noteTypes.map(t => {
+                    const samples = pkg.notes.filter(n => n.noteType === t.id).slice(0, 20).map(n => n.fields);
+                    return {
+                        ...t,
+                        guess: guessFields(t.fields, samples),
+                        samples: samples.slice(0, 3).map(f => f.map(v => ankiText(v).slice(0, 160))),
+                    };
+                }),
+                studied: pkg.notes.filter(n => n.card && n.card.type !== 0).length,
+            };
+        } catch (error) {
+            console.error('Anki open error:', error);
+            return { success: false, error: String((error as Error)?.message ?? error) };
+        }
+    }
+
+    ipcMain.handle('anki-open', async () => {
+        const result = await dialog.showOpenDialog({
+            title: 'Import an Anki deck',
+            filters: [{ name: 'Anki deck', extensions: ['apkg', 'colpkg', 'anki2', 'anki21', 'zip'] }, { name: 'All files', extensions: ['*'] }],
+            properties: ['openFile'],
+        });
+        if (result.canceled || result.filePaths.length === 0) return { success: false, cancelled: true };
+        return openAnkiFile(result.filePaths[0]);
+    });
+
+    ipcMain.handle('anki-import', (_, opts: { decks: number[] | null; maps: Record<number, FieldMap>; listId: number | null; listName: string; lang: string; keepProgress: boolean }) => {
+        try {
+            if (!ankiPending || !db) return { success: false, error: 'Choose the deck again.' };
+            const int = (v: unknown) => Number.isInteger(v) ? (v as number) : null;
+            const field = (v: unknown) => { const n = int(v); return n !== null && n >= -1 && n < 1000 ? n : -1; };
+            if (!opts || typeof opts !== 'object' || !opts.maps || typeof opts.maps !== 'object') return { success: false, error: 'Invalid request' };
+            const maps: Record<number, FieldMap> = {};
+            for (const [k, m] of Object.entries(opts.maps)) {
+                if (m && typeof m === 'object') maps[Number(k)] = { word: Math.max(0, field(m.word)), translation: field(m.translation), sentence: field(m.sentence) };
+            }
+            opts = {
+                decks: Array.isArray(opts.decks) ? opts.decks.map(int).filter((d): d is number => d !== null) : null,
+                maps,
+                listId: int(opts.listId),
+                listName: typeof opts.listName === 'string' ? opts.listName : '',
+                lang: typeof opts.lang === 'string' && /^[a-z]{2,3}(-[A-Za-z0-9]+)?$|^auto$/.test(opts.lang) ? opts.lang : 'auto',
+                keepProgress: opts.keepProgress === true,
+            };
+            const { pkg } = ankiPending;
+            const words = wordsFrom(pkg, opts.maps, opts.decks, opts.keepProgress);
+            if (words.length === 0) return { success: false, error: 'No words found in the chosen fields.' };
+            const d = db;
+            const stats = { added: 0, existing: 0, progress: 0, listId: 0 };
+            const lang = opts.lang;
+            d.transaction(() => {
+                let listId = opts.listId;
+                if (!listId || !d.prepare('SELECT 1 FROM word_lists WHERE id = ?').get(listId)) {
+                    const colors = ['#c8553d', '#d08a3a', '#c9a83b', '#5f9a5a', '#3f8f84', '#4f7fb0', '#6c6fc2', '#9467b8', '#b65f8f'];
+                    const n = (d.prepare('SELECT COUNT(*) AS n FROM word_lists').get() as { n: number }).n;
+                    listId = Number(d.prepare('INSERT INTO word_lists (name, description, color) VALUES (?, ?, ?)').run(
+                        (opts.listName || 'Anki').slice(0, 120), 'Imported from Anki', colors[n % colors.length],
+                    ).lastInsertRowid);
+                }
+                stats.listId = listId;
+                const findWord = d.prepare('SELECT id, sentence_context FROM words WHERE word_key(word) = ? LIMIT 1');
+                const addWord = d.prepare("INSERT INTO words (word, translation, source_language, target_language, sentence_context, pdf_name) VALUES (?, ?, ?, 'auto', ?, ?)");
+                const fillSentence = d.prepare('UPDATE words SET sentence_context = ? WHERE id = ?');
+                const addItem = d.prepare('INSERT OR IGNORE INTO word_list_items (word_list_id, word_id) VALUES (?, ?)');
+                const hasFam = d.prepare('SELECT 1 FROM word_familiarity WHERE word_lower = ?');
+                const addFam = d.prepare(`INSERT INTO word_familiarity (word_lower, familiarity_level, translation, easiness_factor, interval, repetitions, next_review_date, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`);
+                const today = new Date().toISOString().split('T')[0];
+                for (const w of words) {
+                    const key = wordKey(w.word);
+                    const existing = findWord.get(key) as { id: number; sentence_context: string | null } | undefined;
+                    let id: number;
+                    if (existing) {
+                        id = existing.id;
+                        if (w.sentence && !existing.sentence_context) fillSentence.run(w.sentence, id);
+                        stats.existing++;
+                    } else {
+                        id = Number(addWord.run(w.word, w.translation, lang, w.sentence, w.deck ? `Anki: ${w.deck}` : 'Anki').lastInsertRowid);
+                        stats.added++;
+                    }
+                    addItem.run(listId, id);
+                    // Progress already made in the app is kept
+                    if (!hasFam.get(key)) {
+                        const s = w.srs;
+                        addFam.run(key, s?.level ?? 1, w.translation, s?.easinessFactor ?? 2.5, s?.interval ?? 0, s?.repetitions ?? 0, s?.nextReview ?? today);
+                        if (s) stats.progress++;
+                    }
+                }
+            })();
+            ankiPending = null;
+            return { success: true, ...stats };
+        } catch (error) {
+            console.error('Anki import error:', error);
+            return { success: false, error: String((error as Error)?.message ?? error) };
         }
     });
 }
