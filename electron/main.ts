@@ -791,7 +791,7 @@ function setupIpcHandlers(): void {
         // If word is in multiple lists, pick the color from the most recently created list
         // Use custom unicode_lower without stripping chars so Cyrillic and other scripts are preserved case-insensitively
         let query = `
-            SELECT word_key(w.word) as word_lower, l.color
+            SELECT word_key(w.word) as word_lower, l.color, w.source_language
             FROM words w
             JOIN word_list_items wli ON w.id = wli.word_id
             JOIN word_lists l ON wli.word_list_id = l.id

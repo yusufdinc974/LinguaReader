@@ -147,7 +147,7 @@ const electronAPI = {
         totalWords: number;
         upcomingDays: { [date: string]: number };
     }> => ipcRenderer.invoke('get-review-schedule'),
-    getWordColors: (listIds?: number[]): Promise<{ word_lower: string; color: string }[]> => ipcRenderer.invoke('get-word-colors', listIds),
+    getWordColors: (listIds?: number[]): Promise<{ word_lower: string; color: string; source_language: string | null }[]> => ipcRenderer.invoke('get-word-colors', listIds),
 
     // Data Import/Export
     exportData: (): Promise<{ success: boolean; path?: string; error?: string }> =>
@@ -204,6 +204,7 @@ const electronAPI = {
     dictInstall: (lang: string): Promise<string[]> => ipcRenderer.invoke('dict-install', lang),
     dictRemove: (lang: string): Promise<string[]> => ipcRenderer.invoke('dict-remove', lang),
     dictLookup: (lang: string, text: string): Promise<DictEntry[] | null> => ipcRenderer.invoke('dict-lookup', lang, text),
+    dictForms: (words: { key: string; lang: string }[]): Promise<[string, string][]> => ipcRenderer.invoke('dict-forms', words),
     onDictProgress: (callback: (p: { lang: string; got: number; total: number }) => void) => {
         const handler = (_: unknown, data: any) => callback(data);
         ipcRenderer.on('dict-progress', handler);

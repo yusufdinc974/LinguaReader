@@ -177,7 +177,7 @@ interface Window {
             totalWords: number;
             upcomingDays: { [date: string]: number };
         }>;
-        getWordColors: (listIds?: number[]) => Promise<{ word_lower: string; color: string }[]>;
+        getWordColors: (listIds?: number[]) => Promise<{ word_lower: string; color: string; source_language: string | null }[]>;
 
         // Data Import/Export
         exportData: () => Promise<{ success: boolean; path?: string; error?: string }>;
@@ -245,6 +245,7 @@ interface Window {
         dictInstall: (lang: string) => Promise<string[]>;
         dictRemove: (lang: string) => Promise<string[]>;
         dictLookup: (lang: string, text: string) => Promise<import('./types').DictEntry[] | null>;
+        dictForms: (words: { key: string; lang: string }[]) => Promise<[string, string][]>;
         onDictProgress: (callback: (p: { lang: string; got: number; total: number }) => void) => () => void;
 
         // Sync Server
