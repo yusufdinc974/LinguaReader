@@ -1,28 +1,53 @@
-// Natural-sounding pronunciation with Piper (https://github.com/rhasspy/piper),
-// an offline text-to-speech engine. Nothing is bundled: the engine (~20 MB)
-// and each language's voice (~20-60 MB) are downloaded when the user asks for
-// them, into <userData>/piper. The engine is a separate program that we run
-// with the text on stdin; voices come from the rhasspy/piper-voices catalog.
+// Natural-sounding pronunciation, offline. Nothing is bundled: the voice
+// engine and each voice are downloaded when the user asks for them, into
+// <userData>/piper.
 //
-// Windows and Linux only: the published macOS builds of the engine are
-// missing their libraries, and macOS's own voices are good anyway.
+// The engine is sherpa-onnx (https://github.com/k2-fsa/sherpa-onnx, Apache
+// 2.0), from its npm builds for Windows, macOS and Linux. It runs in a
+// utility process (ttsWorker.ts). It reads two kinds of voice:
+// - Piper voices (rhasspy/piper-voices on Hugging Face), one file per
+//   language and speaker, read with espeak-ng's pronunciation data.
+// - Kokoro (hexgrad/Kokoro-82M, Apache 2.0) for English and Chinese: one
+//   shared 130 MB model with several speakers.
+// Version 1.13 of the engine, because 2.x dropped espeak-ng, which Piper
+// voices need.
 
-import { app, ipcMain, type WebContents } from 'electron';
-import { spawn } from 'node:child_process';
+import { app, ipcMain, utilityProcess, type UtilityProcess, type WebContents } from 'electron';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import zlib from 'node:zlib';
-import { unzipSync } from 'fflate';
 
-const ENGINE_VERSION = '2023.11.14-2';
-const ENGINES: Record<string, { file: string; sha256: string; exe: string }> = {
-    'win32-x64': { file: 'piper_windows_amd64.zip', sha256: 'f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea', exe: 'piper.exe' },
-    'linux-x64': { file: 'piper_linux_x86_64.tar.gz', sha256: 'a50cb45f355b7af1f6d758c1b360717877ba0a398cc8cbe6d2a7a3a26e225992', exe: 'piper' },
+const ENGINE_VERSION = '1.13.8';
+/** npm package of the engine's build for each system, with its pinned SHA-512. */
+const ENGINES: Record<string, { pkg: string; sha512: string }> = {
+    'win32-x64': { pkg: 'win-x64', sha512: 'oZF1c9VPOKtMwn83Bboc5XSWL+76BRoyB3eUuVnCknBKxwSULZU2Foia9VHWzU+n4I12rPsP6z6H9Rp1hD9o8g==' },
+    'win32-arm64': { pkg: 'win-arm64', sha512: 'IfdKVT7tT5xAnlBqNkc70amt+bbn2Wkg0v3hwzKZIIyzlsWIUT0U1eQ+90pE8U4CR0SxVAN1kCmv7dmmQ4o0Qg==' },
+    'linux-x64': { pkg: 'linux-x64', sha512: '6plnhjagsSeTntCgnlag86hWbs/uZE9Crms1LgOb68/1nKsIQjMd+WG519m+aPwT6TrsBOiEMzrx41t8sL5L5g==' },
+    'linux-arm64': { pkg: 'linux-arm64', sha512: 'Tlg7a70b/Wge3OF8IgTHF9jhSVCsLyKQKhwc4BsJ5A+dL/SrFtGBjzuHp4XeLhiiOT7afCxX5PdSn/D4c8Lnuw==' },
+    'darwin-x64': { pkg: 'darwin-x64', sha512: '7BLRpjM6w4f9W46/nmkmq8lEKUayhebvcpslCVQ+6QN2uReYlZEMDZlSpXMjme+hUFrPfRz8P3UNq8ep/4d19g==' },
+    'darwin-arm64': { pkg: 'darwin-arm64', sha512: 'FPNgJMgnWVl/KhRTIhG3KL3A4Om63Rn4YKXc9/uHY7SzLcvqLJLc/h7UBWJwduXvv7K18t5NpxHR6XgXn4sjWw==' },
 };
-const ENGINE_URL = (file: string) => `https://github.com/rhasspy/piper/releases/download/${ENGINE_VERSION}/${file}`;
+const ENGINE_URL = (pkg: string) => `https://registry.npmjs.org/sherpa-onnx-${pkg}/-/sherpa-onnx-${pkg}-${ENGINE_VERSION}.tgz`;
+const MODELS = 'https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/';
+/** espeak-ng's pronunciation data, for Piper voices. */
+const ESPEAK = { file: 'espeak-ng-data.tar.bz2', sha256: '4135ccf82e1f40613491c0874d4945ae9e9c7840933d8e25a6f9e003d9ebf533' };
+const KOKORO = { file: 'kokoro-int8-multi-lang-v1_0.tar.bz2', sha256: '72c347230107ef8a31098ec4d468a605244beef5f1ed00db97efa13518800653', bytes: 132353410 };
 /** Voices catalog, pinned to a release of the voices repository. */
 const VOICES_BASE = 'https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/';
+
+/** Kokoro speakers we offer (id = position in the model's speaker list). */
+const KOKORO_SPEAKERS: { key: string; sid: number; name: string; country: string }[] = [
+    { key: 'en_US-kokoro_heart-high', sid: 3, name: 'Kokoro Heart', country: 'United States' },
+    { key: 'en_US-kokoro_bella-high', sid: 2, name: 'Kokoro Bella', country: 'United States' },
+    { key: 'en_US-kokoro_michael-high', sid: 16, name: 'Kokoro Michael', country: 'United States' },
+    { key: 'en_GB-kokoro_emma-high', sid: 21, name: 'Kokoro Emma', country: 'Great Britain' },
+    { key: 'en_GB-kokoro_george-high', sid: 26, name: 'Kokoro George', country: 'Great Britain' },
+    { key: 'zh_CN-kokoro_xiaoxiao-high', sid: 47, name: 'Kokoro Xiaoxiao', country: 'China' },
+    { key: 'zh_CN-kokoro_xiaoyi-high', sid: 48, name: 'Kokoro Xiaoyi', country: 'China' },
+    { key: 'zh_CN-kokoro_yunxi-high', sid: 50, name: 'Kokoro Yunxi', country: 'China' },
+    { key: 'zh_CN-kokoro_yunjian-high', sid: 49, name: 'Kokoro Yunjian', country: 'China' },
+];
+const isKokoro = (key: string) => KOKORO_SPEAKERS.some(s => s.key === key);
 
 const KEY = /^[a-z]{2,3}_[A-Z]{2}-[A-Za-z0-9_]+-(x_low|low|medium|high)$/;
 const FILE = /^[a-z]{2,3}\/[a-z]{2,3}_[A-Z]{2}\/[A-Za-z0-9_]+\/(x_low|low|medium|high)\/[A-Za-z0-9_-]+\.onnx(\.json)?$/;
@@ -45,32 +70,102 @@ interface CatalogEntry extends CatalogVoice {
     files: { path: string; md5: string; size: number }[];
 }
 
+// Everything lives under one folder, the worker's working directory, so the
+// engine only ever sees short relative paths (it can't open non-ASCII paths
+// on Windows).
 const root = () => path.join(app.getPath('userData'), 'piper');
-const engineDir = () => path.join(root(), 'engine');
-const voicesDir = () => path.join(root(), 'voices');
+const ENGINE_DIR = 'sherpa';
+const ESPEAK_DIR = 'espeak-ng-data';
+const VOICES_DIR = 'voices';
+const KOKORO_DIR = 'kokoro';
+const KOKORO_CHOSEN = path.join(KOKORO_DIR, 'chosen.json');
+const at = (...p: string[]) => path.join(root(), ...p);
 const platformKey = () => `${process.platform}-${process.arch}`;
 
 export const ttsSupported = () => platformKey() in ENGINES;
 
-function engineExe() {
-    const e = ENGINES[platformKey()];
-    return e ? path.join(engineDir(), 'piper', e.exe) : null;
-}
-
 function engineInstalled() {
-    const exe = engineExe();
-    return !!exe && fs.existsSync(exe) && fs.existsSync(path.join(engineDir(), 'piper', 'espeak-ng-data'));
+    return fs.existsSync(at(ENGINE_DIR, 'sherpa-onnx.node')) && fs.existsSync(at(ESPEAK_DIR, 'phontab'));
 }
 
-function installedVoices(): string[] {
+function kokoroInstalled() {
+    return fs.existsSync(at(KOKORO_DIR, 'model.int8.onnx')) && fs.existsSync(at(KOKORO_DIR, 'voices.bin'));
+}
+
+function kokoroChosen(): string[] {
     try {
-        return fs.readdirSync(voicesDir())
-            .filter(f => f.endsWith('.onnx'))
-            .map(f => f.slice(0, -5))
-            .filter(k => KEY.test(k) && fs.existsSync(path.join(voicesDir(), `${k}.onnx.json`)));
+        const list = JSON.parse(fs.readFileSync(at(KOKORO_CHOSEN), 'utf8'));
+        return Array.isArray(list) ? list.filter(isKokoro) : [];
     } catch {
         return [];
     }
+}
+
+function setKokoroChosen(keys: string[]) {
+    fs.writeFileSync(at(KOKORO_CHOSEN), JSON.stringify([...new Set(keys)]));
+}
+
+function installedVoices(): string[] {
+    let piper: string[] = [];
+    try {
+        piper = fs.readdirSync(at(VOICES_DIR))
+            .filter(f => f.endsWith('.onnx'))
+            .map(f => f.slice(0, -5))
+            .filter(k => KEY.test(k) && fs.existsSync(at(VOICES_DIR, `${k}.onnx.json`)));
+    } catch { /* none */ }
+    return [...piper, ...(kokoroInstalled() ? kokoroChosen() : [])];
+}
+
+// ---------------------------------------------------------------- worker
+
+let worker: UtilityProcess | null = null;
+let nextId = 1;
+const pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>();
+
+function getWorker() {
+    if (worker) return worker;
+    fs.mkdirSync(root(), { recursive: true });
+    const w = utilityProcess.fork(path.join(__dirname, 'ttsWorker.js'), [], { cwd: root(), serviceName: 'LinguaReader voices', stdio: 'pipe' });
+    w.stdout?.on('data', d => console.log('[tts-worker]', String(d).trim()));
+    w.stderr?.on('data', d => console.warn('[tts-worker]', String(d).trim()));
+    w.on('message', (m: { id: number; ok: boolean; result?: any; error?: string }) => {
+        const p = pending.get(m.id);
+        if (!p) return;
+        pending.delete(m.id);
+        if (m.ok) p.resolve(m.result);
+        else p.reject(new Error(m.error));
+    });
+    w.on('exit', code => {
+        if (worker === w) worker = null;
+        for (const [id, p] of pending) {
+            p.reject(new Error(`The voice engine stopped (${code}).`));
+            pending.delete(id);
+        }
+    });
+    worker = w;
+    return w;
+}
+
+function ask<T>(msg: object, timeoutMs = 60000): Promise<T> {
+    const id = nextId++;
+    return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => {
+            pending.delete(id);
+            reject(new Error('The voice engine took too long.'));
+            worker?.kill();
+        }, timeoutMs);
+        pending.set(id, {
+            resolve: v => {
+                clearTimeout(timer);
+                resolve(v);
+            },
+            reject: e => {
+                clearTimeout(timer);
+                reject(e);
+            },
+        });
+        getWorker().postMessage({ id, ...msg });
+    });
 }
 
 // ---------------------------------------------------------------- downloads
@@ -92,53 +187,25 @@ async function download(url: string, onProgress: (got: number, total: number) =>
     return Buffer.concat(chunks);
 }
 
-/** Path inside `dir` for an archive entry, or null if it would land outside. */
-function safeJoin(dir: string, name: string) {
-    const clean = name.replace(/\\/g, '/');
-    if (!clean || clean.startsWith('/') || /^[a-zA-Z]:/.test(clean) || clean.split('/').includes('..')) return null;
-    const full = path.join(dir, clean);
-    return full.startsWith(dir + path.sep) ? full : null;
+/** Downloads an archive, checks it, and unpacks it (in the worker) into `dir`, replacing what was there. */
+async function installArchive(url: string, check: (data: Buffer) => boolean, kind: 'tgz' | 'tbz2', dir: string, strip: number, progress: (got: number, total: number) => void) {
+    const data = await download(url, progress);
+    if (!check(data)) throw new Error('The download was damaged. Please try again.');
+    const stamp = Date.now();
+    const file = `${dir}-${stamp}.download`;
+    const tmp = `${dir}-${stamp}.part`;
+    fs.writeFileSync(at(file), data);
+    try {
+        await ask({ op: 'extract', archive: file, dest: tmp, kind, strip }, 10 * 60000);
+        fs.rmSync(at(dir), { recursive: true, force: true });
+        fs.renameSync(at(tmp), at(dir));
+    } finally {
+        fs.rmSync(at(file), { force: true });
+        fs.rmSync(at(tmp), { recursive: true, force: true });
+    }
 }
 
-/** Minimal tar reader: regular files, folders and symlinks (the engine's .so links). */
-function untar(data: Buffer, dir: string) {
-    let off = 0;
-    const links: [string, string][] = [];
-    while (off + 512 <= data.length) {
-        const header = data.subarray(off, off + 512);
-        if (header.every(b => b === 0)) break;
-        const str = (a: number, n: number) => header.subarray(a, a + n).toString('utf8').replace(/\0.*$/s, '');
-        let name = str(0, 100);
-        const prefix = str(345, 155);
-        if (prefix) name = `${prefix}/${name}`;
-        const size = parseInt(str(124, 12).trim() || '0', 8);
-        const type = String.fromCharCode(header[156] || 48);
-        const mode = parseInt(str(100, 8).trim() || '644', 8);
-        off += 512;
-        const target = safeJoin(dir, name);
-        if (target) {
-            if (type === '5') fs.mkdirSync(target, { recursive: true });
-            else if (type === '0' || type === '\0' || type === '7') {
-                fs.mkdirSync(path.dirname(target), { recursive: true });
-                fs.writeFileSync(target, data.subarray(off, off + size), { mode: mode & 0o755 });
-            } else if (type === '2') {
-                const linkTo = str(157, 100);
-                // Only links to a file next to it (libfoo.so -> libfoo.so.1)
-                if (/^[\w.+-]+$/.test(linkTo)) links.push([target, linkTo]);
-            }
-        }
-        off += Math.ceil(size / 512) * 512;
-    }
-    for (const [at, to] of links) {
-        try {
-            fs.rmSync(at, { force: true });
-            fs.symlinkSync(to, at);
-        } catch {
-            const src = path.join(path.dirname(at), to);
-            if (fs.existsSync(src)) fs.copyFileSync(src, at);
-        }
-    }
-}
+const sha = (alg: string, data: Buffer, enc: 'hex' | 'base64') => crypto.createHash(alg).update(data).digest(enc);
 
 let engineJob: Promise<void> | null = null;
 
@@ -146,34 +213,19 @@ function installEngine(progress: (got: number, total: number) => void) {
     engineJob ??= (async () => {
         const e = ENGINES[platformKey()];
         if (!e) throw new Error('Natural voices are not available on this system.');
-        const data = await download(ENGINE_URL(e.file), progress);
-        const sum = crypto.createHash('sha256').update(data).digest('hex');
-        if (sum !== e.sha256) throw new Error('The voice engine download was damaged. Please try again.');
-        const tmp = path.join(root(), `engine-${Date.now()}`);
-        fs.mkdirSync(tmp, { recursive: true });
-        try {
-            if (e.file.endsWith('.zip')) {
-                const files = unzipSync(new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
-                for (const [name, bytes] of Object.entries(files)) {
-                    if (name.endsWith('/')) continue;
-                    const target = safeJoin(tmp, name);
-                    if (!target) continue;
-                    fs.mkdirSync(path.dirname(target), { recursive: true });
-                    fs.writeFileSync(target, bytes);
-                }
-            } else {
-                untar(zlib.gunzipSync(data), tmp);
-                for (const f of ['piper', 'espeak-ng', 'piper_phonemize']) {
-                    const p = path.join(tmp, 'piper', f);
-                    if (fs.existsSync(p)) fs.chmodSync(p, 0o755);
-                }
-            }
-            fs.rmSync(engineDir(), { recursive: true, force: true });
-            fs.renameSync(tmp, engineDir());
-        } catch (err) {
-            fs.rmSync(tmp, { recursive: true, force: true });
-            throw err;
+        // The engine can't be replaced while it's loaded
+        worker?.kill();
+        worker = null;
+        fs.mkdirSync(root(), { recursive: true });
+        const espeakSize = 7252012;
+        if (!fs.existsSync(at(ENGINE_DIR, 'sherpa-onnx.node'))) {
+            await installArchive(ENGINE_URL(e.pkg), d => sha('sha512', d, 'base64') === e.sha512, 'tgz', ENGINE_DIR, 1, (got, total) => progress(got, total + espeakSize));
         }
+        if (!fs.existsSync(at(ESPEAK_DIR, 'phontab'))) {
+            await installArchive(MODELS + ESPEAK.file, d => sha('sha256', d, 'hex') === ESPEAK.sha256, 'tbz2', ESPEAK_DIR, 1, (got, total) => progress(got, total));
+        }
+        // The old Piper program (before sherpa-onnx) isn't used any more
+        fs.rmSync(at('engine'), { recursive: true, force: true });
     })().finally(() => {
         engineJob = null;
     });
@@ -184,9 +236,21 @@ function installEngine(progress: (got: number, total: number) => void) {
 
 let catalog: { at: number; voices: CatalogEntry[] } | null = null;
 
+const KOKORO_ENTRIES: CatalogEntry[] = KOKORO_SPEAKERS.map(s => ({
+    key: s.key,
+    code: s.key.split('-')[0],
+    family: s.key.slice(0, 2),
+    language: s.key.startsWith('zh') ? 'Chinese' : 'English',
+    country: s.country,
+    name: s.name,
+    quality: 'high',
+    sizeBytes: KOKORO.bytes,
+    files: [],
+}));
+
 async function loadCatalog(): Promise<CatalogEntry[]> {
     if (catalog && Date.now() - catalog.at < 6 * 3600e3) return catalog.voices;
-    const cacheFile = path.join(root(), 'voices.json');
+    const cacheFile = at('voices.json');
     let raw: unknown;
     try {
         const res = await fetch(`${VOICES_BASE}voices.json`);
@@ -200,7 +264,7 @@ async function loadCatalog(): Promise<CatalogEntry[]> {
         raw = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
         console.warn('[tts] using cached voice list:', (err as Error).message);
     }
-    const voices: CatalogEntry[] = [];
+    const voices: CatalogEntry[] = [...KOKORO_ENTRIES];
     for (const [key, v] of Object.entries(raw as Record<string, any>)) {
         if (!KEY.test(key) || typeof v !== 'object' || !v) continue;
         const files = Object.entries((v.files ?? {}) as Record<string, { size_bytes?: number; md5_digest?: string }>)
@@ -225,95 +289,114 @@ async function loadCatalog(): Promise<CatalogEntry[]> {
 }
 
 const voiceJobs = new Map<string, Promise<void>>();
+let kokoroJob: Promise<void> | null = null;
+
+/** Piper voices need a tokens file (phoneme → id), made from the voice's own settings. */
+function writeTokens(key: string) {
+    const file = at(VOICES_DIR, `${key}.tokens.txt`);
+    if (fs.existsSync(file)) return;
+    const cfg = JSON.parse(fs.readFileSync(at(VOICES_DIR, `${key}.onnx.json`), 'utf8'));
+    const map = cfg?.phoneme_id_map;
+    if (!map || typeof map !== 'object') throw new Error('This voice has no phoneme table.');
+    const lines = Object.entries(map as Record<string, number[]>)
+        .filter(([sym, ids]) => Array.isArray(ids) && Number.isInteger(ids[0]) && !/[\r\n]/.test(sym))
+        .map(([sym, ids]) => `${sym} ${ids[0]}`);
+    fs.writeFileSync(file, lines.join('\n') + '\n');
+}
 
 async function installVoice(key: string, send: (p: { key: string; stage: string; got: number; total: number }) => void) {
+    if (!engineInstalled()) await installEngine((got, total) => send({ key, stage: 'engine', got, total }));
+    if (isKokoro(key)) {
+        if (!kokoroInstalled()) {
+            kokoroJob ??= installArchive(MODELS + KOKORO.file, d => sha('sha256', d, 'hex') === KOKORO.sha256, 'tbz2', KOKORO_DIR, 1, (got, total) => send({ key, stage: 'voice', got, total: total || KOKORO.bytes }))
+                .finally(() => (kokoroJob = null));
+            await kokoroJob;
+        }
+        setKokoroChosen([...kokoroChosen(), key]);
+        return;
+    }
     const entry = (await loadCatalog()).find(v => v.key === key);
     if (!entry) throw new Error('Unknown voice.');
-    if (!engineInstalled()) await installEngine((got, total) => send({ key, stage: 'engine', got, total }));
-    fs.mkdirSync(voicesDir(), { recursive: true });
+    fs.mkdirSync(at(VOICES_DIR), { recursive: true });
     const total = entry.files.filter(f => f.path.endsWith('.onnx') || f.path.endsWith('.onnx.json')).reduce((a, f) => a + f.size, 0);
     let done = 0;
     for (const f of entry.files) {
         const suffix = f.path.endsWith('.onnx.json') ? '.onnx.json' : f.path.endsWith('.onnx') ? '.onnx' : null;
         if (!suffix) continue;
         const data = await download(VOICES_BASE + f.path.split('/').map(encodeURIComponent).join('/'), got => send({ key, stage: 'voice', got: done + got, total }));
-        if (f.md5 && crypto.createHash('md5').update(data).digest('hex') !== f.md5) throw new Error('The voice download was damaged. Please try again.');
+        if (f.md5 && sha('md5', data, 'hex') !== f.md5) throw new Error('The voice download was damaged. Please try again.');
         done += data.length;
         // Written under the voice key (never a name from the catalog)
-        const tmp = path.join(voicesDir(), `${key}${suffix}.part`);
+        const tmp = at(VOICES_DIR, `${key}${suffix}.part`);
         fs.writeFileSync(tmp, data);
-        fs.renameSync(tmp, path.join(voicesDir(), `${key}${suffix}`));
+        fs.renameSync(tmp, at(VOICES_DIR, `${key}${suffix}`));
     }
+    fs.rmSync(at(VOICES_DIR, `${key}.tokens.txt`), { force: true });
+    writeTokens(key);
+}
+
+function removeVoice(key: string) {
+    if (isKokoro(key)) {
+        const rest = kokoroChosen().filter(k => k !== key);
+        if (rest.length === 0) {
+            // Last Kokoro voice: the shared model goes too
+            worker?.kill();
+            worker = null;
+            fs.rmSync(at(KOKORO_DIR), { recursive: true, force: true });
+        } else setKokoroChosen(rest);
+        return;
+    }
+    for (const s of ['.onnx', '.onnx.json', '.tokens.txt']) fs.rmSync(at(VOICES_DIR, key + s), { force: true });
 }
 
 // ---------------------------------------------------------------- speaking
 
 const cache = new Map<string, Buffer>();
 
-/** 16-bit mono PCM → a WAV file the renderer can decode. */
-function wav(pcm: Buffer, rate: number) {
-    const h = Buffer.alloc(44);
-    h.write('RIFF', 0);
-    h.writeUInt32LE(36 + pcm.length, 4);
-    h.write('WAVEfmt ', 8);
-    h.writeUInt32LE(16, 16);
-    h.writeUInt16LE(1, 20);
-    h.writeUInt16LE(1, 22);
-    h.writeUInt32LE(rate, 24);
-    h.writeUInt32LE(rate * 2, 28);
-    h.writeUInt16LE(2, 32);
-    h.writeUInt16LE(16, 34);
-    h.write('data', 36);
-    h.writeUInt32LE(pcm.length, 40);
-    return Buffer.concat([h, pcm]);
+function voiceConfig(key: string): { config: object; sid: number } {
+    const base = { numThreads: 2, provider: 'cpu', debug: 0 };
+    const k = KOKORO_SPEAKERS.find(s => s.key === key);
+    if (k) {
+        if (!kokoroInstalled()) throw new Error('This voice is not installed.');
+        const d = (f: string) => `${KOKORO_DIR}/${f}`;
+        const lexicons = key.startsWith('en_GB') ? ['lexicon-gb-en.txt', 'lexicon-zh.txt'] : ['lexicon-us-en.txt', 'lexicon-zh.txt'];
+        return {
+            sid: k.sid,
+            config: {
+                model: {
+                    kokoro: {
+                        model: d('model.int8.onnx'), voices: d('voices.bin'), tokens: d('tokens.txt'),
+                        dataDir: d('espeak-ng-data'), dictDir: d('dict'), lexicon: lexicons.map(d).join(','),
+                    },
+                    ...base,
+                },
+                ruleFsts: key.startsWith('zh') ? ['date-zh.fst', 'phone-zh.fst', 'number-zh.fst'].map(d).join(',') : '',
+                maxNumSentences: 1,
+            },
+        };
+    }
+    if (!fs.existsSync(at(VOICES_DIR, `${key}.onnx`))) throw new Error('This voice is not installed.');
+    writeTokens(key);
+    return {
+        sid: 0,
+        config: {
+            model: { vits: { model: `${VOICES_DIR}/${key}.onnx`, tokens: `${VOICES_DIR}/${key}.tokens.txt`, dataDir: ESPEAK_DIR }, ...base },
+            maxNumSentences: 1,
+        },
+    };
 }
 
-function synthesize(key: string, text: string): Promise<Buffer> {
+async function synthesize(key: string, text: string): Promise<Buffer> {
     const cacheKey = `${key}\n${text}`;
     const hit = cache.get(cacheKey);
-    if (hit) return Promise.resolve(hit);
-    const exe = engineExe();
-    if (!exe || !engineInstalled()) return Promise.reject(new Error('The voice engine is not installed.'));
-    if (!fs.existsSync(path.join(voicesDir(), `${key}.onnx`))) return Promise.reject(new Error('This voice is not installed.'));
-    let rate = 22050;
-    try {
-        rate = Number(JSON.parse(fs.readFileSync(path.join(voicesDir(), `${key}.onnx.json`), 'utf8'))?.audio?.sample_rate) || rate;
-    } catch { /* default rate */ }
-    const dir = path.dirname(exe);
-
-    return new Promise((resolve, reject) => {
-        // Paths relative to the piper folder: the engine reads its arguments as
-        // narrow strings, which can't hold a non-ASCII user name on Windows.
-        const proc = spawn(exe, ['--model', `../../voices/${key}.onnx`, '--output_raw', '--espeak_data', 'espeak-ng-data', '--quiet'], {
-            cwd: dir,
-            env: { ...process.env, LD_LIBRARY_PATH: [dir, process.env.LD_LIBRARY_PATH].filter(Boolean).join(':') },
-            windowsHide: true,
-            stdio: ['pipe', 'pipe', 'pipe'],
-        });
-        const chunks: Buffer[] = [];
-        let err = '';
-        proc.stdout.on('data', d => chunks.push(d));
-        proc.stderr.on('data', d => (err = (err + d).slice(-2000)));
-        const timer = setTimeout(() => proc.kill(), 30000);
-        proc.on('error', e => {
-            clearTimeout(timer);
-            reject(e);
-        });
-        proc.on('close', code => {
-            clearTimeout(timer);
-            const pcm = Buffer.concat(chunks);
-            if (code !== 0 || pcm.length === 0) {
-                reject(new Error(`The voice engine failed (${code}). ${err.trim().split('\n').pop() ?? ''}`));
-                return;
-            }
-            const out = wav(pcm, rate);
-            if (cache.size > 200) cache.delete(cache.keys().next().value!);
-            cache.set(cacheKey, out);
-            resolve(out);
-        });
-        // One line: piper reads a sentence per line
-        proc.stdin.end(text.replace(/\s+/g, ' ').trim() + '\n');
-    });
+    if (hit) return hit;
+    // Voices installed before the engine changed: fetch the new engine once
+    if (!engineInstalled()) await installEngine(() => { });
+    const { config, sid } = voiceConfig(key);
+    const out = Buffer.from(await ask<Uint8Array>({ op: 'speak', engine: ENGINE_DIR, config, text: text.replace(/\s+/g, ' ').trim(), sid, speed: 1 }, 30000));
+    if (cache.size > 200) cache.delete(cache.keys().next().value!);
+    cache.set(cacheKey, out);
+    return out;
 }
 
 // ---------------------------------------------------------------- IPC
@@ -346,7 +429,7 @@ export function setupTts() {
 
     ipcMain.handle('tts-remove', (_, key: unknown) => {
         if (typeof key !== 'string' || !KEY.test(key)) return installedVoices();
-        for (const s of ['.onnx', '.onnx.json']) fs.rmSync(path.join(voicesDir(), key + s), { force: true });
+        removeVoice(key);
         for (const k of [...cache.keys()]) if (k.startsWith(`${key}\n`)) cache.delete(k);
         return installedVoices();
     });
@@ -356,4 +439,6 @@ export function setupTts() {
         const wav = await synthesize(key, text.slice(0, MAX_TEXT));
         return new Uint8Array(wav.buffer, wav.byteOffset, wav.byteLength);
     });
+
+    app.on('will-quit', () => worker?.kill());
 }

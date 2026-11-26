@@ -46,7 +46,8 @@
 
 ### 🔊 Pronunciation
 - **Hear any word or sentence** with the speaker button on the word card, in reviews (or press P) and on the Words page.
-- Uses your computer's own voices, or **download a natural-sounding voice** for your language from the free [Piper](https://github.com/rhasspy/piper) project (Windows and Linux). It works offline once downloaded.
+- Uses your computer's own voices, or **download a natural-sounding voice**: [Piper](https://github.com/rhasspy/piper) voices for many languages, and [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) for English and Chinese, run by [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx). Windows, macOS and Linux; offline once downloaded.
+- For Japanese and Korean there's no free natural voice yet, so the app uses your computer's own (on Windows: Settings → Time & language → Speech → Add voices). On Linux, system voices need speech-dispatcher.
 
 ### 🌐 Translation
 - Translate into 20 languages, including English, Turkish, German, French, Spanish, Russian, Ukrainian and Portuguese.

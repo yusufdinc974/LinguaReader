@@ -9,6 +9,15 @@ type CatalogVoice = Awaited<ReturnType<typeof window.electronAPI.ttsCatalog>>[nu
 type Progress = { key: string; stage: 'engine' | 'voice'; got: number; total: number };
 
 const MB = (n: number) => `${Math.max(1, Math.round(n / 1e6))} MB`;
+const isKokoro = (key: string) => key.includes('-kokoro_');
+/** Kokoro first (it sounds best), then medium quality Piper voices. */
+const rank = (v: { key: string; quality: string }) => (isKokoro(v.key) ? 0 : v.quality === 'medium' ? 1 : 2);
+/** "zh_CN-kokoro_xiaoxiao-high" → "Kokoro Xiaoxiao (zh-CN)", "fr_FR-siwis-medium" → "siwis (fr-FR)". */
+const voiceLabel = (k: string) => {
+    const [code, name] = k.split('-');
+    const pretty = name.startsWith('kokoro_') ? `Kokoro ${name.slice(7, 8).toUpperCase()}${name.slice(8)}` : name;
+    return `${pretty} (${code.replace('_', '-')})`;
+};
 
 function systemVoiceHelp() {
     const ua = navigator.userAgent;
@@ -54,7 +63,7 @@ export default function PronunciationSettings() {
     const system = systemVoices(lang);
     const natural = installed.filter(k => piperFamily(k) === lang);
     const offered = useMemo(
-        () => (catalog ?? []).filter(v => v.family === lang).sort((a, b) => (a.quality === 'medium' ? -1 : 0) - (b.quality === 'medium' ? -1 : 0) || a.key.localeCompare(b.key)),
+        () => (catalog ?? []).filter(v => v.family === lang).sort((a, b) => rank(a) - rank(b) || a.key.localeCompare(b.key)),
         [catalog, lang],
     );
 
@@ -132,7 +141,7 @@ export default function PronunciationSettings() {
                     </select>
                     <select className="field" value={pref} onChange={e => choosePref(e.target.value)} aria-label="Voice">
                         <option value="">Best available</option>
-                        {natural.map(k => <option key={k} value={`piper:${k}`}>Natural: {k.split('-')[1]} ({k.split('-')[0].replace('_', '-')})</option>)}
+                        {natural.map(k => <option key={k} value={`piper:${k}`}>Natural: {voiceLabel(k)}</option>)}
                         {system.map(v => <option key={v.voiceURI} value={`system:${v.voiceURI}`}>{v.name}</option>)}
                     </select>
                     <button className="btn btn-outline shrink-0" onClick={test} disabled={system.length === 0 && natural.length === 0} title="Play a sample">
@@ -150,10 +159,10 @@ export default function PronunciationSettings() {
             {supported && (
                 <div>
                     <p className="label mb-1.5">Natural voices</p>
-                    <p className="text-[12px] faint mb-2">Free voices from the Piper project that sound more natural and work offline. Each language is a one-time download, plus the 20 MB voice engine the first time.</p>
+                    <p className="text-[12px] faint mb-2">Free voices that sound more natural and work offline: Piper voices for many languages, and Kokoro for English and Chinese. Each is a one-time download, plus the voice engine (about 20 MB) the first time.</p>
                     {natural.map(k => (
                         <div key={k} className="flex items-center gap-2 py-1.5 text-[13px]">
-                            <span className="flex-1 truncate">{k}</span>
+                            <span className="flex-1 truncate">{voiceLabel(k)}</span>
                             <button className="icon-btn w-7 h-7 hover:!text-[var(--danger)]" onClick={() => remove(k)} title="Remove this voice" aria-label={`Remove ${k}`}>
                                 <Trash2 size={14} />
                             </button>
