@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Check, AlertCircle, Loader2 } from 'lucide-react';
 import type { Theme } from '../lib/theme';
 import PronunciationSettings from './PronunciationSettings';
@@ -30,6 +31,7 @@ function Section({ title, description, children }: { title: string; description?
 }
 
 export default function SettingsPanel({ open, onClose, theme, onThemeChange }: Props) {
+    const navigate = useNavigate();
     // The saved key never comes back to this page: only whether one is saved and its last 4 characters.
     const [apiKey, setApiKey] = useState('');
     const [keyStatus, setKeyStatus] = useState<{ saved: boolean; hint: string }>({ saved: false, hint: '' });
@@ -121,6 +123,12 @@ export default function SettingsPanel({ open, onClose, theme, onThemeChange }: P
         setBusy('import');
         try {
             const r = await window.electronAPI.importData();
+            if (r.anki) {
+                // An Anki deck: continue in the Anki import on the Words page
+                onClose();
+                navigate('/words', { state: { anki: r.anki } });
+                return;
+            }
             if (r.success) flash({ type: 'ok', text: `Imported ${r.imported?.words ?? 0} words in ${r.imported?.lists ?? 0} lists.` });
             else if (r.error && r.error !== 'Import cancelled') flash({ type: 'error', text: r.error });
         } catch {
@@ -216,7 +224,7 @@ export default function SettingsPanel({ open, onClose, theme, onThemeChange }: P
                         <DictionarySettings />
                     </Section>
 
-                    <Section title="Backup" description="Lists, words and review progress as a JSON file.">
+                    <Section title="Backup" description="Lists, words and review progress as a JSON file. Import also opens Anki decks (.apkg).">
                         <div className="flex gap-2">
                             <button className="btn btn-outline" onClick={doExport} disabled={busy !== null}>
                                 {busy === 'export' && <Loader2 size={14} className="animate-spin" />}

@@ -90,6 +90,14 @@ export default function Words() {
     const [confirm, setConfirm] = useState<{ title: string; message: string; label: string; run: () => void } | null>(null);
     const [toast, setToast] = useState<string | null>(null);
     const [ankiDeck, setAnkiDeck] = useState<AnkiOpenResult | null>(null);
+    // A deck opened from Settings → Import
+    useEffect(() => {
+        const anki = (location.state as { anki?: AnkiOpenResult } | null)?.anki;
+        if (anki) {
+            setAnkiDeck(anki);
+            navigate('.', { replace: true, state: null });
+        }
+    }, [location.state, navigate]);
 
     const selected = lists?.find(l => l.id === selectedId) ?? null;
 
@@ -256,8 +264,8 @@ export default function Words() {
                 <div className="flex items-center justify-between px-5 pt-4 pb-2">
                     <span className="label">Lists</span>
                     <div className="flex items-center -mr-1.5">
-                        <button className="icon-btn w-7 h-7" onClick={openAnki} title="Import an Anki deck" aria-label="Import an Anki deck">
-                            <Import size={15} />
+                        <button className="btn btn-ghost h-7 px-2 text-[12.5px] gap-1" onClick={openAnki} title="Import an Anki deck (.apkg)">
+                            <Import size={14} /> Import Anki
                         </button>
                         <button className="icon-btn w-7 h-7" onClick={() => setCreating(true)} title="New list" aria-label="New list">
                             <Plus size={15} />

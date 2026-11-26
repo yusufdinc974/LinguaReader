@@ -181,7 +181,7 @@ interface Window {
 
         // Data Import/Export
         exportData: () => Promise<{ success: boolean; path?: string; error?: string }>;
-        importData: () => Promise<{ success: boolean; imported?: { lists: number; words: number; familiarity: number }; error?: string }>;
+        importData: () => Promise<{ success: boolean; imported?: { lists: number; words: number; familiarity: number }; anki?: import('../electron/ankiTypes').AnkiOpenResult; error?: string }>;
         importParsedBackup: (data: unknown) => Promise<{ success: boolean; imported?: { lists: number; words: number; familiarity: number }; error?: string }>;
         parseImportFile: () => Promise<{
             success: boolean;

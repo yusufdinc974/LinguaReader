@@ -13,6 +13,7 @@ import { deeplKeyStatus, getDeeplKey, isPlausibleDeeplKey, portableSettings, POR
 import { isNewerVersion } from './version';
 import { parseBackup, type Backup } from './backup';
 import { buildApkg, readApkg, guessFields, wordsFrom, ankiText, wordsCsv, type AnkiPackage, type FieldMap } from './anki';
+import type { AnkiOpenResult } from './ankiTypes';
 
 let mainWindow: BrowserWindow | null = null;
 let db: Database.Database | null = null;
@@ -926,12 +927,20 @@ function setupIpcHandlers(): void {
         try {
             const result = await dialog.showOpenDialog({
                 title: 'Import LinguaReader Data',
-                filters: [{ name: 'JSON Files', extensions: ['json'] }],
+                filters: [
+                    { name: 'LinguaReader backup or Anki deck', extensions: ['json', 'apkg', 'colpkg'] },
+                    { name: 'All files', extensions: ['*'] },
+                ],
                 properties: ['openFile'],
             });
 
             if (result.canceled || result.filePaths.length === 0) {
                 return { success: false, error: 'Import cancelled' };
+            }
+            // An Anki deck goes on to the Anki import on the Words page
+            if (!/\.json$/i.test(result.filePaths[0])) {
+                const anki = openAnkiFile(result.filePaths[0]);
+                return anki.success ? { success: false, anki } : { success: false, error: anki.error };
             }
 
             const fileContent = fs.readFileSync(result.filePaths[0], 'utf-8');
@@ -1354,15 +1363,9 @@ function setupIpcHandlers(): void {
     // The deck being imported, between choosing the file and confirming
     let ankiPending: { pkg: AnkiPackage; file: string } | null = null;
 
-    ipcMain.handle('anki-open', async () => {
+    /** Reads a deck and keeps it for anki-import; the summary is for the import dialog. */
+    function openAnkiFile(file: string): AnkiOpenResult {
         try {
-            const result = await dialog.showOpenDialog({
-                title: 'Import an Anki deck',
-                filters: [{ name: 'Anki deck', extensions: ['apkg', 'colpkg', 'anki2', 'anki21', 'zip'] }, { name: 'All files', extensions: ['*'] }],
-                properties: ['openFile'],
-            });
-            if (result.canceled || result.filePaths.length === 0) return { success: false, cancelled: true };
-            const file = result.filePaths[0];
             const pkg = readApkg(fs.readFileSync(file));
             if (pkg.notes.length === 0) return { success: false, error: 'This deck has no cards.' };
             ankiPending = { pkg, file };
@@ -1384,6 +1387,16 @@ function setupIpcHandlers(): void {
             console.error('Anki open error:', error);
             return { success: false, error: String((error as Error)?.message ?? error) };
         }
+    }
+
+    ipcMain.handle('anki-open', async () => {
+        const result = await dialog.showOpenDialog({
+            title: 'Import an Anki deck',
+            filters: [{ name: 'Anki deck', extensions: ['apkg', 'colpkg', 'anki2', 'anki21', 'zip'] }, { name: 'All files', extensions: ['*'] }],
+            properties: ['openFile'],
+        });
+        if (result.canceled || result.filePaths.length === 0) return { success: false, cancelled: true };
+        return openAnkiFile(result.filePaths[0]);
     });
 
     ipcMain.handle('anki-import', (_, opts: { decks: number[] | null; maps: Record<number, FieldMap>; listId: number | null; listName: string; lang: string; keepProgress: boolean }) => {

@@ -153,7 +153,7 @@ const electronAPI = {
     // Data Import/Export
     exportData: (): Promise<{ success: boolean; path?: string; error?: string }> =>
         ipcRenderer.invoke('export-data'),
-    importData: (): Promise<{ success: boolean; imported?: { lists: number; words: number; familiarity: number }; error?: string }> =>
+    importData: (): Promise<{ success: boolean; imported?: { lists: number; words: number; familiarity: number }; anki?: AnkiOpenResult; error?: string }> =>
         ipcRenderer.invoke('import-data'),
     importParsedBackup: (data: unknown): Promise<{ success: boolean; imported?: { lists: number; words: number; familiarity: number }; error?: string }> =>
         ipcRenderer.invoke('import-parsed-backup', data),
