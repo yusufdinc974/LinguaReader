@@ -58,7 +58,7 @@ function Context({ word, blank }: { word: Word; blank: boolean }) {
             </p>
             <div className="flex items-center justify-center gap-1 mt-1">
                 {word.pdf_name && <p className="text-[11.5px] faint truncate">{displayName(word.pdf_name)}</p>}
-                {!blank && <SpeakButton text={sentence} langs={[word.source_language]} size={13} className="w-6 h-6" />}
+                {!blank && <SpeakButton text={sentence} langs={[word.source_language]} context={sentence} size={13} className="w-6 h-6" />}
             </div>
         </div>
     );
@@ -251,7 +251,7 @@ export default function Review() {
                                     {mode === 'reverse' ? current.question.word.translation : current.question.word.word}
                                 </p>
                                 {(mode !== 'reverse' || revealed) && (
-                                    <SpeakButton text={current.question.word.word} langs={[current.question.word.source_language]} size={18} shortcut="P" />
+                                    <SpeakButton text={current.question.word.word} langs={[current.question.word.source_language]} context={current.question.word.sentence_context} size={18} shortcut="P" />
                                 )}
                             </div>
                             <Context word={current.question.word} blank={mode === 'reverse' && !revealed} />

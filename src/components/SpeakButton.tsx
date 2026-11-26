@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader2, Volume2 } from 'lucide-react';
-import { languageName, speak, speechLang } from '../lib/speech';
+import { languageName, speak, wordLang } from '../lib/speech';
 
 interface Props {
     text: string;
     /** Language hints, best first: detected language, book language, saved word language. */
     langs?: (string | null | undefined)[];
+    /** The sentence around `text`, to tell Japanese kanji from Chinese. */
+    context?: string | null;
     size?: number;
     className?: string;
     /** Read aloud when `text` changes (reviews). */
@@ -21,10 +23,10 @@ export const SPEAK_EVENT = 'linguareader:speak';
 export const openPronunciationSettings = () => window.dispatchEvent(new CustomEvent('linguareader:open-settings', { detail: 'pronunciation' }));
 
 /** A speaker button that reads `text` aloud, with a hint when no voice is installed. */
-export default function SpeakButton({ text, langs = [], size = 15, className = '', auto = false, shortcut }: Props) {
+export default function SpeakButton({ text, langs = [], context, size = 15, className = '', auto = false, shortcut }: Props) {
     const [busy, setBusy] = useState(false);
     const [hint, setHint] = useState<string | null>(null);
-    const lang = speechLang(text, ...langs);
+    const lang = wordLang(text, context, ...langs);
     const ref = useRef<() => void>(() => { });
 
     const play = async () => {

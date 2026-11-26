@@ -49,15 +49,17 @@ db.exec(`
     CREATE TABLE meta (k TEXT PRIMARY KEY, v TEXT);
     CREATE TABLE entries (id INTEGER PRIMARY KEY, key TEXT NOT NULL, word TEXT NOT NULL, data TEXT NOT NULL);
     CREATE TABLE forms (key TEXT NOT NULL, entry INTEGER NOT NULL, tags TEXT);
+    CREATE TEMP TABLE redirects (key TEXT NOT NULL, target TEXT NOT NULL);
 `);
 const insEntry = db.prepare('INSERT INTO entries (key, word, data) VALUES (?, ?, ?)');
 const insForm = db.prepare('INSERT INTO forms (key, entry, tags) VALUES (?, ?, ?)');
+const insRedirect = db.prepare('INSERT INTO redirects (key, target) VALUES (?, ?)');
 
 let stream = fs.createReadStream(input);
 if (input.endsWith('.gz')) stream = stream.pipe(zlib.createGunzip());
 const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
 
-let lines = 0, entries = 0, forms = 0, skipped = 0;
+let lines = 0, entries = 0, forms = 0, skipped = 0, redirects = 0;
 const begin = db.prepare('BEGIN'), commit = db.prepare('COMMIT');
 begin.run();
 for await (const line of rl) {
@@ -95,7 +97,14 @@ for await (const line of rl) {
         if (senses.length >= MAX_SENSES) break;
     }
     if (senses.length === 0) {
-        skipped++;
+        // A spelling page with no definitions of its own ("书": simplified 書,
+        // "がっこう": kana for 学校) still finds the entry it points to
+        const k = key(clip(e.word));
+        for (const f of [...formOf].slice(0, 4)) if (key(f) !== k) {
+            insRedirect.run(k, key(f));
+            redirects++;
+        }
+        if (formOf.size === 0) skipped++;
         continue;
     }
     const data = { p: clip(e.pos) };
@@ -118,11 +127,25 @@ for await (const line of rl) {
         const tags = (f?.tags ?? []).filter(t => typeof t === 'string');
         if (!form || form === '-' || tags.some(t => SKIP_FORM_TAGS.has(t)) || form.length > 60) continue;
         const k = key(form);
-        if (seen.has(k) || tags.some(t => t === 'possessive' || t === 'clitic')) continue;
+        if (seen.has(k) || tags.some(t => /possessive|clitic/.test(t))) continue;
         seen.add(k);
         insForm.run(k, id, tags.slice(0, 5).join(' ') || null);
         forms++;
         if (++kept >= MAX_FORMS) break;
+    }
+    // Japanese: the kana reading is in the headword line, "学校 (がっこう) • (gakkō)"
+    for (const t of Array.isArray(e.head_templates) ? e.head_templates : []) {
+        const found = [...String(t?.expansion ?? '').matchAll(/[(（\s]([\p{Script=Hiragana}\p{Script=Katakana}ー・]+)(?=[)）,\s]|$)/gu)].map(m => m[1]);
+        for (const v of Object.values(t?.args ?? {})) if (typeof v === 'string' && /^[\p{Script=Hiragana}\p{Script=Katakana}ー・ ]+$/u.test(v)) found.push(v);
+        for (const m of found) {
+            for (const r of m.split(/[・ ]+/)) {
+                const k = key(r);
+                if (!k || seen.has(k)) continue;
+                seen.add(k);
+                insForm.run(k, id, 'reading');
+                forms++;
+            }
+        }
     }
     if (entries % 50000 === 0) {
         commit.run();
@@ -133,6 +156,10 @@ for await (const line of rl) {
 commit.run();
 db.exec(`
     CREATE INDEX entries_key ON entries (key);
+    INSERT INTO forms (key, entry, tags)
+        SELECT DISTINCT r.key, e.id, NULL FROM redirects r JOIN entries e ON e.key = r.target
+        WHERE NOT EXISTS (SELECT 1 FROM entries x WHERE x.key = r.key);
+    DROP TABLE redirects;
     CREATE INDEX forms_key ON forms (key);
 `);
 const meta = db.prepare('INSERT INTO meta (k, v) VALUES (?, ?)');
@@ -145,4 +172,4 @@ db.exec('VACUUM');
 db.close();
 // For the release manifest
 fs.writeFileSync(`${output}.meta.json`, JSON.stringify({ lang, entries, forms }));
-console.log(`${output}: ${entries} entries, ${forms} forms from ${lines} lines (${skipped} skipped), ${(fs.statSync(output).size / 1e6).toFixed(1)} MB`);
+console.log(`${output}: ${entries} entries, ${forms} forms, ${redirects} redirects from ${lines} lines (${skipped} skipped), ${(fs.statSync(output).size / 1e6).toFixed(1)} MB`);

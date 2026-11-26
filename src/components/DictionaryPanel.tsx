@@ -26,11 +26,19 @@ export default function DictionaryPanel({ text, lang }: { text: string; lang: st
         setMore(false);
         setState({ status: 'loading', entries: [] });
         (async () => {
-            if (!lang || !(await installedDictionaries()).includes(lang)) {
+            const have = await installedDictionaries();
+            // Kanji words are written the same in Chinese and Japanese: try the other one too
+            const langs = lang && /^\p{Script=Han}+$/u.test(text.trim()) && (lang === 'zh' || lang === 'ja') ? [lang, lang === 'zh' ? 'ja' : 'zh'] : lang ? [lang] : [];
+            const usable = langs.filter(l => have.includes(l));
+            if (usable.length === 0) {
                 if (alive) setState({ status: 'missing', entries: [] });
                 return;
             }
-            const entries = (await window.electronAPI.dictLookup(lang, text).catch(() => null)) ?? [];
+            let entries: DictEntry[] = [];
+            for (const l of usable) {
+                entries = (await window.electronAPI.dictLookup(l, text).catch(() => null)) ?? [];
+                if (entries.length) break;
+            }
             if (alive) setState({ status: entries.length ? 'done' : 'none', entries });
         })();
         return () => {
@@ -60,7 +68,7 @@ export default function DictionaryPanel({ text, lang }: { text: string; lang: st
                         {(i > 0 || e.word.toLowerCase() !== text.trim().toLowerCase()) && <span className="serif text-[13.5px] font-semibold" style={{ color: 'var(--text)' }}>{e.word} </span>}
                         <span className="italic">{POS[e.pos] ?? e.pos}</span>
                         {e.ipa && <span> · {e.ipa}</span>}
-                        {e.viaForm && e.viaForm !== 'form' && <span> · {text.trim()} is the {e.viaForm} form</span>}
+                        {e.viaForm && e.viaForm !== 'form' && e.viaForm !== 'reading' && <span> · {text.trim()} is the {e.viaForm} form</span>}
                     </p>
                     <ol className="mt-1 grid gap-1.5 list-decimal pl-5 marker:text-[11px] marker:text-[var(--text-3)]">
                         {(more ? e.senses : e.senses.slice(0, 3)).map((s, j) => (

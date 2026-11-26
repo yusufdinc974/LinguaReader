@@ -9,7 +9,7 @@ const store = new Map<string, string>();
     setItem: (k: string, v: string) => store.set(k, v),
     removeItem: (k: string) => store.delete(k),
 };
-const { langFamily, guessFromScript, speechLang, setLearnLang, piperFamily } = await import('../src/lib/speech.ts');
+const { langFamily, guessFromScript, speechLang, wordLang, setLearnLang, piperFamily } = await import('../src/lib/speech.ts');
 
 test('language codes from translation services', () => {
     assert.equal(langFamily('fr-FR'), 'fr');
@@ -41,4 +41,15 @@ test('picks hints first, but not ones the alphabet rules out', () => {
 test('Piper voice keys', () => {
     assert.equal(piperFamily('fr_FR-siwis-medium'), 'fr');
     assert.equal(piperFamily('tr_TR-dfki-medium'), 'tr');
+});
+
+test('kanji-only words are Japanese in a Japanese sentence', () => {
+    setLearnLang('');
+    assert.equal(wordLang('先生', 'あの先生は優しいです。', 'zh-CN'), 'ja');
+    assert.equal(wordLang('先生', '先生您好', 'zh-CN'), 'zh');
+    assert.equal(wordLang('先生', '', 'zh-CN', 'ja'), 'ja');
+    setLearnLang('ja');
+    assert.equal(wordLang('先生', '', 'zh-CN'), 'ja');
+    assert.equal(wordLang('maison', '', 'fr'), 'fr');
+    setLearnLang('');
 });

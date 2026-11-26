@@ -363,7 +363,7 @@ export default function Words() {
                                                     <td className="py-2.5 pr-4 align-top">
                                                         <div className="flex items-center gap-1">
                                                             <p className="serif text-[16px] leading-snug break-words">{w.word}</p>
-                                                            <SpeakButton text={w.word} langs={[w.source_language]} size={13} className="w-6 h-6 opacity-0 group-hover:opacity-100 focus:opacity-100" />
+                                                            <SpeakButton text={w.word} langs={[w.source_language]} context={w.sentence_context} size={13} className="w-6 h-6 opacity-0 group-hover:opacity-100 focus:opacity-100" />
                                                         </div>
                                                         {w.pdf_name && <p className="text-[11.5px] faint mt-0.5 truncate max-w-[280px]" title={w.pdf_name}>{displayName(w.pdf_name)}</p>}
                                                     </td>

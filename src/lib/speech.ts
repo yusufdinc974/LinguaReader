@@ -46,6 +46,22 @@ export function speechLang(text: string, ...hints: (string | null | undefined)[]
     return script ?? langFamily(getLearnLang());
 }
 
+const KANA = /[\p{Script=Hiragana}\p{Script=Katakana}]/u;
+const HAN_ONLY = /^[\p{Script=Han}\s々〆ヶ]+$/u;
+
+/**
+ * Like speechLang, but a word written only in kanji (先生) is Japanese when
+ * the sentence around it has kana or the user is learning Japanese, even if
+ * the translation service calls it Chinese.
+ */
+export function wordLang(text: string, context: string | null | undefined, ...hints: (string | null | undefined)[]): string | null {
+    if (HAN_ONLY.test(text.trim())) {
+        if (context && KANA.test(context)) return 'ja';
+        if (hints.some(h => langFamily(h) === 'ja') || langFamily(getLearnLang()) === 'ja') return 'ja';
+    }
+    return speechLang(text, ...hints);
+}
+
 // ---------------------------------------------------------------- voices
 
 /** Saved choice per language: "system:<voiceURI>" or "piper:<key>". */

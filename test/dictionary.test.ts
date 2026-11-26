@@ -54,3 +54,18 @@ test('other languages, broken lines and gloss-less senses are left out', () => {
     assert.deepEqual(lookup(db, 'no-table-tags'), []);
     assert.equal((db.prepare("SELECT v FROM meta WHERE k = 'schema'").get() as { v: string }).v, '1');
 });
+
+test('Japanese: kana readings and gloss-less spellings find their entry', () => {
+    const f = path.join(tmp, 'ja.db');
+    execFileSync(process.execPath, ['scripts/build-dictionary.mjs', 'test/fixtures/kaikki-ja.jsonl', f, 'ja']);
+    const ja = new Database(f, { readonly: true });
+    try {
+        assert.equal(lookup(ja, 'がっこう')[0]?.word, '学校');
+        assert.equal(lookup(ja, 'がっこう')[0]?.viaForm, 'reading');
+        assert.equal(lookup(ja, '奇麗')[0]?.word, '綺麗');
+        assert.equal(lookup(ja, 'キレイ')[0]?.word, '綺麗');
+        assert.equal(lookup(ja, 'きれい')[0]?.word, '綺麗');
+    } finally {
+        ja.close();
+    }
+});
