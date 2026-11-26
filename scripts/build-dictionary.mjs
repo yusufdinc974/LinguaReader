@@ -148,7 +148,12 @@ for await (const line of rl) {
     }
     // Japanese: the kana reading is in the headword line, "学校 (がっこう) • (gakkō)"
     for (const t of Array.isArray(e.head_templates) ? e.head_templates : []) {
-        const found = [...String(t?.expansion ?? '').matchAll(/[(（\s]([\p{Script=Hiragana}\p{Script=Katakana}ー・]+)(?=[)）,\s]|$)/gu)].map(m => m[1]);
+        const exp = String(t?.expansion ?? '');
+        // "学校 (がっ こう)": a reading in brackets, spaces between its parts; "綺麗 (hiragana きれい, …)"
+        const found = [
+            ...[...exp.matchAll(/[(（]([\p{Script=Hiragana}\p{Script=Katakana}ー・ ]+)[)）]/gu)].map(m => m[1]),
+            ...[...exp.matchAll(/(?:hiragana|katakana)\s+([\p{Script=Hiragana}\p{Script=Katakana}ー・]+)/gu)].map(m => m[1]),
+        ];
         for (const v of Object.values(t?.args ?? {})) if (typeof v === 'string' && /^[\p{Script=Hiragana}\p{Script=Katakana}ー・ ]+$/u.test(v)) found.push(v);
         for (const m of found) {
             // "がっ こう" is one reading with a space between its parts

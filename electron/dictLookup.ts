@@ -119,9 +119,11 @@ export function formsOf(h: Database.Database, text: string, lang?: string, limit
     ].map(r => asPrinted(r.key, lang));
     const multi = k.includes(' ');
     const latin = LATIN.test(k);
+    // Short kana next to a kanji word (こう for 学校 in older files) would light up everywhere
+    const kanji = /\p{Script=Han}/u.test(k);
     const out = new Set<string>();
     for (const f of keys) {
-        if (f === k || (!multi && f.includes(' ')) || [...f].length < 2 || (!latin && LATIN.test(f)) || /\d/.test(f) || IPA.test(f)) continue;
+        if (f === k || (!multi && f.includes(' ')) || [...f].length < 2 || (!latin && LATIN.test(f)) || /\d/.test(f) || IPA.test(f) || (kanji && [...f].length < 3 && /^[\p{Script=Hiragana}\p{Script=Katakana}ー]+$/u.test(f))) continue;
         out.add(f);
         if (out.size >= limit) break;
     }

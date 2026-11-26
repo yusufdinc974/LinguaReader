@@ -80,3 +80,16 @@ test('forms of a saved word, for highlighting', async () => {
     assert.ok(fromForm.includes('manger') && fromForm.includes('mangé'), fromForm.join());
     assert.deepEqual(formsOf(db, 'unknownword'), []);
 });
+
+test('a Japanese reading written with a space stays one word', () => {
+    const f = path.join(tmp, 'ja2.db');
+    execFileSync(process.execPath, ['scripts/build-dictionary.mjs', 'test/fixtures/kaikki-ja.jsonl', f, 'ja']);
+    const ja = new Database(f, { readonly: true });
+    try {
+        assert.equal(lookup(ja, 'がっこう')[0]?.word, '学校');
+        assert.deepEqual(lookup(ja, 'こう'), []);
+        assert.deepEqual(lookup(ja, 'がっ'), []);
+    } finally {
+        ja.close();
+    }
+});
