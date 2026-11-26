@@ -35,6 +35,9 @@ const MAX_WORDS = 12;
 const MAX_TEXT = 400;
 /** Finnish and the like list hundreds of forms per word (possessives, clitics); keep the common ones. */
 const MAX_FORMS = 120;
+/** Turkish verb tables list hundreds of forms with the common past tense (gitti) after the rest. */
+const MAX_FORMS_FOR = { tr: 400 };
+const maxForms = MAX_FORMS_FOR[lang] ?? MAX_FORMS;
 
 /** Same as wordKey() in src/lib/words.ts. */
 const key = s => s.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -141,7 +144,7 @@ for await (const line of rl) {
         seen.add(k);
         insForm.run(k, id, tags.slice(0, 5).join(' ') || null);
         forms++;
-        if (++kept >= MAX_FORMS) break;
+        if (++kept >= maxForms) break;
     }
     // Japanese: the kana reading is in the headword line, "学校 (がっこう) • (gakkō)"
     for (const t of Array.isArray(e.head_templates) ? e.head_templates : []) {
