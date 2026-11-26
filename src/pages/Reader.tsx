@@ -9,6 +9,7 @@ import { destroyDoc, displayName, openReaderDoc, pageSize, type ReaderDoc } from
 import { getOcrMode, holdPage, ocrPage, setOcrMode, SCANNED_PAGE_CHARS, type OcrMode } from '../lib/ocr';
 import { SCRIPTS, type ScriptId } from '../../electron/ocr/types';
 import { createHighlighter } from '../lib/highlight';
+import { getLearnLang, langFamily } from '../lib/speech';
 import { wordKey, cleanSelection, DEFAULT_LIST_COLOR } from '../lib/words';
 import { selectionContext } from '../lib/context';
 import { translateText, SUPPORTED_LANGUAGES } from '../services/translationService';
@@ -39,6 +40,9 @@ export default function Reader() {
     const [lists, setLists] = useState<WordList[]>([]);
     const [familiarity, setFamiliarity] = useState<FamiliarityMap>({});
     const [wordColors, setWordColors] = useState<Record<string, string>>({});
+    /** Other forms of saved words ("mangé" → "manger"), from the installed dictionaries. */
+    const [formOf, setFormOf] = useState<Record<string, string>>({});
+    const colorsSeq = useRef(0);
     // [] = highlight all lists, [-1] = none, otherwise the chosen ids
     const [shownListIds, setShownListIds] = useState<number[]>([]);
     const [filterOpen, setFilterOpen] = useState(false);
@@ -84,8 +88,25 @@ export default function Reader() {
     const loadColors = useCallback(async (ids: number[]) => {
         const rows = await window.electronAPI.getWordColors(ids.length > 0 ? ids : undefined);
         const map: Record<string, string> = {};
-        for (const r of rows) map[r.word_lower] = r.color;
+        for (const r of rows) map[r.word_lower] ??= r.color;
         setWordColors(map);
+        const seq = ++colorsSeq.current;
+        const ask: { key: string; lang: string }[] = [];
+        const seen = new Set<string>();
+        for (const r of rows) {
+            const lang = langFamily(r.source_language) ?? langFamily(getLearnLang());
+            // Kanji words are often saved as Chinese: look in both
+            const langs = lang === 'zh' || lang === 'ja' ? (/^\p{Script=Han}+$/u.test(r.word_lower) ? ['ja', 'zh'] : [lang]) : lang ? [lang] : [];
+            for (const l of langs) if (!seen.has(`${l}:${r.word_lower}`)) {
+                seen.add(`${l}:${r.word_lower}`);
+                ask.push({ key: r.word_lower, lang: l });
+            }
+        }
+        const pairs = ask.length ? await window.electronAPI.dictForms(ask).catch(() => [] as [string, string][]) : [];
+        if (seq !== colorsSeq.current) return;
+        const forms: Record<string, string> = {};
+        for (const [f, base] of pairs) if (!(f in map) && !(f in forms)) forms[f] = base;
+        setFormOf(forms);
     }, []);
 
     useEffect(() => {
@@ -367,10 +388,14 @@ export default function Reader() {
         ]);
         if (seq !== selectionSeq.current) return; // a newer selection replaced this one
 
-        setSavedWordId(existing.status === 'fulfilled' ? existing.value?.id ?? null : null);
+        const savedId = existing.status === 'fulfilled' ? existing.value?.id ?? null : null;
+        setSavedWordId(savedId);
+        // A form of a saved word ("mangé" when "manger" is saved)
+        const base = savedId === null ? formOf[key] : undefined;
+        const savedAs = base ? { word: base, level: familiarity[base]?.level ?? 1 } : undefined;
         setCard(c => c && (result.status === 'fulfilled'
-            ? { ...c, loading: false, translation: result.value.translatedText, source: result.value.source, detectedLanguage: result.value.detectedLanguage }
-            : { ...c, loading: false, failed: true }));
+            ? { ...c, loading: false, translation: result.value.translatedText, source: result.value.source, detectedLanguage: result.value.detectedLanguage, savedAs }
+            : { ...c, loading: false, failed: true, savedAs }));
     };
 
     const saveToList = async (listId: number) => {
@@ -429,7 +454,11 @@ export default function Reader() {
     };
     const filterActive = shownListIds.length > 0;
 
-    const highlighter = useMemo(() => createHighlighter(wordColors), [wordColors]);
+    const highlighter = useMemo(() => {
+        const all: Record<string, string> = {};
+        for (const [f, base] of Object.entries(formOf)) if (wordColors[base]) all[f] = wordColors[base];
+        return createHighlighter(Object.assign(all, wordColors));
+    }, [wordColors, formOf]);
     const pages = !doc ? [] : continuous
         ? Array.from({ length: totalPages }, (_, i) => i + 1)
         : spread ? [currentPage, currentPage + 1].filter(p => p <= totalPages) : [currentPage];

@@ -15,6 +15,8 @@ export interface WordCardState {
     detectedLanguage?: string;
     /** The sentence the selection is in, saved with the word. */
     context?: string;
+    /** Set when this is another form of a saved word ("mangé" → "manger"). */
+    savedAs?: { word: string; level: number };
     anchor: { left: number; top: number; bottom: number; width: number };
 }
 
@@ -93,6 +95,12 @@ export default function WordCard({ card, level, onLevel, lists, saved, onSave, o
                         <p className="text-[15px] leading-snug break-words" style={{ color: 'var(--text-2)' }}>{card.translation}</p>
                     )}
                 </div>
+                {card.savedAs && !saved && (
+                    <p className="text-[12.5px] mt-1.5 flex items-center gap-1.5" style={{ color: 'var(--text-2)' }}>
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: LEVELS[card.savedAs.level]?.color }} />
+                        <span>A form of <span className="serif font-semibold">{card.savedAs.word}</span>, which you saved ({LEVELS[card.savedAs.level]?.label ?? 'New'})</span>
+                    </p>
+                )}
                 {card.source && !card.loading && !card.failed && (
                     <p className="text-[11px] faint mt-1.5">via {card.source}</p>
                 )}

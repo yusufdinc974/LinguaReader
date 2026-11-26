@@ -69,3 +69,14 @@ test('Japanese: kana readings and gloss-less spellings find their entry', () => 
         ja.close();
     }
 });
+
+test('forms of a saved word, for highlighting', async () => {
+    const { formsOf } = await import('../electron/dictLookup.ts');
+    const forms = formsOf(db, 'manger');
+    assert.ok(forms.includes('mangé') && forms.includes('mangeons'), forms.join());
+    assert.ok(!forms.includes('manger'));
+    // From a form: the headword and its other forms
+    const fromForm = formsOf(db, 'mangeons');
+    assert.ok(fromForm.includes('manger') && fromForm.includes('mangé'), fromForm.join());
+    assert.deepEqual(formsOf(db, 'unknownword'), []);
+});

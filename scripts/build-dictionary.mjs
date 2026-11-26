@@ -138,7 +138,8 @@ for await (const line of rl) {
         const found = [...String(t?.expansion ?? '').matchAll(/[(（\s]([\p{Script=Hiragana}\p{Script=Katakana}ー・]+)(?=[)）,\s]|$)/gu)].map(m => m[1]);
         for (const v of Object.values(t?.args ?? {})) if (typeof v === 'string' && /^[\p{Script=Hiragana}\p{Script=Katakana}ー・ ]+$/u.test(v)) found.push(v);
         for (const m of found) {
-            for (const r of m.split(/[・ ]+/)) {
+            // "がっ こう" is one reading with a space between its parts
+            for (const r of m.split(/・+/).map(x => x.replace(/\s+/g, ''))) {
                 const k = key(r);
                 if (!k || seen.has(k)) continue;
                 seen.add(k);
@@ -161,6 +162,7 @@ db.exec(`
         WHERE NOT EXISTS (SELECT 1 FROM entries x WHERE x.key = r.key);
     DROP TABLE redirects;
     CREATE INDEX forms_key ON forms (key);
+    CREATE INDEX forms_entry ON forms (entry);
 `);
 const meta = db.prepare('INSERT INTO meta (k, v) VALUES (?, ?)');
 meta.run('schema', String(SCHEMA_VERSION));

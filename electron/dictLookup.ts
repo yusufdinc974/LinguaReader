@@ -62,3 +62,55 @@ export function lookup(h: Database.Database, text: string, limit = 6): DictEntry
     return out;
 }
 
+
+const LATIN = /\p{Script=Latin}/u;
+/** IPA letters: some tables list a pronunciation as a form. */
+const IPA = /[\u0250-\u02af\u02b0-\u02ff]/u;
+/** Not another form of the same word: helper verbs, aspect pairs, derived words, old spellings. */
+const NOT_A_FORM = /\b(auxiliary|perfective|imperfective|diminutive|augmentative|noun-from-verb|romanization|historical|obsolete|archaic|dated|abbreviation)\b/;
+/** Stress marks in Russian and other dictionaries, which books don't print. */
+const stripStress = (s: string) => (/\p{Script=Cyrillic}/u.test(s) ? s.normalize('NFD').replace(/[\u0300\u0301]/g, '').normalize('NFC') : s);
+
+/**
+ * Other spellings of `text` to highlight in the reader: the inflected forms of
+ * its headword ("manger" → "mangé", "mangeons"), its headword when it is a
+ * form itself, and their kana readings. Multi-word forms ("avoir mangé"),
+ * one-letter forms and romanizations of non-Latin words are left out.
+ */
+export function formsOf(h: Database.Database, text: string, limit = 80): string[] {
+    const k = wordKey(text);
+    if (!k || k.length > 100) return [];
+    const ids = new Set<number>();
+    const byKey = h.prepare('SELECT id, data FROM entries WHERE key = ? ORDER BY id LIMIT 6');
+    const headOfForm = h.prepare("SELECT e.id, e.data FROM forms f JOIN entries e ON e.id = f.entry WHERE f.key = ? AND (f.tags IS NULL OR f.tags NOT LIKE '%auxiliary%') ORDER BY e.id LIMIT 4");
+    const own = byKey.all(k) as { id: number; data: string }[];
+    // A headword in its own right ("Haus") isn't also a form of something else
+    // ("hausen"); only a form, or a form-of entry, looks up its headword
+    const isForm = own.length === 0 || own.every(r => r.data.includes('"f":['));
+    const rows = isForm ? [...own, ...(headOfForm.all(k) as { id: number; data: string }[])] : own;
+    for (const r of rows) {
+        ids.add(r.id);
+        // A form-of entry ("mangé") brings its headword's forms along
+        if (!isForm) continue;
+        try {
+            for (const lemma of (JSON.parse(r.data).f ?? []) as string[]) for (const x of byKey.all(wordKey(lemma)) as { id: number }[]) ids.add(x.id);
+        } catch { /* bad row */ }
+    }
+    if (ids.size === 0) return [];
+    const list = [...ids].slice(0, 10);
+    const marks = list.map(() => '?').join(',');
+    const keys = [
+        ...(h.prepare(`SELECT key FROM entries WHERE id IN (${marks})`).all(...list) as { key: string }[]),
+        ...(h.prepare(`SELECT key, tags FROM forms WHERE entry IN (${marks}) LIMIT 600`).all(...list) as { key: string; tags: string | null }[])
+            .filter(r => !NOT_A_FORM.test(r.tags ?? '')),
+    ].map(r => stripStress(r.key));
+    const multi = k.includes(' ');
+    const latin = LATIN.test(k);
+    const out = new Set<string>();
+    for (const f of keys) {
+        if (f === k || (!multi && f.includes(' ')) || [...f].length < 2 || (!latin && LATIN.test(f)) || /\d/.test(f) || IPA.test(f)) continue;
+        out.add(f);
+        if (out.size >= limit) break;
+    }
+    return [...out];
+}

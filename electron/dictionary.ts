@@ -13,7 +13,7 @@ import path from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import zlib from 'node:zlib';
-import { lookup } from './dictLookup.ts';
+import { formsOf, lookup } from './dictLookup.ts';
 export type { DictEntry, Sense } from './dictLookup.ts';
 
 const RELEASE = 'https://github.com/yusufdinc974/LinguaReader/releases/download/dictionaries-1/';
@@ -55,11 +55,30 @@ async function loadManifest(): Promise<DictionaryInfo[]> {
 
 const open = new Map<string, Database.Database>();
 
+/** Files built before the forms-by-entry index (for highlighting forms) get it once. */
+function ensureFormsIndex(file: string) {
+    try {
+        const ro = new Database(file, { readonly: true, fileMustExist: true });
+        const has = ro.prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'forms_entry'").get();
+        ro.close();
+        if (has) return;
+        const rw = new Database(file, { fileMustExist: true });
+        try {
+            rw.exec('CREATE INDEX IF NOT EXISTS forms_entry ON forms (entry)');
+        } finally {
+            rw.close();
+        }
+    } catch (err) {
+        console.warn('[dictionary] could not add the forms index:', err);
+    }
+}
+
 function handle(lang: string) {
     let h = open.get(lang);
     if (h) return h;
     const f = fileFor(lang);
     if (!fs.existsSync(f)) return null;
+    ensureFormsIndex(f);
     h = new Database(f, { readonly: true, fileMustExist: true });
     open.set(lang, h);
     return h;
@@ -147,6 +166,23 @@ export function setupDictionary() {
             console.error('[dictionary] lookup failed:', err);
             return [];
         }
+    });
+
+    // Other forms of the user's saved words, for highlighting: [form, saved word] pairs
+    ipcMain.handle('dict-forms', (_, words: unknown) => {
+        if (!Array.isArray(words)) return [];
+        const out: [string, string][] = [];
+        for (const w of words.slice(0, 20000)) {
+            if (!w || typeof w.key !== 'string' || typeof w.lang !== 'string' || !LANG.test(w.lang)) continue;
+            const h = handle(w.lang);
+            if (!h) continue;
+            try {
+                for (const f of formsOf(h, w.key)) out.push([f, w.key]);
+            } catch (err) {
+                console.error('[dictionary] forms failed:', err);
+            }
+        }
+        return out;
     });
 
     app.on('will-quit', () => {

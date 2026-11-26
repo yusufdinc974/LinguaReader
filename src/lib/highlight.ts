@@ -16,48 +16,76 @@ export interface Highlighter {
     fill: (span: HTMLElement, text: string) => void;
 }
 
-interface Matcher {
-    regex: RegExp;
-    color: string;
+interface Node {
+    next: Map<string, Node>;
+    /** Set where a saved word ends. */
+    color?: string;
+    /** Must be a whole word (not inside a longer one). */
+    bounded?: boolean;
 }
 
 const HEX = /^#[0-9a-f]{3,8}$/i;
 const NO_SPACES = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}]/u;
+const LETTER = /[\p{L}\p{M}]/u;
 
+/** The character (code point) ending just before `i`. */
+function charBefore(text: string, i: number) {
+    if (i <= 0) return '';
+    const c = text.charCodeAt(i - 1);
+    return c >= 0xdc00 && c <= 0xdfff && i >= 2 ? text.slice(i - 2, i) : text[i - 1];
+}
+
+function charAt(text: string, i: number) {
+    return i >= text.length ? '' : String.fromCodePoint(text.codePointAt(i)!);
+}
+
+/**
+ * Finds saved words and phrases in text. Thousands of them (with their other
+ * forms) are matched in one pass over a trie, longest match first.
+ */
 export function createHighlighter(wordColors: Record<string, string>): Highlighter {
-    // Longest first so phrases win over the single words inside them.
-    const matchers: Matcher[] = Object.keys(wordColors)
-        .filter(Boolean)
-        .sort((a, b) => b.length - a.length)
-        .map(phrase => {
-            const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const color = HEX.test(wordColors[phrase]) ? wordColors[phrase] : '#eab308';
-            // Chinese and Japanese have no spaces: a saved word matches inside any run of text.
-            const bounded = !NO_SPACES.test(phrase);
-            return { regex: new RegExp(bounded ? `(?<![\\p{L}])${escaped}(?![\\p{L}])` : escaped, 'giu'), color };
-        });
+    const root: Node = { next: new Map() };
+    let count = 0;
+    for (const [phrase, c] of Object.entries(wordColors)) {
+        const key = phrase.toLowerCase();
+        if (!key || key.length !== phrase.length) continue;
+        let n = root;
+        for (const ch of key) {
+            let m = n.next.get(ch);
+            if (!m) n.next.set(ch, (m = { next: new Map() }));
+            n = m;
+        }
+        n.color = HEX.test(c) ? c : '#eab308';
+        // Chinese and Japanese have no spaces: a saved word matches inside any run of text.
+        n.bounded = !NO_SPACES.test(key);
+        count++;
+    }
 
     const ranges = (text: string): HighlightRange[] => {
-        if (matchers.length === 0) return [];
+        if (count === 0) return [];
         const lower = text.toLowerCase();
         // toLowerCase can change length (e.g. "İ"); offsets would no longer line up.
         if (lower.length !== text.length) return [];
         const found: HighlightRange[] = [];
-        for (const { regex, color } of matchers) {
-            regex.lastIndex = 0;
-            let m: RegExpExecArray | null;
-            while ((m = regex.exec(lower)) !== null) {
-                if (m[0].length === 0) {
-                    regex.lastIndex++;
-                    continue;
-                }
-                const start = m.index;
-                const end = start + m[0].length;
-                // Skip anything overlapping a longer match already taken.
-                if (!found.some(r => start < r.end && end > r.start)) found.push({ start, end, color });
+        let i = 0;
+        while (i < lower.length) {
+            const atWordStart = !LETTER.test(charBefore(lower, i));
+            let n: Node | undefined = root;
+            let j = i;
+            let best: { end: number; color: string } | null = null;
+            while (n && j < lower.length) {
+                const ch = charAt(lower, j);
+                n = n.next.get(ch);
+                if (!n) break;
+                j += ch.length;
+                if (n.color && (!n.bounded || (atWordStart && !LETTER.test(charAt(lower, j))))) best = { end: j, color: n.color };
             }
+            if (best) {
+                found.push({ start: i, end: best.end, color: best.color });
+                i = best.end;
+            } else i += charAt(lower, i).length || 1;
         }
-        return found.sort((a, b) => a.start - b.start);
+        return found;
     };
 
     const fillSegment: Highlighter['fillSegment'] = (span, text, start, end, rs) => {
