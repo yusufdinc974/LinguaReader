@@ -106,38 +106,6 @@ export default function SettingsPanel({ open, onClose, theme, onThemeChange }: P
         }
     };
 
-    const doExport = async () => {
-        setBusy('export');
-        try {
-            const r = await window.electronAPI.exportData();
-            if (r.success) flash({ type: 'ok', text: `Backup saved to ${r.path}` });
-            else if (r.error) flash({ type: 'error', text: r.error });
-        } catch {
-            flash({ type: 'error', text: 'Export failed.' });
-        } finally {
-            setBusy(null);
-        }
-    };
-
-    const doImport = async () => {
-        setBusy('import');
-        try {
-            const r = await window.electronAPI.importData();
-            if (r.anki) {
-                // An Anki deck: continue in the Anki import on the Words page
-                onClose();
-                navigate('/words', { state: { anki: r.anki } });
-                return;
-            }
-            if (r.success) flash({ type: 'ok', text: `Imported ${r.imported?.words ?? 0} words in ${r.imported?.lists ?? 0} lists.` });
-            else if (r.error && r.error !== 'Import cancelled') flash({ type: 'error', text: r.error });
-        } catch {
-            flash({ type: 'error', text: 'Import failed.' });
-        } finally {
-            setBusy(null);
-        }
-    };
-
     const toggleSync = async () => {
         if (syncInfo) {
             await window.electronAPI.stopSyncServer();
@@ -224,17 +192,10 @@ export default function SettingsPanel({ open, onClose, theme, onThemeChange }: P
                         <DictionarySettings />
                     </Section>
 
-                    <Section title="Backup" description="Lists, words and review progress as a JSON file. Import also opens Anki decks (.apkg).">
-                        <div className="flex gap-2">
-                            <button className="btn btn-outline" onClick={doExport} disabled={busy !== null}>
-                                {busy === 'export' && <Loader2 size={14} className="animate-spin" />}
-                                Export backup
-                            </button>
-                            <button className="btn btn-outline" onClick={doImport} disabled={busy !== null}>
-                                {busy === 'import' && <Loader2 size={14} className="animate-spin" />}
-                                Import…
-                            </button>
-                        </div>
+                    <Section title="Import and export" description="Backups, Anki decks and CSV files, all in one place on the Words page.">
+                        <button className="btn btn-outline" onClick={() => { onClose(); navigate('/words', { state: { importExport: true } }); }}>
+                            Open Import / Export
+                        </button>
                     </Section>
 
                     <Section title="Phone sync" description="Both devices need to be on the same Wi-Fi.">
