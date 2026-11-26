@@ -1,0 +1,4 @@
+{"word": "学校", "lang": "Japanese", "lang_code": "ja", "pos": "noun", "head_templates": [{"name": "ja-noun", "args": {"1": "がっこう"}, "expansion": "学校 (がっこう) • (gakkō)"}], "senses": [{"glosses": ["school"]}]}
+{"word": "綺麗", "lang": "Japanese", "lang_code": "ja", "pos": "adj", "head_templates": [{"name": "ja-adj", "expansion": "綺麗 (-na inflection, hiragana きれい, rōmaji kirei)"}], "senses": [{"glosses": ["pretty, beautiful"]}]}
+{"word": "奇麗", "lang": "Japanese", "lang_code": "ja", "pos": "adj", "senses": [{"tags": ["alt-of"], "alt_of": [{"word": "綺麗"}]}]}
+{"word": "キレイ", "lang": "Japanese", "lang_code": "ja", "pos": "adj", "senses": [{"tags": ["no-gloss"], "form_of": [{"word": "綺麗"}]}]}

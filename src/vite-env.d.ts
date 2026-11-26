@@ -231,6 +231,22 @@ interface Window {
 
         onDataUpdated: (callback: () => void) => () => void;
 
+        // Pronunciation (Piper natural voices, see electron/tts.ts)
+        ttsStatus: () => Promise<{ supported: boolean; engine: boolean; voices: string[] }>;
+        ttsCatalog: () => Promise<{ key: string; code: string; family: string; language: string; country: string; name: string; quality: string; sizeBytes: number }[]>;
+        ttsInstall: (key: string) => Promise<string[]>;
+        ttsRemove: (key: string) => Promise<string[]>;
+        ttsSpeak: (key: string, text: string) => Promise<Uint8Array>;
+        onTtsProgress: (callback: (p: { key: string; stage: 'engine' | 'voice'; got: number; total: number }) => void) => () => void;
+
+        // Offline dictionaries (see electron/dictionary.ts)
+        dictStatus: () => Promise<string[]>;
+        dictAvailable: () => Promise<{ lang: string; file: string; bytes: number; sha256: string; entries: number }[]>;
+        dictInstall: (lang: string) => Promise<string[]>;
+        dictRemove: (lang: string) => Promise<string[]>;
+        dictLookup: (lang: string, text: string) => Promise<import('./types').DictEntry[] | null>;
+        onDictProgress: (callback: (p: { lang: string; got: number; total: number }) => void) => () => void;
+
         // Sync Server
         startSyncServer: () => Promise<{ success: boolean; info?: { ip: string; port: number; pin: string; qrDataURL: string }; error?: string }>;
         stopSyncServer: () => Promise<{ success: boolean; error?: string }>;

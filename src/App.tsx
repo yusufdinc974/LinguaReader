@@ -30,6 +30,13 @@ export default function App() {
         };
     }, [bumpData]);
 
+    // "Voice settings" links elsewhere in the app open Settings
+    useEffect(() => {
+        const open = () => setSettingsOpen(true);
+        window.addEventListener('linguareader:open-settings', open);
+        return () => window.removeEventListener('linguareader:open-settings', open);
+    }, []);
+
     const closeSettings = useCallback(() => setSettingsOpen(false), []);
     const inReview = location.pathname.startsWith('/review');
 

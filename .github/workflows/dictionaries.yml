@@ -1,0 +1,132 @@
+# Builds the offline dictionaries (scripts/build-dictionary.mjs) from
+# Wiktionary data on kaikki.org and publishes them as assets of the
+# "dictionaries-1" pre-release, with dictionaries.json listing each file's
+# size and SHA-256. The app downloads them from there (electron/dictionary.ts).
+#
+# Run it from the Actions tab, optionally for some languages only. It also
+# runs when the builder or this file change.
+name: Dictionaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      languages:
+        description: 'App language codes, space separated (empty = all)'
+        required: false
+        default: ''
+  push:
+    paths:
+      - scripts/build-dictionary.mjs
+      - .github/workflows/dictionaries.yml
+
+permissions:
+  contents: write
+
+env:
+  TAG: dictionaries-1
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - id: plan
+        shell: bash
+        run: |
+          # app code | Wiktionary code | kaikki.org language name
+          all='fr|fr|French de|de|German es|es|Spanish it|it|Italian pt|pt|Portuguese ru|ru|Russian tr|tr|Turkish
+          nl|nl|Dutch pl|pl|Polish sv|sv|Swedish ja|ja|Japanese zh|zh|Chinese ko|ko|Korean ar|ar|Arabic uk|uk|Ukrainian
+          el|el|Greek cs|cs|Czech fi|fi|Finnish da|da|Danish no|nb|Norwegian_Bokmål hu|hu|Hungarian ro|ro|Romanian
+          id|id|Indonesian vi|vi|Vietnamese he|he|Hebrew hi|hi|Hindi fa|fa|Persian ca|ca|Catalan bg|bg|Bulgarian en|en|English'
+          want="${{ github.event.inputs.languages }}"
+          items=()
+          for row in $all; do
+            code="${row%%|*}"
+            if [ -z "$want" ] || [[ " $want " == *" $code "* ]]; then items+=("\"$row\""); fi
+          done
+          echo "matrix=[$(IFS=,; echo "${items[*]}")]" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        lang: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install the SQLite module only
+        run: npm install --no-save --ignore-scripts=false better-sqlite3@13
+      - name: Download from kaikki.org
+        shell: bash
+        run: |
+          IFS='|' read -r code src name <<< "${{ matrix.lang }}"
+          name="${name//_/ }"
+          enc="$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "$name")"
+          flat="$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1].replace(" ","")))' "$name")"
+          for url in \
+            "https://kaikki.org/dictionary/$enc/kaikki.org-dictionary-$flat.jsonl.gz" \
+            "https://kaikki.org/dictionary/$enc/kaikki.org-dictionary-$flat.jsonl" \
+            "https://kaikki.org/dictionary/$enc/kaikki.org-dictionary-$enc.jsonl"; do
+            echo "Trying $url"
+            out=data.jsonl; [[ "$url" == *.gz ]] && out=data.jsonl.gz
+            if curl -fL --retry 3 -o "$out" "$url"; then echo "SRC=$out" >> "$GITHUB_ENV"; ls -la "$out"; exit 0; fi
+          done
+          echo "No download worked for $name"; exit 1
+      - name: Build
+        shell: bash
+        run: |
+          IFS='|' read -r code src name <<< "${{ matrix.lang }}"
+          node scripts/build-dictionary.mjs "$SRC" "$code.db" "$code" "$src"
+          gzip -9 "$code.db"
+          node -e '
+            const fs = require("fs"), crypto = require("crypto");
+            const code = process.argv[1], gz = code + ".db.gz", data = fs.readFileSync(gz);
+            const meta = JSON.parse(fs.readFileSync(code + ".db.meta.json", "utf8"));
+            fs.writeFileSync("manifest-" + code + ".json", JSON.stringify({ lang: code, file: gz, bytes: data.length, sha256: crypto.createHash("sha256").update(data).digest("hex"), entries: meta.entries }));
+          ' "$code"
+          cat "manifest-$code.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dict-${{ strategy.job-index }}
+          path: |
+            *.db.gz
+            manifest-*.json
+          retention-days: 3
+
+  publish:
+    needs: build
+    if: always() && needs.build.result != 'cancelled'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: Publish the pre-release
+        shell: bash
+        run: |
+          cd out
+          ls -la
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create "$TAG" -R "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" --title "Dictionaries" \
+              --notes "Offline dictionaries for LinguaReader (Settings → Dictionaries), built from English Wiktionary data via kaikki.org. Wiktionary content is available under CC BY-SA 4.0 and GFDL. Not an app release."
+          # Merge with the languages already published, so a partial run keeps the rest
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p dictionaries.json -O published.json 2>/dev/null || echo '{"dictionaries":[]}' > published.json
+          node -e '
+            const fs = require("fs");
+            const old = JSON.parse(fs.readFileSync("published.json", "utf8")).dictionaries || [];
+            const fresh = fs.readdirSync(".").filter(f => /^manifest-[a-z]{2,3}\.json$/.test(f)).map(f => JSON.parse(fs.readFileSync(f, "utf8")));
+            const by = new Map(old.map(d => [d.lang, d]));
+            for (const d of fresh) if (d && d.lang) by.set(d.lang, d);
+            fs.writeFileSync("dictionaries.json", JSON.stringify({ schema: 1, dictionaries: [...by.values()].sort((a, b) => a.lang.localeCompare(b.lang)) }, null, 1));
+          '
+          cat dictionaries.json
+          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber *.db.gz dictionaries.json

@@ -42,7 +42,12 @@
 - **Words in context.** Each saved word keeps the sentence you found it in, and review cards show it (with the word blanked out in Reverse mode).
 - **Smart scheduling.** Words come back right before you'd forget them. Only your first answer in a session counts, and "Unsure" still counts as a pass.
 - **See what's coming.** The Words page shows what's due now and a 14-day forecast.
-- **Keyboard friendly.** Space to reveal, 1 / 2 / 3 to answer, Esc to leave.
+- **Keyboard friendly.** Space to reveal, 1 / 2 / 3 to answer, P to listen, Esc to leave.
+
+### 🔊 Pronunciation
+- **Hear any word or sentence** with the speaker button on the word card, in reviews (or press P) and on the Words page.
+- Uses your computer's own voices, or **download a natural-sounding voice**: [Piper](https://github.com/rhasspy/piper) voices for many languages, and [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) for English and Chinese, run by [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx). Windows, macOS and Linux; offline once downloaded.
+- For Japanese and Korean there's no free natural voice yet, so the app uses your computer's own (on Windows: Settings → Time & language → Speech → Add voices). On Linux, system voices need speech-dispatcher.
 
 ### 🌐 Translation
 - Translate into 20 languages, including English, Turkish, German, French, Spanish, Russian, Ukrainian and Portuguese.

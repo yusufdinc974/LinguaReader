@@ -1,5 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { OcrPage, ScriptId } from './ocr/types';
+import type { CatalogVoice as TtsCatalogVoice } from './tts';
+import type { DictEntry, DictionaryInfo } from './dictionary';
 
 export interface PdfFile {
     name: string;
@@ -183,6 +185,30 @@ const electronAPI = {
     ocrCached: (hash: string, page: number, script: ScriptId | 'auto'): Promise<OcrPage | null> => ipcRenderer.invoke('ocr-cached', hash, page, script),
     ocrRecognize: (hash: string, page: number, script: ScriptId | 'auto', image: { data: Uint8Array; width: number; height: number }): Promise<OcrPage> =>
         ipcRenderer.invoke('ocr-recognize', hash, page, script, image),
+
+    // Pronunciation: natural voices (Piper), downloaded on request
+    ttsStatus: (): Promise<{ supported: boolean; engine: boolean; voices: string[] }> => ipcRenderer.invoke('tts-status'),
+    ttsCatalog: (): Promise<TtsCatalogVoice[]> => ipcRenderer.invoke('tts-catalog'),
+    ttsInstall: (key: string): Promise<string[]> => ipcRenderer.invoke('tts-install', key),
+    ttsRemove: (key: string): Promise<string[]> => ipcRenderer.invoke('tts-remove', key),
+    ttsSpeak: (key: string, text: string): Promise<Uint8Array> => ipcRenderer.invoke('tts-speak', key, text),
+    onTtsProgress: (callback: (p: { key: string; stage: 'engine' | 'voice'; got: number; total: number }) => void) => {
+        const handler = (_: unknown, data: any) => callback(data);
+        ipcRenderer.on('tts-progress', handler);
+        return () => ipcRenderer.removeListener('tts-progress', handler);
+    },
+
+    // Offline dictionaries (Wiktionary), downloaded per language
+    dictStatus: (): Promise<string[]> => ipcRenderer.invoke('dict-status'),
+    dictAvailable: (): Promise<DictionaryInfo[]> => ipcRenderer.invoke('dict-available'),
+    dictInstall: (lang: string): Promise<string[]> => ipcRenderer.invoke('dict-install', lang),
+    dictRemove: (lang: string): Promise<string[]> => ipcRenderer.invoke('dict-remove', lang),
+    dictLookup: (lang: string, text: string): Promise<DictEntry[] | null> => ipcRenderer.invoke('dict-lookup', lang, text),
+    onDictProgress: (callback: (p: { lang: string; got: number; total: number }) => void) => {
+        const handler = (_: unknown, data: any) => callback(data);
+        ipcRenderer.on('dict-progress', handler);
+        return () => ipcRenderer.removeListener('dict-progress', handler);
+    },
 
     // Sync Server
     startSyncServer: (): Promise<{ success: boolean; info?: { ip: string; port: number; pin: string; qrDataURL: string }; error?: string }> =>

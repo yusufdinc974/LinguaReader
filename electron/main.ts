@@ -6,6 +6,8 @@ import { autoUpdater } from 'electron-updater';
 import { SyncServer } from './sync_server';
 import { wordKey, legacyKeys } from './wordKey';
 import { setupOcr } from './ocrService';
+import { setupTts } from './tts';
+import { setupDictionary } from './dictionary';
 import { configureSandbox, guardIpc, lockDownWebContents, makeAppUrlCheck, restrictRequests, FileGrants, filesFromArgv } from './security';
 import { deeplKeyStatus, getDeeplKey, isPlausibleDeeplKey, portableSettings, PORTABLE_SETTINGS, RENDERER_SETTINGS, setDeeplKey } from './secrets';
 import { isNewerVersion } from './version';
@@ -20,6 +22,8 @@ const DEV_URL = 'http://localhost:5173';
 
 // Chromium sandbox on (falls back only on Linux systems that can't run it)
 configureSandbox();
+// Linux: Chromium only offers the system voices (speech-dispatcher) to Web Speech with this switch
+if (process.platform === 'linux') app.commandLine.appendSwitch('enable-speech-dispatcher');
 
 // Only the app's own page may load, navigate and call IPC handlers.
 const isAppUrl = makeAppUrlCheck(path.join(__dirname, '../dist'), isDev ? DEV_URL : null);
@@ -1312,6 +1316,8 @@ app.whenReady().then(async () => {
     }
     setupIpcHandlers();
     setupOcr(() => db);
+    setupTts();
+    setupDictionary();
     createWindow();
 
     // Setup auto-updater (only for Windows and Linux)

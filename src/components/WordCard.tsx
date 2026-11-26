@@ -2,6 +2,9 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { X, Plus, Check, Loader2, ChevronDown } from 'lucide-react';
 import type { WordList } from '../types';
 import { LEVELS, DEFAULT_LIST_COLOR } from '../lib/words';
+import SpeakButton from './SpeakButton';
+import DictionaryPanel from './DictionaryPanel';
+import { wordLang } from '../lib/speech';
 
 export interface WordCardState {
     text: string;
@@ -25,12 +28,14 @@ interface Props {
     onCreateList: (name: string) => void;
     onRemove: () => void;
     onClose: () => void;
+    /** Language of the book, if it says (EPUB), for reading the word aloud. */
+    bookLang?: string;
 }
 
 const W = 320;
 const GAP = 10;
 
-export default function WordCard({ card, level, onLevel, lists, saved, onSave, onCreateList, onRemove, onClose }: Props) {
+export default function WordCard({ card, level, onLevel, lists, saved, onSave, onCreateList, onRemove, onClose, bookLang }: Props) {
     const ref = useRef<HTMLDivElement>(null);
     const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
     const [menu, setMenu] = useState(false);
@@ -71,6 +76,7 @@ export default function WordCard({ card, level, onLevel, lists, saved, onSave, o
             <div className="p-4 pb-3">
                 <div className="flex items-start gap-2">
                     <p className="serif text-[19px] font-semibold leading-snug flex-1 min-w-0 break-words">{card.text}</p>
+                    <SpeakButton text={card.text} langs={[card.detectedLanguage, bookLang]} context={card.context} className="-mt-1 shrink-0" />
                     <button className="icon-btn -mr-2 -mt-1 shrink-0" onClick={onClose} aria-label="Close">
                         <X size={15} />
                     </button>
@@ -90,6 +96,7 @@ export default function WordCard({ card, level, onLevel, lists, saved, onSave, o
                 {card.source && !card.loading && !card.failed && (
                     <p className="text-[11px] faint mt-1.5">via {card.source}</p>
                 )}
+                {!card.loading && <DictionaryPanel text={card.text} lang={wordLang(card.text, card.context, card.detectedLanguage, bookLang)} />}
             </div>
 
             <div className="px-4 py-3 border-t" style={{ borderColor: 'var(--border)' }}>

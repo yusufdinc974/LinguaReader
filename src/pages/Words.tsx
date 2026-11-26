@@ -5,6 +5,7 @@ import type { Word, WordList } from '../types';
 import { useStore } from '../store/useStore';
 import { LEVELS, LIST_COLORS, DEFAULT_LIST_COLOR, wordKey } from '../lib/words';
 import { displayName } from '../lib/document';
+import SpeakButton from '../components/SpeakButton';
 import Dialog, { ConfirmDialog } from '../components/Dialog';
 import ReviewSetup from '../components/ReviewSetup';
 
@@ -360,7 +361,10 @@ export default function Words() {
                                             return (
                                                 <tr key={w.id} className="group border-b hover:bg-[var(--surface)]" style={{ borderColor: 'var(--border)' }}>
                                                     <td className="py-2.5 pr-4 align-top">
-                                                        <p className="serif text-[16px] leading-snug break-words">{w.word}</p>
+                                                        <div className="flex items-center gap-1">
+                                                            <p className="serif text-[16px] leading-snug break-words">{w.word}</p>
+                                                            <SpeakButton text={w.word} langs={[w.source_language]} context={w.sentence_context} size={13} className="w-6 h-6 opacity-0 group-hover:opacity-100 focus:opacity-100" />
+                                                        </div>
                                                         {w.pdf_name && <p className="text-[11.5px] faint mt-0.5 truncate max-w-[280px]" title={w.pdf_name}>{displayName(w.pdf_name)}</p>}
                                                     </td>
                                                     <td className="py-2.5 pr-4 align-top muted break-words">
