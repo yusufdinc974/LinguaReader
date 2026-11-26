@@ -177,7 +177,7 @@ export function setupDictionary() {
             const h = handle(w.lang);
             if (!h) continue;
             try {
-                for (const f of formsOf(h, w.key)) out.push([f, w.key]);
+                for (const f of formsOf(h, w.key, w.lang)) out.push([f, w.key]);
             } catch (err) {
                 console.error('[dictionary] forms failed:', err);
             }

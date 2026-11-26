@@ -35,3 +35,7 @@ test('unpaired letters and surrogates are fine', () => {
     assert.deepEqual(found({ '𠀋x': '#111111' }, 'a𠀋xb'), ['𠀋x']);
     assert.deepEqual(found({ x: '#111111' }, ''), []);
 });
+
+test('Korean nouns with a particle written on', () => {
+    assert.deepEqual(found({ 친구: '#111111', 책: '#111111' }, '친구와 책을 샀어요. 책상'), ['친구', '책']);
+});

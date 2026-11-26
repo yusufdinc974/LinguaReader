@@ -16,17 +16,20 @@ export interface Highlighter {
     fill: (span: HTMLElement, text: string) => void;
 }
 
-interface Node {
-    next: Map<string, Node>;
-    /** Set where a saved word ends. */
-    color?: string;
+interface Entry {
+    color: string;
     /** Must be a whole word (not inside a longer one). */
-    bounded?: boolean;
+    bounded: boolean;
 }
 
 const HEX = /^#[0-9a-f]{3,8}$/i;
 const NO_SPACES = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}]/u;
 const LETTER = /[\p{L}\p{M}]/u;
+/** Korean particles and copulas written onto the noun before them ("친구와"), longest first. */
+const PARTICLES = ['으로부터', '에게서', '한테서', '으로서', '으로써', '이에요', '입니다', '에서', '에게', '한테', '까지', '부터', '처럼', '보다', '으로', '이랑', '하고', '께서', '이다', '예요', '은', '는', '이', '가', '을', '를', '에', '의', '도', '와', '과', '로', '만', '랑', '께', '요', '야'];
+const HANGUL = /\p{Script=Hangul}/u;
+/** Longest run of Chinese or Japanese text tried as one saved word. */
+const MAX_RUN = 16;
 
 /** The character (code point) ending just before `i`. */
 function charBefore(text: string, i: number) {
@@ -39,51 +42,59 @@ function charAt(text: string, i: number) {
     return i >= text.length ? '' : String.fromCodePoint(text.codePointAt(i)!);
 }
 
+/** A Korean particle at `i` that ends the word. */
+function particleAt(text: string, i: number) {
+    return PARTICLES.some(p => text.startsWith(p, i) && !LETTER.test(charAt(text, i + p.length)));
+}
+
 /**
- * Finds saved words and phrases in text. Thousands of them (with their other
- * forms) are matched in one pass over a trie, longest match first.
+ * Finds saved words and phrases in text. Tens of thousands of them (with
+ * their other forms) are looked up in a map at each word start, longest
+ * match first, instead of one regular expression per word.
  */
 export function createHighlighter(wordColors: Record<string, string>): Highlighter {
-    const root: Node = { next: new Map() };
-    let count = 0;
+    const words = new Map<string, Entry>();
+    let maxLen = 0;
     for (const [phrase, c] of Object.entries(wordColors)) {
         const key = phrase.toLowerCase();
         if (!key || key.length !== phrase.length) continue;
-        let n = root;
-        for (const ch of key) {
-            let m = n.next.get(ch);
-            if (!m) n.next.set(ch, (m = { next: new Map() }));
-            n = m;
-        }
-        n.color = HEX.test(c) ? c : '#eab308';
         // Chinese and Japanese have no spaces: a saved word matches inside any run of text.
-        n.bounded = !NO_SPACES.test(key);
-        count++;
+        words.set(key, { color: HEX.test(c) ? c : '#eab308', bounded: !NO_SPACES.test(key) });
+        maxLen = Math.max(maxLen, key.length);
     }
 
     const ranges = (text: string): HighlightRange[] => {
-        if (count === 0) return [];
+        if (words.size === 0) return [];
         const lower = text.toLowerCase();
         // toLowerCase can change length (e.g. "İ"); offsets would no longer line up.
         if (lower.length !== text.length) return [];
         const found: HighlightRange[] = [];
         let i = 0;
         while (i < lower.length) {
-            const atWordStart = !LETTER.test(charBefore(lower, i));
-            let n: Node | undefined = root;
-            let j = i;
+            const first = charAt(lower, i);
             let best: { end: number; color: string } | null = null;
-            while (n && j < lower.length) {
-                const ch = charAt(lower, j);
-                n = n.next.get(ch);
-                if (!n) break;
-                j += ch.length;
-                if (n.color && (!n.bounded || (atWordStart && !LETTER.test(charAt(lower, j))))) best = { end: j, color: n.color };
+            if (LETTER.test(first)) {
+                const atWordStart = !LETTER.test(charBefore(lower, i));
+                const cjk = NO_SPACES.test(first);
+                const limit = Math.min(lower.length, i + maxLen);
+                for (let j = i + first.length; j <= limit;) {
+                    const next = charAt(lower, j);
+                    const wordEnd = !LETTER.test(next);
+                    // Where a bounded word may end: at the end of a word, or before a Korean particle
+                    const boundedEnd = atWordStart && (wordEnd || (HANGUL.test(charBefore(lower, j)) && particleAt(lower, j)));
+                    if (boundedEnd || (cjk && j - i <= MAX_RUN * 2)) {
+                        const e = words.get(lower.slice(i, j));
+                        if (e && (e.bounded ? boundedEnd : true)) best = { end: j, color: e.color };
+                    }
+                    if (!next) break;
+                    // Past a word's end only phrases ("ice cream") can still match
+                    j += next.length;
+                }
             }
             if (best) {
                 found.push({ start: i, end: best.end, color: best.color });
                 i = best.end;
-            } else i += charAt(lower, i).length || 1;
+            } else i += first.length || 1;
         }
         return found;
     };

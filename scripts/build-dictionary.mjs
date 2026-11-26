@@ -10,7 +10,9 @@
 //
 // Kept per entry: part of speech, IPA, up to 8 senses (gloss, tags, up to 2
 // examples, synonyms), entry synonyms/antonyms and "form of" links, and up
-// to 60 inflected forms (possessive and clitic forms are left out). Inflected
+// to 120 inflected forms (possessive and clitic forms, helper verbs, aspect
+// pairs, derived words and romanizations of non-Latin words are left out, so
+// the slots go to real forms of the word). Inflected
 // forms ("mangé", "mangeons") map to their headword so they can be looked up.
 //
 // Wiktionary content is CC BY-SA 4.0 (and GFDL); the app shows the credit.
@@ -32,7 +34,7 @@ const MAX_EXAMPLES = 2;
 const MAX_WORDS = 12;
 const MAX_TEXT = 400;
 /** Finnish and the like list hundreds of forms per word (possessives, clitics); keep the common ones. */
-const MAX_FORMS = 60;
+const MAX_FORMS = 120;
 
 /** Same as wordKey() in src/lib/words.ts. */
 const key = s => s.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -40,6 +42,11 @@ const clip = s => (typeof s === 'string' ? s.replace(/\s+/g, ' ').trim().slice(0
 const words = list => [...new Set((Array.isArray(list) ? list : []).map(x => clip(x?.word)).filter(Boolean))].slice(0, MAX_WORDS);
 /** Tags that only describe the form table; not worth showing. */
 const SKIP_FORM_TAGS = new Set(['table-tags', 'inflection-template', 'class', 'romanization']);
+/** Same list as NOT_A_FORM in electron/dictLookup.ts, plus possessives and clitics. */
+const NOT_A_FORM = /^(possessive|.*-possessive|clitic|auxiliary|diminutive|augmentative|noun-from-verb|historical|obsolete|archaic|dated|abbreviation)$/;
+/** A form tagged only with an aspect is the verb's aspect partner (говорить → сказать). */
+const ASPECT_ONLY = /^(perfective|imperfective)$/;
+const LATIN = /\p{Script=Latin}/u;
 
 fs.rmSync(output, { force: true });
 const db = new Database(output);
@@ -122,12 +129,15 @@ for await (const line of rl) {
     entries++;
     const seen = new Set([key(word)]);
     let kept = 0;
+    const latinHead = LATIN.test(word);
     for (const f of Array.isArray(e.forms) ? e.forms : []) {
         const form = clip(f?.form);
         const tags = (f?.tags ?? []).filter(t => typeof t === 'string');
         if (!form || form === '-' || tags.some(t => SKIP_FORM_TAGS.has(t)) || form.length > 60) continue;
         const k = key(form);
-        if (seen.has(k) || tags.some(t => /possessive|clitic/.test(t))) continue;
+        if (seen.has(k) || tags.some(t => NOT_A_FORM.test(t)) || (tags.length === 1 && ASPECT_ONLY.test(tags[0]))) continue;
+        // "miru" next to 見る: a romanization, not a form
+        if (!latinHead && LATIN.test(form)) continue;
         seen.add(k);
         insForm.run(k, id, tags.slice(0, 5).join(' ') || null);
         forms++;

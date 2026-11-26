@@ -67,9 +67,18 @@ const LATIN = /\p{Script=Latin}/u;
 /** IPA letters: some tables list a pronunciation as a form. */
 const IPA = /[\u0250-\u02af\u02b0-\u02ff]/u;
 /** Not another form of the same word: helper verbs, aspect pairs, derived words, old spellings. */
-const NOT_A_FORM = /\b(auxiliary|perfective|imperfective|diminutive|augmentative|noun-from-verb|romanization|historical|obsolete|archaic|dated|abbreviation)\b/;
-/** Stress marks in Russian and other dictionaries, which books don't print. */
-const stripStress = (s: string) => (/\p{Script=Cyrillic}/u.test(s) ? s.normalize('NFD').replace(/[\u0300\u0301]/g, '').normalize('NFC') : s);
+const NOT_A_FORM = /\b(auxiliary|diminutive|augmentative|noun-from-verb|romanization|historical|obsolete|archaic|dated|abbreviation)\b|^(perfective|imperfective)$/;
+/**
+ * Marks dictionaries add but books don't print: stress in Russian and other
+ * Cyrillic languages, stress inside Italian words ("mangiàto"; a final accent
+ * as in "città" is real spelling), and Arabic vowel signs.
+ */
+export function asPrinted(s: string, lang?: string) {
+    if (/\p{Script=Cyrillic}/u.test(s)) return s.normalize('NFD').replace(/[\u0300\u0301]/g, '').normalize('NFC');
+    if (/\p{Script=Arabic}/u.test(s)) return s.replace(/[\u064b-\u065f\u0670\u0640]/g, '');
+    if (lang === 'it') return s.replace(/[àèéìíòóùú](?=\p{L})/gu, c => c.normalize('NFD')[0]);
+    return s;
+}
 
 /**
  * Other spellings of `text` to highlight in the reader: the inflected forms of
@@ -77,7 +86,7 @@ const stripStress = (s: string) => (/\p{Script=Cyrillic}/u.test(s) ? s.normalize
  * form itself, and their kana readings. Multi-word forms ("avoir mangé"),
  * one-letter forms and romanizations of non-Latin words are left out.
  */
-export function formsOf(h: Database.Database, text: string, limit = 80): string[] {
+export function formsOf(h: Database.Database, text: string, lang?: string, limit = 150): string[] {
     const k = wordKey(text);
     if (!k || k.length > 100) return [];
     const ids = new Set<number>();
@@ -97,13 +106,17 @@ export function formsOf(h: Database.Database, text: string, limit = 80): string[
         } catch { /* bad row */ }
     }
     if (ids.size === 0) return [];
+    // An alternative spelling with its own table (μιλώ → μιλάω, 学校 → 學校) brings those forms too
+    const first = [...ids].slice(0, 6);
+    const alts = h.prepare(`SELECT key FROM forms WHERE entry IN (${first.map(() => '?').join(',')}) AND tags LIKE '%alternative%' LIMIT 6`).all(...first) as { key: string }[];
+    for (const a of alts) for (const x of byKey.all(a.key) as { id: number }[]) ids.add(x.id);
     const list = [...ids].slice(0, 10);
     const marks = list.map(() => '?').join(',');
     const keys = [
         ...(h.prepare(`SELECT key FROM entries WHERE id IN (${marks})`).all(...list) as { key: string }[]),
         ...(h.prepare(`SELECT key, tags FROM forms WHERE entry IN (${marks}) LIMIT 600`).all(...list) as { key: string; tags: string | null }[])
             .filter(r => !NOT_A_FORM.test(r.tags ?? '')),
-    ].map(r => stripStress(r.key));
+    ].map(r => asPrinted(r.key, lang));
     const multi = k.includes(' ');
     const latin = LATIN.test(k);
     const out = new Set<string>();
