@@ -1358,7 +1358,7 @@ function setupIpcHandlers(): void {
         try {
             const result = await dialog.showOpenDialog({
                 title: 'Import an Anki deck',
-                filters: [{ name: 'Anki deck', extensions: ['apkg', 'colpkg'] }],
+                filters: [{ name: 'Anki deck', extensions: ['apkg', 'colpkg', 'anki2', 'anki21', 'zip'] }, { name: 'All files', extensions: ['*'] }],
                 properties: ['openFile'],
             });
             if (result.canceled || result.filePaths.length === 0) return { success: false, cancelled: true };
@@ -1368,7 +1368,7 @@ function setupIpcHandlers(): void {
             ankiPending = { pkg, file };
             return {
                 success: true,
-                fileName: path.basename(file).replace(/\.(apkg|colpkg)$/i, ''),
+                fileName: path.basename(file).replace(/(\.(apkg|colpkg|anki2|anki21|zip))+$/i, ''),
                 decks: pkg.decks,
                 noteTypes: pkg.noteTypes.map(t => {
                     const samples = pkg.notes.filter(n => n.noteType === t.id).slice(0, 20).map(n => n.fields);

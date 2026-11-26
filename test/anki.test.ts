@@ -130,6 +130,12 @@ test('reads decks exported by current Anki versions', () => {
     assert.ok(wordsFrom(pkg, { [t.id]: map }, null, false, NOW).every(w => w.srs === null));
 });
 
+test('also opens a bare collection file and a re-zipped deck', () => {
+    const zip = unzipSync(buildApkg('D', [{ word: 'a', translation: 'b' }], NOW));
+    assert.equal(readApkg(zip['collection.anki2']).notes.length, 1);
+    assert.equal(readApkg(zipSync({ 'My deck/collection.anki2': zip['collection.anki2'] })).notes.length, 1);
+});
+
 test('a file that is not an Anki deck says so', () => {
     assert.throws(() => readApkg(strToU8('hello')), /isn't an Anki deck/);
     assert.throws(() => readApkg(zipSync({ 'a.txt': strToU8('x') })), /isn't an Anki deck/);

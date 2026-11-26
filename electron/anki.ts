@@ -218,7 +218,7 @@ function openCollection(zip: Record<string, Uint8Array>) {
         return new Database(zlib.zstdDecompressSync(b));
     }
     const legacy = zip['collection.anki21'] ?? zip['collection.anki2'];
-    if (!legacy) throw new Error("This file isn't an Anki deck.");
+    if (!legacy) throw new Error("This file isn't an Anki deck. In Anki, use File → Export and choose “Anki Deck Package (*.apkg)”.");
     return new Database(Buffer.from(legacy));
 }
 
@@ -228,10 +228,17 @@ const hasTable = (db: Database.Database, name: string) =>
 /** Reads an .apkg (or .colpkg) file. */
 export function readApkg(data: Uint8Array): AnkiPackage {
     let zip: Record<string, Uint8Array>;
-    try {
-        zip = unzipSync(data, { filter: f => f.name.startsWith('collection.anki2') });
-    } catch {
-        throw new Error("This file isn't an Anki deck.");
+    if (Buffer.from(data.subarray(0, 16)).toString('latin1') === 'SQLite format 3\0') {
+        // A bare collection file (collection.anki2 taken out of its package)
+        zip = { 'collection.anki2': data };
+    } else {
+        try {
+            // The collection may sit in a folder when the file was re-zipped by hand
+            const raw = unzipSync(data, { filter: f => /(^|\/)collection\.anki2/.test(f.name) });
+            zip = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k.split('/').pop()!, v]));
+        } catch {
+            throw new Error("This file isn't an Anki deck. In Anki, use File → Export and choose “Anki Deck Package (*.apkg)”.");
+        }
     }
     const db = openCollection(zip);
     try {
