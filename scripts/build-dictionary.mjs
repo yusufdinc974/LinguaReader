@@ -9,7 +9,8 @@
 // app's code (Norwegian Bokmål: app "no", Wiktionary "nb").
 //
 // Kept per entry: part of speech, IPA, up to 8 senses (gloss, tags, up to 2
-// examples, synonyms), entry synonyms/antonyms and "form of" links. Inflected
+// examples, synonyms), entry synonyms/antonyms and "form of" links, and up
+// to 60 inflected forms (possessive and clitic forms are left out). Inflected
 // forms ("mangé", "mangeons") map to their headword so they can be looked up.
 //
 // Wiktionary content is CC BY-SA 4.0 (and GFDL); the app shows the credit.
@@ -30,6 +31,8 @@ const MAX_SENSES = 8;
 const MAX_EXAMPLES = 2;
 const MAX_WORDS = 12;
 const MAX_TEXT = 400;
+/** Finnish and the like list hundreds of forms per word (possessives, clitics); keep the common ones. */
+const MAX_FORMS = 60;
 
 /** Same as wordKey() in src/lib/words.ts. */
 const key = s => s.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -109,15 +112,17 @@ for await (const line of rl) {
     const id = insEntry.run(key(word), word, JSON.stringify(data)).lastInsertRowid;
     entries++;
     const seen = new Set([key(word)]);
+    let kept = 0;
     for (const f of Array.isArray(e.forms) ? e.forms : []) {
         const form = clip(f?.form);
         const tags = (f?.tags ?? []).filter(t => typeof t === 'string');
         if (!form || form === '-' || tags.some(t => SKIP_FORM_TAGS.has(t)) || form.length > 60) continue;
         const k = key(form);
-        if (seen.has(k)) continue;
+        if (seen.has(k) || tags.some(t => t === 'possessive' || t === 'clitic')) continue;
         seen.add(k);
         insForm.run(k, id, tags.slice(0, 5).join(' ') || null);
         forms++;
+        if (++kept >= MAX_FORMS) break;
     }
     if (entries % 50000 === 0) {
         commit.run();
